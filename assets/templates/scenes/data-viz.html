@@ -1,0 +1,53 @@
+<!--
+  Route: data-viz (数据图表)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 图表标题 | {{UNIT}} 单位 | {{ACCENT}} 强调色
+  | {{LABEL_A}}/{{VALUE_A}} | {{LABEL_B}}/{{VALUE_B}} | {{LABEL_C}}/{{VALUE_C}}（C 为关键项）
+  Data is hard-coded in the DOM (data-value). Bars grow with scaleY from the axis
+  baseline — never tween height/width (layout thrash breaks determinism).
+-->
+<div class="km-viz" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#FFFFFF);">
+  <div class="km-viz__title" style="position:absolute;left:8%;top:8%;font:800 42px system-ui;color:#11110F;">{{TITLE}}</div>
+  <div class="km-viz__unit" style="position:absolute;right:8%;top:9%;font:600 26px system-ui;color:#8C887F;">{{UNIT}}</div>
+  <!-- 图表区：底部为基线 -->
+  <div class="km-viz__plot" style="position:absolute;left:8%;top:20%;width:84%;height:56%;">
+    <!-- 极淡网格线 -->
+    <svg style="position:absolute;inset:0;opacity:.15;" width="100%" height="100%" preserveAspectRatio="none" stroke="#11110F" stroke-width="1">
+      <line x1="0" y1="25%" x2="100%" y2="25%"/><line x1="0" y1="50%" x2="100%" y2="50%"/><line x1="0" y1="75%" x2="100%" y2="75%"/>
+    </svg>
+    <!-- 基线 -->
+    <div style="position:absolute;left:0;bottom:0;width:100%;height:3px;background:#11110F;"></div>
+    <div class="km-viz__group" style="position:absolute;left:4%;bottom:3px;width:26%;height:100%;display:flex;align-items:flex-end;justify-content:center;">
+      <div class="km-viz__bar" data-value="{{VALUE_A}}" style="width:70%;height:46%;background:#11110F;transform-origin:bottom;"></div>
+    </div>
+    <div class="km-viz__group" style="position:absolute;left:37%;bottom:3px;width:26%;height:100%;display:flex;align-items:flex-end;justify-content:center;">
+      <div class="km-viz__bar" data-value="{{VALUE_B}}" style="width:70%;height:64%;background:#11110F;transform-origin:bottom;"></div>
+    </div>
+    <div class="km-viz__group" style="position:absolute;left:70%;bottom:3px;width:26%;height:100%;display:flex;align-items:flex-end;justify-content:center;">
+      <div class="km-viz__bar km-viz__bar--key" data-value="{{VALUE_C}}" style="width:70%;height:88%;background:var(--km-accent,#F36B3D);transform-origin:bottom;"></div>
+    </div>
+    <!-- 数值标注（贴在每根柱顶，由 timeline 用 y 跟随柱高） -->
+    <div class="km-viz__value" style="position:absolute;left:17%;bottom:52%;transform:translateX(-50%);font:800 30px system-ui;color:#11110F;">{{VALUE_A}}</div>
+    <div class="km-viz__value" style="position:absolute;left:50%;bottom:70%;transform:translateX(-50%);font:800 30px system-ui;color:#11110F;">{{VALUE_B}}</div>
+    <div class="km-viz__value" style="position:absolute;left:83%;bottom:94%;transform:translateX(-50%);font:800 30px system-ui;color:#D8341F;">{{VALUE_C}}</div>
+  </div>
+  <!-- 类目标签 -->
+  <div class="km-viz__label" style="position:absolute;left:4%;bottom:16%;width:26%;text-align:center;font:700 26px system-ui;color:#5F6368;">{{LABEL_A}}</div>
+  <div class="km-viz__label" style="position:absolute;left:37%;bottom:16%;width:26%;text-align:center;font:700 26px system-ui;color:#5F6368;">{{LABEL_B}}</div>
+  <div class="km-viz__label" style="position:absolute;left:70%;bottom:16%;width:26%;text-align:center;font:700 26px system-ui;color:#5F6368;">{{LABEL_C}}</div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic; axis first, then data; accent key bar):
+  tl.fromTo(".km-viz__title", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.1)
+    .fromTo(".km-viz__unit", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.2)
+    .fromTo(".km-viz__plot svg", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.3)
+    .fromTo(".km-viz__bar", { scaleY: 0 }, { scaleY: 1, duration: 0.6, stagger: 0.18, ease: "power3.out" }, 0.6)
+    .fromTo(".km-viz__value", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.25, stagger: 0.18 }, 1.0)
+    .fromTo(".km-viz__label", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25, stagger: 0.1 }, 1.2)
+    // 压灰次要项、突出关键项（两态显式）：
+    .fromTo(".km-viz__bar:not(.km-viz__bar--key)", { opacity: 1 }, { opacity: 0.35, duration: 0.4 }, 2.4)
+    .fromTo(".km-viz__bar--key", { scale: 1 }, { scale: 1.04, duration: 0.3, yoyo: true, repeat: 1, transformOrigin: "bottom" }, 2.5);
+  // For a line chart: stroke-dasharray = path length, fromTo(strokeDashoffset: L -> 0).
+  // For ranking swaps: tween each row's y to the other row's slot (transform only).
+  // Bar heights/label positions here are placeholder ratios — set them from real values.
+-->

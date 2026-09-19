@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>文案不是成片 — clean-education / whiteboard-tutorial</title>
+  <script src="vendor/gsap.min.js"></script>
+  <style>
+    @font-face { font-family: 'PingFang SC'; src: local('PingFang SC'); }
+    @font-face { font-family: 'Noto Sans SC'; src: local('Noto Sans SC'); }
+    :root {
+      --bg:#F7F4EC;        /* clean-education background */
+      --ink:#26241F;       /* clean-education foreground */
+      --accent:#2B6CB0;    /* clean-education accent */
+      --muted:#8C887F;     /* clean-education muted */
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:1080px; height:1920px; overflow:hidden; background:var(--bg); color:var(--ink); font-family:"Noto Sans SC","PingFang SC",sans-serif; }
+    #root { position:relative; width:1080px; height:1920px; overflow:hidden; }
+    .scene-fill { position:absolute; inset:0; background:var(--bg); }
+    .clip { position:absolute; inset:0; overflow:hidden; }
+    /* notebook ruling — whiteboard paper feel, decorative only */
+    .paper-lines { position:absolute; inset:0; opacity:.5; background-image:linear-gradient(rgba(38,36,31,.055) 2px,transparent 2px); background-size:100% 120px; }
+    /* series furniture (declared once, full duration, track 0) */
+    .meta { position:absolute; top:86px; left:72px; right:72px; display:flex; justify-content:space-between; font:700 24px ui-monospace,monospace; color:var(--muted); letter-spacing:.08em; }
+    .rule { position:absolute; left:72px; right:72px; top:145px; height:3px; background:var(--accent); transform-origin:left center; }
+    .footer { position:absolute; left:72px; right:72px; bottom:280px; display:flex; justify-content:space-between; font:700 22px ui-monospace,monospace; color:var(--muted); }
+    .footer .stamp { color:var(--accent); }
+    /* s01 — build: headline + subtitle + hand-drawn underline */
+    .headline { position:absolute; left:72px; top:520px; width:936px; font-size:118px; line-height:1.06; font-weight:900; letter-spacing:-.02em; color:var(--ink); }
+    .headline em { color:var(--accent); font-style:normal; }
+    .subtitle { position:absolute; left:72px; top:712px; font-size:52px; font-weight:700; color:var(--muted); letter-spacing:.04em; }
+    .underline-svg { position:absolute; left:72px; top:806px; width:640px; height:36px; overflow:visible; }
+    /* s02 — breathe: whiteboard flow 观点→结构→分镜→动画, all ink SVG + text layer */
+    .wb-board { position:absolute; left:72px; top:430px; width:936px; height:1060px; }
+    .wb-board svg.wb-ink { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+    .wb-label { position:absolute; left:298px; width:340px; height:120px; display:grid; place-items:center; font-size:58px; font-weight:800; color:var(--ink); }
+    #wb-label-1 { top:40px; } #wb-label-2 { top:310px; } #wb-label-3 { top:580px; } #wb-label-4 { top:850px; }
+    /* s03 — resolve: duty labels + 观点→画面 payoff */
+    .duty { position:absolute; left:72px; width:936px; border-left:8px solid var(--accent); padding:8px 0 8px 30px; }
+    #s03-duty-you { top:470px; } #s03-duty-skill { top:640px; }
+    .duty .who { display:block; font-size:64px; font-weight:900; color:var(--ink); line-height:1.1; }
+    .duty .what { display:block; font-size:40px; font-weight:700; color:var(--muted); margin-top:6px; }
+    .payoff { position:absolute; left:72px; top:1020px; width:936px; height:300px; }
+    .payoff .p-word { position:absolute; top:60px; font-size:104px; font-weight:900; color:var(--ink); }
+    #s03-word-from { left:60px; }
+    #s03-word-to { right:60px; color:var(--accent); }
+    .payoff svg.payoff-ink { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  </style>
+</head>
+<body>
+<div id="root" data-composition-id="clean-education-whiteboard-sample" data-start="0" data-width="1080" data-height="1920" data-duration="10.4">
+  <!-- furniture layer: full duration, track 0 -->
+  <section class="clip" id="furniture-base" data-start="0" data-duration="10.4" data-track-index="0">
+    <div class="scene-fill"></div>
+    <div class="paper-lines" data-layout-ignore></div>
+    <div class="meta"><span>KNOWLEDGE / MOTION</span><span>CLEAN-EDUCATION · WHITEBOARD</span></div>
+    <div class="rule"></div>
+    <div class="footer"><span>BUILD → BREATHE → RESOLVE</span><span class="stamp">STYLE SAMPLE</span></div>
+  </section>
+
+  <!-- s01 build: 0–2.8 -->
+  <section class="clip" id="clip-s01" data-start="0" data-duration="2.8" data-track-index="1">
+    <h1 class="headline" id="s01-headline">文案不是<em>成片</em></h1>
+    <p class="subtitle" id="s01-subtitle">从观点到知识动画</p>
+    <svg class="underline-svg" id="s01-underline" viewBox="0 0 640 36" fill="none" aria-hidden="true">
+      <path class="wb-stroke" d="M8 22 C 140 8, 300 30, 632 14" stroke="#2B6CB0" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+  </section>
+
+  <!-- s02 breathe: 2.8–7.6, whiteboard flow 观点→结构→分镜→动画 -->
+  <section class="clip" id="clip-s02" data-start="2.8" data-duration="4.8" data-track-index="1">
+    <div class="wb-board" id="wb-board">
+      <svg class="wb-ink" viewBox="0 0 936 1060" fill="none" aria-hidden="true">
+        <!-- node boxes: hand-drawn feel via slight rotation -->
+        <rect id="wb-node-1" class="wb-stroke" x="298" y="40"  width="340" height="120" rx="10" stroke="#26241F" stroke-width="5" transform="rotate(-1.2 468 100)"/>
+        <rect id="wb-node-2" class="wb-stroke" x="298" y="310" width="340" height="120" rx="10" stroke="#26241F" stroke-width="5" transform="rotate(0.9 468 370)"/>
+        <rect id="wb-node-3" class="wb-stroke" x="298" y="580" width="340" height="120" rx="10" stroke="#26241F" stroke-width="5" transform="rotate(-0.8 468 640)"/>
+        <rect id="wb-node-4" class="wb-stroke" x="298" y="850" width="340" height="120" rx="10" stroke="#26241F" stroke-width="5" transform="rotate(1.1 468 910)"/>
+        <!-- arrows: shaft + head, drawn per step -->
+        <path id="wb-arrow-1" class="wb-stroke" d="M468 168 L468 296 M444 268 L468 298 L492 268" stroke="#26241F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="wb-arrow-2" class="wb-stroke" d="M468 438 L468 566 M444 538 L468 568 L492 538" stroke="#26241F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="wb-arrow-3" class="wb-stroke" d="M468 708 L468 836 M444 808 L468 838 L492 808" stroke="#26241F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- circle note around final node 动画 -->
+        <ellipse id="wb-circle" cx="468" cy="910" rx="212" ry="108" stroke="#2B6CB0" stroke-width="6" transform="rotate(-2 468 910)"/>
+      </svg>
+      <div class="wb-label" id="wb-label-1">观点</div>
+      <div class="wb-label" id="wb-label-2">结构</div>
+      <div class="wb-label" id="wb-label-3">分镜</div>
+      <div class="wb-label" id="wb-label-4">动画</div>
+    </div>
+  </section>
+
+  <!-- s03 resolve: 7.6–10.4 -->
+  <section class="clip" id="clip-s03" data-start="7.6" data-duration="2.8" data-track-index="1">
+    <div class="duty" id="s03-duty-you"><span class="who">你</span><span class="what">观点与故事</span></div>
+    <div class="duty" id="s03-duty-skill"><span class="who">Skill</span><span class="what">逻辑变画面</span></div>
+    <div class="payoff" id="s03-payoff">
+      <span class="p-word" id="s03-word-from">观点</span>
+      <span class="p-word" id="s03-word-to">画面</span>
+      <svg class="payoff-ink" viewBox="0 0 936 300" fill="none" aria-hidden="true">
+        <path id="s03-payoff-arrow" class="wb-stroke" d="M300 130 C 400 96, 520 96, 612 122 M576 92 L618 126 L566 148" stroke="#2B6CB0" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        <ellipse id="s03-payoff-circle" cx="800" cy="128" rx="112" ry="86" stroke="#2B6CB0" stroke-width="6" transform="rotate(-2 800 128)"/>
+      </svg>
+    </div>
+  </section>
+</div>
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused:true });
+  /* clean-education motion: power2.out default, stagger .15, fade-up in, hold final 1.2s */
+
+  /* shared furniture — animates once per film, not per scene */
+  tl.fromTo('.meta',{autoAlpha:0},{autoAlpha:1,duration:.35,ease:'power2.out'},.1);
+  tl.fromTo('.rule',{scaleX:0},{scaleX:1,duration:.5,ease:'power2.out'},.15);
+  tl.fromTo('.footer',{autoAlpha:0},{autoAlpha:1,duration:.35,ease:'power2.out'},.35);
+
+  /* s01 — build: headline fade-up, subtitle, hand-drawn underline draws */
+  tl.fromTo('#s01-headline',{y:48,autoAlpha:0},{y:0,autoAlpha:1,duration:.6,ease:'power2.out'},.3);
+  tl.fromTo('#s01-subtitle',{y:32,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},.85);
+  tl.fromTo('#s01-underline .wb-stroke',{strokeDasharray:700,strokeDashoffset:700},{strokeDashoffset:0,duration:.5,ease:'power1.inOut'},1.25);
+
+  /* s02 — breathe: whiteboard flow draws node by node, ink syncs to beats */
+  /* node boxes: perimeter 2*(340+120)=920 → dasharray 960 */
+  tl.fromTo('#wb-node-1',{strokeDasharray:960,strokeDashoffset:960},{strokeDashoffset:0,duration:.5,ease:'power1.inOut'},3.0);
+  tl.fromTo('#wb-label-1',{autoAlpha:0},{autoAlpha:1,duration:.25,ease:'power2.out'},3.3);
+  tl.fromTo('#wb-arrow-1',{strokeDasharray:260,strokeDashoffset:260},{strokeDashoffset:0,duration:.35,ease:'power1.inOut'},3.65);
+  tl.fromTo('#wb-node-2',{strokeDasharray:960,strokeDashoffset:960},{strokeDashoffset:0,duration:.5,ease:'power1.inOut'},3.95);
+  tl.fromTo('#wb-label-2',{autoAlpha:0},{autoAlpha:1,duration:.25,ease:'power2.out'},4.25);
+  tl.fromTo('#wb-arrow-2',{strokeDasharray:260,strokeDashoffset:260},{strokeDashoffset:0,duration:.35,ease:'power1.inOut'},4.6);
+  tl.fromTo('#wb-node-3',{strokeDasharray:960,strokeDashoffset:960},{strokeDashoffset:0,duration:.5,ease:'power1.inOut'},4.9);
+  tl.fromTo('#wb-label-3',{autoAlpha:0},{autoAlpha:1,duration:.25,ease:'power2.out'},5.2);
+  tl.fromTo('#wb-arrow-3',{strokeDasharray:260,strokeDashoffset:260},{strokeDashoffset:0,duration:.35,ease:'power1.inOut'},5.55);
+  tl.fromTo('#wb-node-4',{strokeDasharray:960,strokeDashoffset:960},{strokeDashoffset:0,duration:.5,ease:'power1.inOut'},5.85);
+  tl.fromTo('#wb-label-4',{autoAlpha:0},{autoAlpha:1,duration:.25,ease:'power2.out'},6.15);
+  /* circle note after the final keyword lands (perimeter ≈ 2π*sqrt((212²+108²)/2) ≈ 1049) */
+  tl.fromTo('#wb-circle',{strokeDasharray:1100,strokeDashoffset:1100,autoAlpha:0},{strokeDashoffset:0,autoAlpha:1,duration:.5,ease:'power1.inOut'},6.5);
+  /* gentle drift while narration continues (finite, no repeat) */
+  tl.to('#wb-board',{x:-8,y:6,duration:1.0,ease:'sine.inOut'},6.6);
+
+  /* s03 — resolve: duty labels, 观点→画面 payoff, hold final state 1.2s */
+  tl.fromTo('#s03-duty-you',{y:40,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},7.75);
+  tl.fromTo('#s03-duty-skill',{y:40,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},7.9);
+  tl.fromTo('#s03-word-from',{y:36,autoAlpha:0},{y:0,autoAlpha:1,duration:.4,ease:'power2.out'},8.4);
+  tl.fromTo('#s03-word-to',{y:36,autoAlpha:0},{y:0,autoAlpha:1,duration:.4,ease:'power2.out'},8.6);
+  tl.fromTo('#s03-payoff-arrow',{strokeDasharray:420,strokeDashoffset:420},{strokeDashoffset:0,duration:.35,ease:'power1.inOut'},8.7);
+  tl.fromTo('#s03-payoff-circle',{strokeDasharray:640,strokeDashoffset:640,autoAlpha:0},{strokeDashoffset:0,autoAlpha:1,duration:.3,ease:'power1.inOut'},8.95);
+  /* final state holds from 9.25 → 10.4 (1.2s = clean-education holdFinalStateSec) */
+
+  window.__timelines['clean-education-whiteboard-sample'] = tl;
+</script>
+</body>
+</html>

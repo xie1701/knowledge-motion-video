@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "project": {
+    "title": "文案不是成片",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 10.4,
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1690,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "style": "bold-social",
+  "design": {
+    "background": "#11110F",
+    "foreground": "#FFFFFF",
+    "accent": "#F36B3D",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.25,
+    "breatheRatio": 0.45,
+    "resolveRatio": 0.3,
+    "holdFinalStateSec": 0.9,
+    "defaultEase": "power3.out",
+    "staggerSec": 0.1,
+    "transitionIn": "hard-cut",
+    "transitionOut": "hard-cut"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0,
+      "durationSec": 2.8,
+      "narration": "文案不是成片，从观点到知识动画。",
+      "keywords": [
+        { "text": "成片", "atSec": 0.9 }
+      ],
+      "purpose": "hook",
+      "semanticClass": "argument",
+      "style": "kinetic-typography",
+      "route": "kinetic-typography",
+      "visualSubject": "Oversized 900-weight headline 文案不是成片 with the key word 成片 in accent over a rotated color slab",
+      "visualVerb": "slam-and-underline",
+      "layout": "left-headline-with-accent-slab",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.05, "action": "accent slab sweeps in from right" },
+        { "atSec": 0.2, "action": "headline slams in from scale 1.35" },
+        { "atSec": 0.9, "action": "key word 成片 slams into accent layer" },
+        { "atSec": 1.2, "action": "accent underline sweeps in from left" },
+        { "atSec": 1.5, "action": "subtitle 从观点到知识动画 rises in" },
+        { "atSec": 1.7, "action": "key word pulses once (finite yoyo)" }
+      ],
+      "finalState": "Headline 文案不是成片 plus subtitle hold fully readable for 0.9s before hard-cut",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 2.8,
+      "durationSec": 4.8,
+      "narration": "观点、结构、分镜、动画——四步节拍。",
+      "keywords": [
+        { "text": "动画", "atSec": 2.9 }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "process",
+      "style": "kinetic-typography",
+      "route": "kinetic-typography",
+      "visualSubject": "Four beat words 观点/结构/分镜/动画 in a 2x2 kinetic grid, each slamming in on rhythm with an accent bar",
+      "visualVerb": "slam-in-rhythm",
+      "layout": "two-by-two-word-grid",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.2, "action": "word 观点 slams in" },
+        { "atSec": 0.4, "action": "accent bar sweeps under 观点" },
+        { "atSec": 1.1, "action": "word 结构 slams in" },
+        { "atSec": 1.3, "action": "accent bar sweeps under 结构" },
+        { "atSec": 2.0, "action": "word 分镜 slams in" },
+        { "atSec": 2.2, "action": "accent bar sweeps under 分镜" },
+        { "atSec": 2.9, "action": "accent word 动画 slams in" },
+        { "atSec": 3.1, "action": "accent bar sweeps under 动画" },
+        { "atSec": 3.5, "action": "动画 pulses once (finite yoyo)" },
+        { "atSec": 3.9, "action": "full grid holds to end of scene" }
+      ],
+      "finalState": "Complete 2x2 beat-word grid with 动画 accented holds for 0.9s before hard-cut",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 7.6,
+      "durationSec": 2.8,
+      "narration": "你负责观点与故事，Skill 负责把逻辑变成画面。",
+      "keywords": [
+        { "text": "画面", "atSec": 1.0 }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "argument",
+      "style": "kinetic-typography",
+      "route": "kinetic-typography",
+      "visualSubject": "Two responsibility labels 你：观点与故事 / Skill：逻辑变画面 resolving into an oversized 观点→画面 payoff",
+      "visualVerb": "resolve-and-hold",
+      "layout": "labels-above-transform-payoff",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hold",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.15, "action": "responsibility labels rise in staggered" },
+        { "atSec": 0.55, "action": "word 观点 slams into payoff row" },
+        { "atSec": 0.85, "action": "accent arrow draws left to right" },
+        { "atSec": 1.0, "action": "accent word 画面 slams into payoff row" },
+        { "atSec": 1.5, "action": "画面 pulses once (finite yoyo)" },
+        { "atSec": 1.9, "action": "final composition holds untouched to end" }
+      ],
+      "finalState": "Labels plus 观点→画面 payoff hold for 0.9s to the end of the film",
+      "renderer": "hyperframes"
+    }
+  ]
+}

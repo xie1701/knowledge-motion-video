@@ -1,0 +1,34 @@
+<!--
+  Route: paper-diorama (纸艺立体场景)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 标题 | {{LAYER_1_LABEL}}/{{LAYER_2_LABEL}}/{{LAYER_3_LABEL}} 各层内容 | {{ACCENT}} 强调色
+  Each layer is an independent group so lift/occlusion is real DOM stacking.
+  Swap layer contents for layered paper-texture SVG illustrations.
+-->
+<div class="km-paper" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#E9E2D0);perspective:1200px;">
+  <div class="km-paper__title" style="position:absolute;left:0;top:6%;width:100%;text-align:center;font:800 44px system-ui;color:#26241F;">{{TITLE}}</div>
+
+  <!-- 底层 -->
+  <div class="km-paper__layer km-paper__layer--base" style="position:absolute;left:14%;top:34%;width:72%;height:44%;background:#D8CFB8;box-shadow:0 18px 30px rgba(0,0,0,.18);transform:rotateX(14deg);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8C887F;font:700 30px system-ui;">{{LAYER_3_LABEL}}</div>
+  </div>
+  <!-- 中层 -->
+  <div class="km-paper__layer km-paper__layer--mid" style="position:absolute;left:20%;top:26%;width:60%;height:36%;background:#F5F1E8;box-shadow:0 14px 24px rgba(0,0,0,.16);transform:rotateX(10deg);">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#26241F;font:700 30px system-ui;">{{LAYER_2_LABEL}}</div>
+  </div>
+  <!-- 顶层（强调层，带拉页 tab） -->
+  <div class="km-paper__layer km-paper__layer--top" style="position:absolute;left:26%;top:18%;width:48%;height:28%;background:var(--km-accent,#F36B3D);box-shadow:0 12px 20px rgba(0,0,0,.2);transform:rotateX(8deg);">
+    <div class="km-paper__tab" style="position:absolute;right:-8px;top:18px;background:#26241F;color:#F5F1E8;padding:6px 18px;font:700 24px system-ui;"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#11110F;font:800 32px system-ui;">{{LAYER_1_LABEL}}</div>
+  </div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic: every layer fromTo with explicit hinge origin):
+  tl.fromTo(".km-paper__layer--base", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1)
+    .fromTo(".km-paper__layer--mid", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.7)
+    .fromTo(".km-paper__layer--top", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.3)
+    .fromTo(".km-paper__tab", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "back.out(2)" }, 1.8)
+    .fromTo(".km-paper__title", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.2);
+  // Lift to reveal the layer below (real occlusion, hinge at bottom edge):
+  // tl.to(".km-paper__layer--top", { rotationX: -38, y: -30, duration: 0.6, ease: "power2.inOut", transformOrigin: "50% 100%" }, 2.4);
+-->

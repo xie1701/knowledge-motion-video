@@ -1,0 +1,50 @@
+<!--
+  Route: map-geo (地理/空间)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 标题 | {{PIN_1}}/{{PIN_2}}/{{PIN_3}} 地点名 | {{ACCENT}} 强调色
+  The map is a deliberately simplified abstract outline (no real borders) —
+  swap for a licensed local base map when needed. Never use online tiles.
+-->
+<div class="km-map" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#0E1420);">
+  <div class="km-map__title" style="position:absolute;left:8%;top:8%;font:800 42px system-ui;color:#F5F1E8;">{{TITLE}}</div>
+  <!-- 简化轮廓底图（抽象形状，非真实边界） -->
+  <svg class="km-map__base" style="position:absolute;left:6%;top:20%;width:88%;height:56%;" viewBox="0 0 100 60" fill="none">
+    <path class="km-map__outline" d="M8 40 Q14 20 32 18 Q48 16 58 22 Q76 20 88 30 Q96 40 84 48 Q66 56 48 52 Q26 56 14 50 Q6 46 8 40 Z" stroke="#5F6368" stroke-width="1" fill="#1C2536"/>
+    <!-- 内部分区参考线（极淡） -->
+    <path class="km-map__outline" d="M40 18 Q44 34 40 52 M62 22 Q58 36 66 51" stroke="#2A3448" stroke-width="0.6"/>
+  </svg>
+  <!-- pin 1 -->
+  <div class="km-map__pin km-map__pin--1" style="position:absolute;left:26%;top:38%;width:22px;height:22px;border-radius:50% 50% 50% 0;background:var(--km-accent,#F36B3D);transform:rotate(-45deg);border:3px solid #0E1420;box-shadow:0 6px 14px rgba(0,0,0,.5);"></div>
+  <div class="km-map__pinlabel km-map__pinlabel--1" style="position:absolute;left:29%;top:33%;font:700 26px system-ui;color:#F5F1E8;text-shadow:0 2px 8px rgba(0,0,0,.6);">{{PIN_1}}</div>
+  <!-- pin 2（关键点，更大） -->
+  <div class="km-map__pin km-map__pin--2 km-map__pin--key" style="position:absolute;left:54%;top:30%;width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--km-accent,#F36B3D);transform:rotate(-45deg);border:3px solid #0E1420;box-shadow:0 6px 14px rgba(0,0,0,.5);"></div>
+  <div class="km-map__pinlabel km-map__pinlabel--2" style="position:absolute;left:58%;top:25%;font:800 28px system-ui;color:#F5F1E8;text-shadow:0 2px 8px rgba(0,0,0,.6);">{{PIN_2}}</div>
+  <!-- pin 3 -->
+  <div class="km-map__pin km-map__pin--3" style="position:absolute;left:70%;top:52%;width:22px;height:22px;border-radius:50% 50% 50% 0;background:var(--km-accent,#F36B3D);transform:rotate(-45deg);border:3px solid #0E1420;box-shadow:0 6px 14px rgba(0,0,0,.5);"></div>
+  <div class="km-map__pinlabel km-map__pinlabel--3" style="position:absolute;left:73%;top:47%;font:700 26px system-ui;color:#F5F1E8;text-shadow:0 2px 8px rgba(0,0,0,.6);">{{PIN_3}}</div>
+  <!-- 扩散圈（关键点，有限重复后定格） -->
+  <div class="km-map__ripple" style="position:absolute;left:53%;top:29%;width:60px;height:60px;margin-left:-16px;margin-top:-16px;border:3px solid var(--km-accent,#F36B3D);border-radius:50%;opacity:0;"></div>
+  <!-- 路径连线 2 -> 3 -->
+  <svg class="km-map__route" style="position:absolute;left:6%;top:20%;width:88%;height:56%;" viewBox="0 0 100 60" fill="none">
+    <path class="km-map__routepath" d="M56 30 Q66 36 73 43" stroke="#F36B3D" stroke-width="1.2" stroke-dasharray="2 1.5"/>
+  </svg>
+</div>
+<!--
+  GSAP timeline fragment (deterministic; base fades in, pins drop in order,
+  ripple repeats FINITELY then freezes, route draws):
+  tl.fromTo(".km-map__title", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.1)
+    .fromTo(".km-map__base", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5 }, 0.2)
+    .fromTo(".km-map__pin--1", { y: -26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "bounce.out" }, 0.7)
+    .fromTo(".km-map__pinlabel--1", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 0.95)
+    .fromTo(".km-map__pin--2", { y: -26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "bounce.out" }, 1.3)
+    .fromTo(".km-map__pinlabel--2", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 1.55)
+    // 扩散圈：repeat: 2（有限），之后零时长 set 定格终态
+    .fromTo(".km-map__ripple", { scale: 0.5, autoAlpha: 0.8 }, { scale: 1.6, autoAlpha: 0, duration: 0.7, repeat: 2, ease: "power1.out", transformOrigin: "50% 50%" }, 1.6)
+    .set(".km-map__ripple", { autoAlpha: 0 }, 3.8)
+    .fromTo(".km-map__pin--3", { y: -26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "bounce.out" }, 2.3)
+    .fromTo(".km-map__pinlabel--3", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 2.55)
+    .fromTo(".km-map__routepath", { strokeDashoffset: 60 }, { strokeDashoffset: 0, duration: 0.5, ease: "power1.inOut" }, 2.9);
+  // Region focus: tween a container's scale with transformOrigin at the target
+  // region's percentage position. Route strokeDashoffset start = path length.
+  // Calibrate pin positions to your real base map coordinates.
+-->

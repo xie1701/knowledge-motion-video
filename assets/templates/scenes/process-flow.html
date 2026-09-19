@@ -1,0 +1,51 @@
+<!--
+  Route: process-flow (流程图/系统架构)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 标题 | {{NODE_A}}/{{NODE_B}}/{{NODE_C}} 节点名 | {{BRANCH_TAKEN}} 走到的分支标签 | {{ACCENT}} 强调色
+  Nodes and edges are separate elements so edges can light up source -> sink.
+  Never light everything at once; dim the untaken branch after highlighting it.
+-->
+<div class="km-flow" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#0F1114);">
+  <div class="km-flow__title" style="position:absolute;left:8%;top:8%;font:800 42px system-ui;color:#F5F1E8;">{{TITLE}}</div>
+  <svg class="km-flow__edges" style="position:absolute;inset:0;" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke-width="1.2">
+    <!-- A -> B -->
+    <path class="km-flow__edge km-flow__edge--1" d="M38 30 H50 V42" stroke="#8C887F"/>
+    <!-- B -> C（走到的分支） -->
+    <path class="km-flow__edge km-flow__edge--2" d="M38 62 H50 V50" stroke="#8C887F"/>
+    <!-- B -> 下方未走分支 -->
+    <path class="km-flow__edge km-flow__edge--idle" d="M38 62 H50 V82" stroke="#8C887F"/>
+  </svg>
+  <div class="km-flow__node km-flow__node--a" style="position:absolute;left:10%;top:24%;width:28%;height:12%;background:#1C1F26;border:3px solid #5F6368;border-radius:10px;display:flex;align-items:center;justify-content:center;font:700 28px system-ui;color:#F5F1E8;">
+    {{NODE_A}}
+  </div>
+  <div class="km-flow__node km-flow__node--b" style="position:absolute;left:10%;top:56%;width:28%;height:12%;background:#1C1F26;border:3px solid #5F6368;border-radius:10px;display:flex;align-items:center;justify-content:center;font:700 28px system-ui;color:#F5F1E8;">
+    {{NODE_B}}
+  </div>
+  <div class="km-flow__node km-flow__node--c" style="position:absolute;left:52%;top:40%;width:30%;height:12%;background:#1C1F26;border:3px solid #5F6368;border-radius:10px;display:flex;align-items:center;justify-content:center;font:700 28px system-ui;color:#F5F1E8;">
+    {{NODE_C}}
+  </div>
+  <div class="km-flow__branchlabel" style="position:absolute;left:54%;top:60%;font:700 24px system-ui;color:var(--km-accent,#F36B3D);">{{BRANCH_TAKEN}}</div>
+  <!-- 流动物（数据点，沿 A->B->C 分段位移） -->
+  <div class="km-flow__packet" style="position:absolute;left:22%;top:28%;width:16px;height:16px;border-radius:50%;background:var(--km-accent,#F36B3D);opacity:0;"></div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic; edge grows source->sink, node lights on arrival):
+  tl.fromTo(".km-flow__title", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.1)
+    .fromTo(".km-flow__node--a", { autoAlpha: 0, scale: 0.9 }, { autoAlpha: 1, scale: 1, duration: 0.3, transformOrigin: "50% 50%" }, 0.3)
+    .fromTo(".km-flow__node--b", { autoAlpha: 0, scale: 0.9 }, { autoAlpha: 1, scale: 1, duration: 0.3, transformOrigin: "50% 50%" }, 0.5)
+    .fromTo(".km-flow__node--c", { autoAlpha: 0, scale: 0.9 }, { autoAlpha: 1, scale: 1, duration: 0.3, transformOrigin: "50% 50%" }, 0.7)
+    .fromTo(".km-flow__edge--1", { strokeDasharray: 200, strokeDashoffset: 200 }, { strokeDashoffset: 0, duration: 0.4 }, 1.1)
+    .fromTo(".km-flow__edge--2", { strokeDasharray: 200, strokeDashoffset: 200 }, { strokeDashoffset: 0, duration: 0.4 }, 1.5)
+    .fromTo(".km-flow__branchlabel", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25 }, 1.8)
+    // 走到的分支保持 accent，再压灰未走分支（顺序不可反）：
+    .fromTo(".km-flow__edge--2", { stroke: "#8C887F" }, { stroke: "#F36B3D", duration: 0.3 }, 1.8)
+    .fromTo(".km-flow__edge--idle", { stroke: "#8C887F" }, { stroke: "#3A3D44", duration: 0.3 }, 2.0)
+    // 数据点沿路径分段位移（transform-only；不用 repeat:-1）：
+    .fromTo(".km-flow__packet", { autoAlpha: 0, x: 0, y: 0 }, { autoAlpha: 1, duration: 0.15 }, 2.4)
+    .to(".km-flow__packet", { x: 190, y: 0, duration: 0.4, ease: "power1.inOut" }, 2.55)
+    .to(".km-flow__packet", { x: 190, y: 190, duration: 0.4, ease: "power1.inOut" }, 2.95)
+    .to(".km-flow__packet", { autoAlpha: 0, duration: 0.2 }, 3.3);
+  // Calibrate strokeDasharray and packet x/y to your real geometry.
+  // Container grouping: wrap sub-system nodes in a dashed-border div and reveal
+  // it with a border-draw or autoAlpha before its members light up.
+-->

@@ -1,0 +1,12 @@
+{
+  "duration": 10.4,
+  "assertions": [
+    { "kind": "appearsBy", "selector": ".headline", "bySec": 1.0 },
+    { "kind": "before", "a": ".headline", "b": ".transform .t-arrow" },
+    { "kind": "before", "a": ".doc", "b": "#node-a" },
+    { "kind": "before", "a": "#node-c", "b": ".labels .label" },
+    { "kind": "staysInFrame", "selector": ".doc" },
+    { "kind": "staysInFrame", "selector": ".pipe" },
+    { "kind": "keepsMoving", "withinSelector": "#root", "maxStaticSec": 2.2 }
+  ]
+}

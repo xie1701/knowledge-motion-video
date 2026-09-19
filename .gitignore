@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Renders and scratch (whitelist example outputs for the style gallery)
+examples/*/renders/*
+!examples/*/renders/visual-master.mp4
+!examples/*/renders/style-loop.gif
+!examples/sample-project/renders/final-demo.mp4
+.hf-tmp/
+frames_tmp/
+*.pyc
+__pycache__/
+
+# OS
+.DS_Store

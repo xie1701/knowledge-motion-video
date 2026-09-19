@@ -1,0 +1,24 @@
+{
+  "name": "dark-technical",
+  "description": "深色技术风：深蓝黑底、冷调强调，适合架构、工程、开发者内容。",
+  "design": {
+    "background": "#0F1114",
+    "foreground": "#F5F1E8",
+    "accent": "#4FD1C5",
+    "muted": "#5F6368",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.35,
+    "breatheRatio": 0.4,
+    "resolveRatio": 0.25,
+    "holdFinalStateSec": 1.0,
+    "defaultEase": "power3.out",
+    "staggerSec": 0.12,
+    "transitionIn": "hard-cut",
+    "transitionOut": "fade"
+  },
+  "suggestedRoutes": ["process-flow", "data-viz", "ui-demo", "generated-cinematic"],
+  "notes": "深底上强调色亮度须足够（对比 4.5:1 以上）；图表网格线用 muted 低透明度。"
+}

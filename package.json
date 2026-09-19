@@ -1,0 +1,14 @@
+{
+  "name": "knowledge-motion-skill",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-contained fallback renderer for knowledge-motion compositions (puppeteer-core + ffmpeg, no hyperframes CLI required).",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "render:demo": "node scripts/render-browser.mjs examples/sample-project/composition/index.html --output examples/sample-project/renders/demo-swiss.mp4 --fps 30"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "project": {
+    "title": "文案不是成片",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 10.4,
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1570,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "design": {
+    "background": "#11110F",
+    "foreground": "#F5F1E8",
+    "accent": "#F36B3D",
+    "muted": "#8C887F",
+    "displayFont": "PingFang SC",
+    "bodyFont": "PingFang SC"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0,
+      "durationSec": 2.8,
+      "narration": "文案写完，只是起点。",
+      "keywords": [
+        {
+          "text": "起点",
+          "atSec": 2.0
+        }
+      ],
+      "purpose": "hook",
+      "semanticClass": "argument",
+      "style": "swiss-sketch",
+      "visualSubject": "A finished document still shows unanswered picture-and-rhythm questions",
+      "visualVerb": "reveal-and-question",
+      "layout": "split-left-headline-right-document",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "match-cut-document",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.25,
+          "action": "headline slides in from left"
+        },
+        {
+          "atSec": 0.95,
+          "action": "document springs in with open questions"
+        },
+        {
+          "atSec": 2.0,
+          "action": "hold as narration lands on 起点"
+        }
+      ],
+      "finalState": "Document with open questions readable for 0.6s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 2.8,
+      "durationSec": 4.8,
+      "narration": "你负责把观点讲清楚，Skill 负责把逻辑变成观众看得懂的画面。",
+      "keywords": [
+        {
+          "text": "讲清楚",
+          "atSec": 0.8
+        },
+        {
+          "text": "画面",
+          "atSec": 4.1
+        }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "process",
+      "style": "swiss-sketch",
+      "visualSubject": "A three-node pipeline connecting speaker, skill, and audience",
+      "visualVerb": "assemble-and-connect",
+      "layout": "right-diagram-column",
+      "camera": "micro-drift",
+      "transitionIn": "match-cut-document",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1,
+          "action": "nodes pop in staggered"
+        },
+        {
+          "atSec": 0.7,
+          "action": "connectors draw between nodes"
+        },
+        {
+          "atSec": 1.8,
+          "action": "pipeline drifts as narration continues"
+        }
+      ],
+      "finalState": "Connected pipeline readable for 0.7s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 7.6,
+      "durationSec": 2.8,
+      "narration": "真正难的，是把观点变成画面。",
+      "keywords": [
+        {
+          "text": "难",
+          "atSec": 0.6
+        }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "argument",
+      "style": "swiss-sketch",
+      "visualSubject": "Responsibility labels resolve into an observation-to-picture transformation payoff",
+      "visualVerb": "resolve-and-hold",
+      "layout": "labels-above-caption-band",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hold",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1,
+          "action": "responsibility labels rise in"
+        },
+        {
+          "atSec": 0.55,
+          "action": "transformation words and arrow land on spoken 难"
+        },
+        {
+          "atSec": 1.8,
+          "action": "final state holds to end"
+        }
+      ],
+      "finalState": "Labels plus 观点→画面 payoff hold for 1.0s",
+      "renderer": "hyperframes"
+    }
+  ]
+}

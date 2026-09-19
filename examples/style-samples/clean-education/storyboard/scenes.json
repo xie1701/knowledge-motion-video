@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "project": {
+    "title": "文案不是成片",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 10.4,
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1690,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "design": {
+    "background": "#F7F4EC",
+    "foreground": "#26241F",
+    "accent": "#2B6CB0",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0,
+      "durationSec": 2.8,
+      "narration": "文案不是成片——它只是从观点到知识动画的起点。",
+      "keywords": [
+        {
+          "text": "成片",
+          "atSec": 1.1
+        }
+      ],
+      "purpose": "hook",
+      "semanticClass": "argument",
+      "route": "whiteboard-tutorial",
+      "style": "whiteboard-tutorial",
+      "visualSubject": "A bold headline declaring that copy is not the finished film, with a hand-drawn accent underline",
+      "visualVerb": "fade-up-and-underline",
+      "layout": "headline-upper-center",
+      "camera": "static",
+      "transitionIn": "fade-up",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.3,
+          "action": "headline 文案不是成片 fades up"
+        },
+        {
+          "atSec": 0.85,
+          "action": "subtitle 从观点到知识动画 fades up"
+        },
+        {
+          "atSec": 1.25,
+          "action": "hand-drawn accent underline draws beneath the subtitle"
+        }
+      ],
+      "finalState": "Headline, subtitle and underline hold for 1.05s before hard cut",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 2.8,
+      "durationSec": 4.8,
+      "narration": "先有观点，再搭结构，然后拆分镜，最后才是动画。",
+      "keywords": [
+        {
+          "text": "观点",
+          "atSec": 0.3
+        },
+        {
+          "text": "结构",
+          "atSec": 1.3
+        },
+        {
+          "text": "分镜",
+          "atSec": 2.2
+        },
+        {
+          "text": "动画",
+          "atSec": 3.2
+        }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "process",
+      "route": "whiteboard-tutorial",
+      "style": "whiteboard-tutorial",
+      "visualSubject": "A vertical whiteboard flow of four hand-drawn nodes: 观点 → 结构 → 分镜 → 动画",
+      "visualVerb": "draw-and-connect",
+      "layout": "vertical-flow-column",
+      "camera": "micro-drift",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.2,
+          "action": "first node 观点 draws its box, label appears"
+        },
+        {
+          "atSec": 0.85,
+          "action": "arrow grows, second node 结构 draws"
+        },
+        {
+          "atSec": 1.8,
+          "action": "arrow grows, third node 分镜 draws"
+        },
+        {
+          "atSec": 2.75,
+          "action": "arrow grows, fourth node 动画 draws"
+        },
+        {
+          "atSec": 3.7,
+          "action": "accent circle note draws around 动画"
+        },
+        {
+          "atSec": 3.8,
+          "action": "board drifts gently while the full flow holds"
+        }
+      ],
+      "finalState": "Complete four-node whiteboard flow with circle note readable for 1.0s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 7.6,
+      "durationSec": 2.8,
+      "narration": "你负责观点与故事，Skill 负责把逻辑变成画面。",
+      "keywords": [
+        {
+          "text": "观点",
+          "atSec": 0.8
+        },
+        {
+          "text": "画面",
+          "atSec": 1.5
+        }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "argument",
+      "route": "whiteboard-tutorial",
+      "style": "whiteboard-tutorial",
+      "visualSubject": "Two responsibility labels resolve into a hand-drawn 观点→画面 transformation payoff with a circle note",
+      "visualVerb": "resolve-and-hold",
+      "layout": "duty-labels-above-payoff",
+      "camera": "static",
+      "transitionIn": "fade-up",
+      "transitionOut": "hold",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.15,
+          "action": "duty label 你：观点与故事 fades up"
+        },
+        {
+          "atSec": 0.3,
+          "action": "duty label Skill：逻辑变画面 fades up"
+        },
+        {
+          "atSec": 0.8,
+          "action": "payoff words 观点 and 画面 land"
+        },
+        {
+          "atSec": 1.1,
+          "action": "hand-drawn accent arrow draws between them"
+        },
+        {
+          "atSec": 1.35,
+          "action": "circle note draws around 画面"
+        },
+        {
+          "atSec": 1.65,
+          "action": "final state holds to end of film"
+        }
+      ],
+      "finalState": "Duty labels plus 观点→画面 payoff hold for 1.2s (holdFinalStateSec)",
+      "renderer": "hyperframes"
+    }
+  ]
+}

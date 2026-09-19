@@ -1,0 +1,30 @@
+<!--
+  Route: editorial-collage (编辑拼贴)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 标题 | {{CAPTION}} 图注 | {{ACCENT}} 强调色 | {{IMG_LABEL}} 素材占位说明
+  Assets: replace each .km-collage__window content with a local <img> or keep the
+  code-drawn placeholder. No network assets.
+  Merge the GSAP calls into your single paused timeline (times are relative to clip start).
+-->
+<div class="km-collage" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#11110F);">
+  <div class="km-collage__sheet" style="position:absolute;left:6%;top:8%;width:88%;height:56%;background:var(--km-fg,#F5F1E8);transform:rotate(-2deg);box-shadow:0 24px 60px rgba(0,0,0,.45);">
+    <!-- 主素材窗口：贴入本地 <img> 或保留占位 -->
+    <div class="km-collage__window" style="position:absolute;inset:6% 6% 18% 6%;background:#26241F;display:flex;align-items:center;justify-content:center;color:#8C887F;font:600 28px system-ui;">
+      {{IMG_LABEL}}
+    </div>
+    <div class="km-collage__caption" style="position:absolute;left:6%;bottom:4%;color:#26241F;font:700 30px system-ui;">{{CAPTION}}</div>
+  </div>
+  <div class="km-collage__label" style="position:absolute;right:8%;top:12%;background:var(--km-accent,#F36B3D);color:#11110F;padding:10px 22px;font:800 30px system-ui;transform:rotate(3deg);">
+    {{TITLE}}
+  </div>
+  <div class="km-collage__underline" style="position:absolute;left:10%;bottom:16%;width:60%;height:6px;background:var(--km-accent,#F36B3D);transform-origin:left;"></div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic: explicit fromTo, transform-only, finite):
+  tl.fromTo(".km-collage__sheet", { autoAlpha: 0, y: 60 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1)
+    .fromTo(".km-collage__label", { autoAlpha: 0, scale: 1.5, rotation: 8 }, { autoAlpha: 1, scale: 1, rotation: 3, duration: 0.3, ease: "power4.in" }, 0.5)
+    .fromTo(".km-collage__underline", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, 0.9)
+    .fromTo(".km-collage__caption", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 1.1);
+  // Optional evidence push-in (hold final state >= 0.8s):
+  // tl.fromTo(".km-collage__window", { scale: 1 }, { scale: 1.12, duration: 1.2, ease: "power1.inOut", transformOrigin: "50% 50%" }, 1.4);
+-->

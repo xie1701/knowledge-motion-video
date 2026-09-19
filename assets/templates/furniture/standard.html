@@ -1,0 +1,47 @@
+<!-- Series furniture: standard set. One full-duration clip placed at the highest
+     track index below burned-in captions. Replace {{TOKENS}} before use. -->
+<section class="clip" id="furniture-standard" data-start="0" data-duration="{{DURATION}}" data-track-index="8">
+  <style>
+    .km-furn { position:absolute; inset:0; pointer-events:none; }
+    .km-furn-bar { position:absolute; top:64px; left:56px; right:56px; display:flex;
+                   justify-content:space-between; align-items:baseline;
+                   font:700 22px ui-monospace,monospace; letter-spacing:.08em; color:{{MUTED}}; }
+    .km-furn-rule { position:absolute; top:112px; left:56px; right:56px; height:3px;
+                    background:{{ACCENT}}; transform-origin:left center; }
+    .km-furn-progress { position:absolute; top:124px; left:56px; right:56px; height:4px;
+                        background:rgba(255,255,255,.14); }
+    .km-furn-progress > i { position:absolute; inset:0; background:{{PAPER}};
+                            transform-origin:left center; transform:scaleX(0); }
+    .km-furn-anchor { position:absolute; top:64px; width:72px; height:72px; border-radius:50%;
+                      background:{{ACCENT}}; }
+    .km-furn-cta { position:absolute; bottom:52px; left:56px; right:56px; display:flex;
+                   justify-content:space-between;
+                   font:700 20px ui-monospace,monospace; color:{{MUTED}}; }
+    .km-furn-cta b { color:{{ACCENT}}; }
+  </style>
+  <div class="km-furn">
+    <div class="km-furn-bar"><span>{{SERIES}} · {{EPISODE}}</span><span>{{TITLE}}</span></div>
+    <div class="km-furn-rule"></div>
+    <div class="km-furn-progress" data-layout-ignore><i id="furn-progress-fill"></i></div>
+    <div class="km-furn-anchor" style="{{ANCHOR_SIDE}}:56px;"></div>
+    <div class="km-furn-cta"><span>{{CTA}}</span><b>{{HANDLE}}</b></div>
+  </div>
+</section>
+<script>
+  /* Deterministic furniture timeline. CHAPTER_STARTS = [{t, dur}, ...] in seconds,
+     one entry per chapter; the progress fill advances stepwise per chapter. */
+  (function () {
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(".km-furn-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "expo.out" }, 0.2);
+    tl.fromTo(".km-furn-bar", { y: -24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 0.2);
+    tl.fromTo(".km-furn-cta", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power3.out" }, 0.35);
+    /* example: three equal chapters over DURATION seconds */
+    const D = {{DURATION}}; const chapters = {{CHAPTERS}}; /* e.g. [0, 3.4, 7.6] */
+    chapters.forEach((t, i) => {
+      tl.to("#furn-progress-fill", { scaleX: (i + 1) / chapters.length,
+        duration: 0.4, ease: "power2.inOut" }, t);
+    });
+    /* register under the host composition id in your page, e.g.: */
+    /* window.__timelines["my-film"].add(tl); */
+  })();
+</script>

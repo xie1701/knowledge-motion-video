@@ -1,0 +1,32 @@
+<!--
+  Route: generated-cinematic (生成式电影感)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{QUOTE}} 叠加短句 | {{ACCENT}} 强调色
+  Replace .km-cine__media placeholder with a local generated <video muted playsinline
+  data-...> clip — the framework owns playback; never drive <video> with GSAP.
+  Keep camera restrained: one push OR one pull, nothing else. No facts on screen.
+-->
+<div class="km-cine" style="position:relative;width:100%;height:100%;overflow:hidden;background:#000000;">
+  <!-- 生成媒体容器：全出血子元素，贴入本地 <video> 或生成的 <img> -->
+  <div class="km-cine__media" style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 30%, #2A2E38 0%, #0B0D12 70%);display:flex;align-items:center;justify-content:center;">
+    <svg width="280" height="280" viewBox="0 0 280 280" fill="none">
+      <circle cx="140" cy="140" r="90" stroke="#3A4050" stroke-width="2"/>
+      <circle cx="140" cy="140" r="60" stroke="#4A5164" stroke-width="2"/>
+      <circle class="km-cine__core" cx="140" cy="140" r="24" fill="var(--km-accent,#F36B3D)" opacity="0.9"/>
+    </svg>
+  </div>
+  <!-- 轻暗角，保证文字可读 -->
+  <div class="km-cine__vignette" style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 40%);"></div>
+  <div class="km-cine__quote" style="position:absolute;left:10%;bottom:18%;width:80%;font:700 40px system-ui;color:#F5F1E8;text-shadow:0 2px 12px rgba(0,0,0,.6);">
+    {{QUOTE}}
+  </div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic; media playback belongs to the framework):
+  tl.fromTo(".km-cine__media", { scale: 1.06 }, { scale: 1, duration: 2.4, ease: "power1.out" }, 0)
+    .fromTo(".km-cine__vignette", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 0.2)
+    .fromTo(".km-cine__quote", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.2);
+  // Exit: fade the whole clip via the framework's transition, or:
+  // tl.to(".km-cine__quote", { autoAlpha: 0, duration: 0.3 }, 5.2);
+  // Use sparingly: no labels, no recurring characters, no facts.
+-->

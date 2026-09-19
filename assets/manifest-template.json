@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "assets": [],
+  "policy": {
+    "externalAssetsRequireSourceUrl": true,
+    "externalAssetsRequireLicense": true,
+    "generatedAssetsRequireModelAndTermsSnapshot": true
+  }
+}

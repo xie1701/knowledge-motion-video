@@ -1,0 +1,24 @@
+{
+  "name": "bold-social",
+  "description": "高饱和社媒风：深底大字、强对比强调，适合金句、观点、传播向短内容。",
+  "design": {
+    "background": "#11110F",
+    "foreground": "#FFFFFF",
+    "accent": "#F36B3D",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.25,
+    "breatheRatio": 0.45,
+    "resolveRatio": 0.3,
+    "holdFinalStateSec": 0.9,
+    "defaultEase": "power3.out",
+    "staggerSec": 0.1,
+    "transitionIn": "hard-cut",
+    "transitionOut": "hard-cut"
+  },
+  "suggestedRoutes": ["kinetic-typography", "data-viz", "character-concept-comic", "paper-diorama"],
+  "notes": "节奏最快的一档；仍要保住结尾 0.8s 以上的定格。竖屏 9:16 时文字避开字幕安全区。"
+}

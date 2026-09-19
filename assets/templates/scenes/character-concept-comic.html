@@ -1,0 +1,61 @@
+<!--
+  Route: character-concept-comic (角色概念漫画)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 分格标题 | {{LINE_A}} 第一句台词 | {{LINE_B}} 第二句台词 | {{ACCENT}} 强调色
+  Character: swap each .km-comic__pose placeholder for your recurring character sheet
+  (same identity across every shot). Keep pose A/B as two stacked SVG groups and
+  switch with autoAlpha — never tween a morph between them.
+-->
+<div class="km-comic" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#F5F1E8);">
+  <div class="km-comic__title" style="position:absolute;left:0;top:6%;width:100%;text-align:center;font:800 44px system-ui;color:#11110F;">{{TITLE}}</div>
+  <div class="km-comic__panel" style="position:absolute;left:8%;top:16%;width:84%;height:56%;border:6px solid #11110F;background:#FFFFFF;box-shadow:12px 12px 0 rgba(0,0,0,.2);overflow:hidden;">
+    <!-- pose A：情绪一 -->
+    <div class="km-comic__pose km-comic__pose--a" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <svg width="220" height="260" viewBox="0 0 220 260" fill="none" stroke="#11110F" stroke-width="8">
+        <circle cx="110" cy="70" r="46"/>
+        <line x1="110" y1="116" x2="110" y2="210"/>
+        <line x1="60" y1="160" x2="160" y2="160"/>
+        <line x1="110" y1="210" x2="70" y2="256"/>
+        <line x1="110" y1="210" x2="150" y2="256"/>
+        <line x1="92" y1="62" x2="104" y2="62"/><line x1="116" y1="62" x2="128" y2="62"/>
+        <line x1="94" y1="90" x2="126" y2="90"/>
+      </svg>
+    </div>
+    <!-- pose B：情绪二（同角色，仅换姿势） -->
+    <div class="km-comic__pose km-comic__pose--b" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;">
+      <svg width="220" height="260" viewBox="0 0 220 260" fill="none" stroke="#11110F" stroke-width="8">
+        <circle cx="110" cy="70" r="46"/>
+        <line x1="110" y1="116" x2="110" y2="210"/>
+        <line x1="50" y1="140" x2="170" y2="140"/>
+        <line x1="110" y1="210" x2="70" y2="256"/>
+        <line x1="110" y1="210" x2="150" y2="256"/>
+        <circle cx="94" cy="62" r="4" fill="#11110F"/><circle cx="126" cy="62" r="4" fill="#11110F"/>
+        <circle cx="110" cy="88" r="12"/>
+      </svg>
+    </div>
+    <!-- 速度线 -->
+    <svg class="km-comic__speedlines" style="position:absolute;left:0;top:0;opacity:0;" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" stroke="#11110F" stroke-width="0.8">
+      <line x1="0" y1="20" x2="30" y2="20"/><line x1="70" y1="35" x2="100" y2="35"/>
+      <line x1="0" y1="55" x2="25" y2="55"/><line x1="75" y1="70" x2="100" y2="70"/>
+    </svg>
+  </div>
+  <div class="km-comic__bubble" style="position:absolute;left:12%;bottom:14%;max-width:76%;background:#FFFFFF;border:5px solid #11110F;border-radius:24px;padding:18px 26px;font:700 34px system-ui;color:#11110F;">
+    {{LINE_A}}
+  </div>
+  <div class="km-comic__bubble km-comic__bubble--b" style="position:absolute;left:12%;bottom:14%;max-width:76%;background:var(--km-accent,#F36B3D);border:5px solid #11110F;border-radius:24px;padding:18px 26px;font:700 34px system-ui;color:#11110F;opacity:0;">
+    {{LINE_B}}
+  </div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic: pose swap is zero-duration autoAlpha, not a morph):
+  tl.fromTo(".km-comic__panel", { autoAlpha: 0, scale: 1.08 }, { autoAlpha: 1, scale: 1, duration: 0.3, ease: "power2.out" }, 0.1)
+    .fromTo(".km-comic__title", { autoAlpha: 0, y: -20 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.3)
+    .fromTo(".km-comic__bubble", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.6)
+    .fromTo(".km-comic__speedlines", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.1 }, 1.6)
+    .set(".km-comic__pose--a", { autoAlpha: 0 }, 1.7)
+    .set(".km-comic__pose--b", { autoAlpha: 1 }, 1.7)
+    .set(".km-comic__speedlines", { autoAlpha: 0 }, 2.0)
+    .fromTo(".km-comic__bubble", { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 2.0)
+    .fromTo(".km-comic__bubble--b", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 2.15);
+  // Hold the reaction pose for >= 0.8s before the clip ends.
+-->

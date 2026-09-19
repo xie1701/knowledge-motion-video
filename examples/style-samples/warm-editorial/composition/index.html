@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>文案不是成片 — warm-editorial / editorial-collage 样片</title>
+  <script src="vendor/gsap.min.js"></script>
+  <style>
+    /* warm-editorial design tokens (assets/styles/warm-editorial.json) */
+    @font-face { font-family: 'PingFang SC'; src: local('PingFang SC'); }
+    @font-face { font-family: 'Noto Sans SC'; src: local('Noto Sans SC'); }
+    :root { --bg:#F2EDE2; --paper:#FFFDF6; --ink:#11110F; --accent:#D8341F; --muted:#8C887F; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:1080px; height:1920px; overflow:hidden; background:var(--bg); color:var(--ink); font-family:"Noto Sans SC","PingFang SC",sans-serif; }
+    #root { position:relative; width:1080px; height:1920px; overflow:hidden; }
+    .scene-fill { position:absolute; inset:0; background:var(--bg); }
+    .clip { position:absolute; inset:0; overflow:hidden; }
+    /* subtle paper grain, decorative only */
+    .grain { position:absolute; inset:0; opacity:.5; background-image:radial-gradient(rgba(17,17,15,.05) 1px,transparent 1px); background-size:26px 26px; }
+    /* —— series furniture (full-duration, lowest track) —— */
+    .meta { position:absolute; top:86px; left:72px; right:72px; display:flex; justify-content:space-between; font:700 24px ui-monospace,monospace; color:var(--muted); letter-spacing:.08em; }
+    .rule { position:absolute; left:72px; right:72px; top:145px; height:4px; background:var(--accent); transform-origin:left center; }
+    /* footer sits above the 230px bottom caption safe area (y >= 1690) */
+    .footer { position:absolute; left:72px; right:72px; bottom:250px; display:flex; justify-content:space-between; font:700 22px ui-monospace,monospace; color:var(--muted); letter-spacing:.06em; }
+    .footer .stamp { color:var(--accent); }
+    /* —— s01 · build : collage open —— */
+    .s1-sheet { position:absolute; left:64px; top:340px; width:930px; height:640px; background:var(--paper); transform:rotate(-2deg); box-shadow:0 30px 60px rgba(0,0,0,.16); padding:96px 72px 0; }
+    .s1-headline { margin:0; font-size:118px; line-height:1.06; font-weight:900; letter-spacing:-.04em; }
+    .s1-headline em { color:var(--accent); font-style:normal; }
+    .s1-sub { margin:44px 0 0; display:flex; align-items:center; gap:24px; font-size:42px; font-weight:800; color:var(--muted); letter-spacing:.04em; }
+    .s1-sub::before { content:""; width:56px; height:6px; background:var(--accent); flex:none; }
+    .s1-underline { position:absolute; left:72px; bottom:88px; width:60%; height:8px; background:var(--accent); transform-origin:left center; }
+    .s1-sticker { position:absolute; right:84px; top:248px; background:var(--accent); color:var(--bg); padding:14px 30px; font:800 32px "Noto Sans SC","PingFang SC",sans-serif; letter-spacing:.08em; box-shadow:0 10px 24px rgba(0,0,0,.18); }
+    .tape { position:absolute; width:170px; height:44px; background:rgba(216,52,31,.24); transform:rotate(-6deg); }
+    #tape-s1a { left:-40px; top:60px; } #tape-s1b { right:-44px; top:96px; transform:rotate(7deg); }
+    /* —— s02 · breathe : four-step collage flow —— */
+    .s2-kicker { position:absolute; left:72px; top:760px; font:800 34px ui-monospace,monospace; color:var(--muted); letter-spacing:.14em; }
+    .s2-kicker b { color:var(--accent); }
+    .s2-board { position:absolute; left:72px; right:72px; top:880px; display:flex; align-items:center; justify-content:space-between; }
+    .s2-chip { position:relative; width:186px; height:200px; background:var(--paper); box-shadow:0 18px 36px rgba(0,0,0,.14); display:grid; place-items:center; font-size:52px; font-weight:900; }
+    .s2-chip:nth-child(odd) { transform:rotate(-2deg); }
+    .s2-chip .num { position:absolute; top:14px; left:18px; font:700 24px ui-monospace,monospace; color:var(--muted); }
+    #chip-structure { background:var(--ink); color:var(--bg); }
+    #chip-animation { background:var(--accent); color:var(--bg); }
+    .s2-chip .chip-tape { position:absolute; left:50%; top:-16px; width:88px; height:28px; margin-left:-44px; background:rgba(216,52,31,.28); transform:rotate(-4deg); }
+    .s2-arrow { width:44px; text-align:center; font-size:48px; font-weight:900; color:var(--accent); transform-origin:center; }
+    /* —— s03 · resolve : responsibility tags + payoff —— */
+    .s3-tags { position:absolute; left:72px; right:72px; top:1180px; display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+    .s3-tag { background:var(--paper); border-left:10px solid var(--accent); padding:30px 30px 26px; box-shadow:0 16px 32px rgba(0,0,0,.12); font-size:34px; font-weight:700; color:var(--muted); }
+    .s3-tag strong { display:block; color:var(--ink); font-size:52px; font-weight:900; margin-bottom:8px; }
+    #tag-skill { border-left-color:var(--ink); }
+    .s3-pay { position:absolute; left:72px; right:72px; top:1430px; display:flex; align-items:center; justify-content:center; gap:40px; font-size:92px; font-weight:900; letter-spacing:-.02em; }
+    .s3-word { padding:6px 26px; background:var(--paper); box-shadow:0 14px 28px rgba(0,0,0,.12); }
+    .s3-word.is-accent { background:var(--accent); color:var(--bg); }
+    #pay-arrow { color:var(--accent); font-size:76px; transform-origin:left center; }
+  </style>
+</head>
+<body>
+<div id="root" data-composition-id="warm-editorial-style-sample" data-start="0" data-width="1080" data-height="1920" data-duration="10.4">
+  <!-- furniture: declared once per project, full duration, below caption layer -->
+  <section class="clip" id="furniture-base" data-start="0" data-duration="10.4" data-track-index="0">
+    <div class="scene-fill"></div><div class="grain" data-layout-ignore></div>
+    <div class="meta"><span>KNOWLEDGE / MOTION</span><span>WARM EDITORIAL</span></div>
+    <div class="rule"></div>
+    <div class="footer"><span>EDITORIAL-COLLAGE ROUTE</span><span class="stamp">BUILD → BREATHE → RESOLVE</span></div>
+  </section>
+  <!-- s01 · build : collage open — headline + subtitle on a pasted paper sheet -->
+  <section class="clip" id="clip-s01" data-start="0" data-duration="2.8" data-track-index="1">
+    <div class="s1-sheet">
+      <div class="tape" id="tape-s1a"></div><div class="tape" id="tape-s1b"></div>
+      <h1 class="s1-headline">文案不是<br/><em>成片</em></h1>
+      <p class="s1-sub">从观点到知识动画</p>
+      <div class="s1-underline"></div>
+    </div>
+    <div class="s1-sticker">STYLE SAMPLE</div>
+  </section>
+  <!-- s02 · breathe : paper cutouts paste on one by one — 观点 → 结构 → 分镜 → 动画 -->
+  <section class="clip" id="clip-s02" data-start="2.8" data-duration="4.8" data-track-index="1">
+    <div class="s2-kicker">四步流程 <b>/ PROCESS</b></div>
+    <div class="s2-board">
+      <div class="s2-chip" id="chip-opinion"><span class="chip-tape"></span><span class="num">01</span>观点</div>
+      <div class="s2-arrow" id="arrow-1">→</div>
+      <div class="s2-chip" id="chip-structure"><span class="chip-tape"></span><span class="num">02</span>结构</div>
+      <div class="s2-arrow" id="arrow-2">→</div>
+      <div class="s2-chip" id="chip-storyboard"><span class="chip-tape"></span><span class="num">03</span>分镜</div>
+      <div class="s2-arrow" id="arrow-3">→</div>
+      <div class="s2-chip" id="chip-animation"><span class="chip-tape"></span><span class="num">04</span>动画</div>
+    </div>
+  </section>
+  <!-- s03 · resolve : responsibility tags + 观点 → 画面 payoff, long hold -->
+  <section class="clip" id="clip-s03" data-start="7.6" data-duration="2.8" data-track-index="1">
+    <div class="s3-tags">
+      <div class="s3-tag" id="tag-you"><strong>你</strong>观点与故事</div>
+      <div class="s3-tag" id="tag-skill"><strong>Skill</strong>逻辑变画面</div>
+    </div>
+    <div class="s3-pay">
+      <span class="s3-word" id="pay-from">观点</span>
+      <span id="pay-arrow">→</span>
+      <span class="s3-word is-accent" id="pay-to">画面</span>
+    </div>
+  </section>
+</div>
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused:true });
+  /* All text sits above y=1690 — the bottom 230px caption safe area stays clear. */
+  /* shared furniture — animates once per film */
+  tl.fromTo('.rule',{scaleX:0},{scaleX:1,duration:.55,ease:'power2.inOut'},.15);
+  tl.fromTo('.meta',{y:-24,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},.15);
+  tl.fromTo('.footer',{autoAlpha:0},{autoAlpha:1,duration:.5},.4);
+  /* s01 — build (0–2.8): wipe-up collage open */
+  tl.fromTo('.s1-sheet',{y:120,rotation:-6,autoAlpha:0},{y:0,rotation:-2,autoAlpha:1,duration:.7,ease:'power2.out'},.2);
+  tl.fromTo('.s1-headline',{y:44,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},.45);
+  tl.fromTo('.s1-sub',{y:28,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out'},.63);
+  tl.fromTo('.s1-underline',{scaleX:0},{scaleX:1,duration:.45,ease:'power2.inOut'},.9);
+  tl.fromTo('.s1-sticker',{scale:1.6,rotation:8,autoAlpha:0},{scale:1,rotation:3,autoAlpha:1,duration:.34,ease:'power4.in'},1.3);
+  tl.fromTo('.tape',{autoAlpha:0},{autoAlpha:1,duration:.3,ease:'power1.inOut',stagger:.12},1.55);
+  /* s02 — breathe (2.8–7.6): cutouts paste on, arrows draw, then gentle drift */
+  tl.fromTo('.s2-kicker',{x:-32,autoAlpha:0},{x:0,autoAlpha:1,duration:.4,ease:'power2.out'},2.9);
+  tl.fromTo('.s2-chip',{scale:1.12,y:36,autoAlpha:0},{scale:1,y:0,autoAlpha:1,duration:.42,ease:'back.out(1.6)',stagger:.18},2.9);
+  tl.fromTo('.s2-arrow',{scaleX:0,autoAlpha:0},{scaleX:1,autoAlpha:1,duration:.3,ease:'power2.inOut',stagger:.15},3.5);
+  tl.to('.s2-board',{x:-14,y:10,duration:1.5,ease:'sine.inOut'},4.6);
+  tl.to('.s2-kicker',{x:10,duration:1.5,ease:'sine.inOut'},4.6);
+  /* s03 — resolve (7.6–10.4): tags rise, payoff lands, hold 1.5s >= holdFinalStateSec 1.3 */
+  tl.fromTo('.s3-tag',{y:48,autoAlpha:0},{y:0,autoAlpha:1,duration:.5,ease:'power2.out',stagger:.18},7.7);
+  tl.fromTo('.s3-word',{y:36,autoAlpha:0},{y:0,autoAlpha:1,duration:.42,ease:'power2.out',stagger:.18},8.15);
+  tl.fromTo('#pay-arrow',{scaleX:0,autoAlpha:0},{scaleX:1,autoAlpha:1,duration:.36,ease:'power2.inOut'},8.5);
+  tl.to('.grain',{opacity:.75,duration:1.2,ease:'sine.inOut'},8.9);
+  window.__timelines['warm-editorial-style-sample'] = tl;
+</script>
+</body>
+</html>

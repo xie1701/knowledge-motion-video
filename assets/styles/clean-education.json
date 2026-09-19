@@ -1,0 +1,24 @@
+{
+  "name": "clean-education",
+  "description": "明亮教学风：浅底深字，高对比，适合课程讲解与分步教学。可整体映射到 design 块与 motion 节奏参数。",
+  "design": {
+    "background": "#F7F4EC",
+    "foreground": "#26241F",
+    "accent": "#2B6CB0",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.3,
+    "breatheRatio": 0.45,
+    "resolveRatio": 0.25,
+    "holdFinalStateSec": 1.2,
+    "defaultEase": "power2.out",
+    "staggerSec": 0.15,
+    "transitionIn": "fade-up",
+    "transitionOut": "fade"
+  },
+  "suggestedRoutes": ["whiteboard-tutorial", "data-viz", "swiss-sketch", "process-flow"],
+  "notes": "字体建议 Noto Sans SC（本地授权后嵌入）；无网络字体时回退 system-ui 栈。"
+}

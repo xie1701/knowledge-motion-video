@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "project": {
+    "title": "文案不是成片 — warm-editorial 样片",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 10.4,
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1690,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "design": {
+    "background": "#F2EDE2",
+    "foreground": "#11110F",
+    "accent": "#D8341F",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.3,
+    "breatheRatio": 0.45,
+    "resolveRatio": 0.25,
+    "holdFinalStateSec": 1.3,
+    "defaultEase": "power2.inOut",
+    "staggerSec": 0.18,
+    "transitionIn": "wipe-up",
+    "transitionOut": "match-cut"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0,
+      "durationSec": 2.8,
+      "narration": "文案不是成片，从观点到知识动画。",
+      "keywords": [
+        {
+          "text": "成片",
+          "atSec": 1.3
+        }
+      ],
+      "purpose": "hook",
+      "semanticClass": "argument",
+      "route": "editorial-collage",
+      "style": "editorial-collage",
+      "visualSubject": "A pasted paper sheet carrying the headline 文案不是成片 with subtitle 从观点到知识动画",
+      "visualVerb": "paste-and-declare",
+      "layout": "rotated-paper-sheet-upper-left-sticker",
+      "camera": "static",
+      "transitionIn": "wipe-up",
+      "transitionOut": "match-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.2,
+          "action": "paper sheet wipes up and settles at -2deg rotation"
+        },
+        {
+          "atSec": 0.45,
+          "action": "headline 文案不是成片 rises in, subtitle follows at 0.63"
+        },
+        {
+          "atSec": 0.9,
+          "action": "accent underline sweeps in from left"
+        },
+        {
+          "atSec": 1.3,
+          "action": "STYLE SAMPLE sticker stamps down on 成片 beat"
+        },
+        {
+          "atSec": 1.55,
+          "action": "tape corners fade in, sheet holds"
+        }
+      ],
+      "finalState": "Sheet with headline, subtitle, underline, sticker and tape readable for 0.95s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 2.8,
+      "durationSec": 4.8,
+      "narration": "观点先落结构，结构再拆分镜，分镜最后长成动画。",
+      "keywords": [
+        {
+          "text": "结构",
+          "atSec": 0.8
+        },
+        {
+          "text": "动画",
+          "atSec": 4.1
+        }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "process",
+      "route": "editorial-collage",
+      "style": "editorial-collage",
+      "visualSubject": "Four taped paper cutouts — 观点 结构 分镜 动画 — pasted onto the board in sequence with accent arrows",
+      "visualVerb": "assemble-and-connect",
+      "layout": "horizontal-cutout-row-with-process-kicker",
+      "camera": "micro-drift",
+      "transitionIn": "match-cut",
+      "transitionOut": "match-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1,
+          "action": "process kicker slides in from left"
+        },
+        {
+          "atSec": 0.1,
+          "action": "cutout chips pop in staggered 0.18s, alternating rotation"
+        },
+        {
+          "atSec": 0.7,
+          "action": "accent arrows draw between chips"
+        },
+        {
+          "atSec": 1.8,
+          "action": "board drifts gently while narration continues"
+        },
+        {
+          "atSec": 3.3,
+          "action": "full row holds readable"
+        }
+      ],
+      "finalState": "Connected four-step cutout row readable for 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 7.6,
+      "durationSec": 2.8,
+      "narration": "你出观点与故事，Skill 把逻辑变成画面。",
+      "keywords": [
+        {
+          "text": "画面",
+          "atSec": 0.55
+        }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "argument",
+      "route": "editorial-collage",
+      "style": "editorial-collage",
+      "visualSubject": "Two responsibility tags — 你：观点与故事 / Skill：逻辑变画面 — resolving into a 观点 → 画面 payoff block",
+      "visualVerb": "resolve-and-hold",
+      "layout": "tags-above-payoff-clear-of-caption-band",
+      "camera": "static",
+      "transitionIn": "match-cut",
+      "transitionOut": "hold",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1,
+          "action": "responsibility tags rise in staggered 0.18s"
+        },
+        {
+          "atSec": 0.55,
+          "action": "payoff word 观点 lands on spoken 画面"
+        },
+        {
+          "atSec": 0.9,
+          "action": "accent arrow draws toward 画面"
+        },
+        {
+          "atSec": 1.3,
+          "action": "final state holds to end (1.5s >= holdFinalStateSec 1.3)"
+        }
+      ],
+      "finalState": "Tags plus 观点→画面 payoff hold for 1.5s, caption safe area untouched",
+      "renderer": "hyperframes"
+    }
+  ]
+}

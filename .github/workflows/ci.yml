@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile all scripts
+        run: python3 -m py_compile scripts/*.py
+      - name: Doctor (core tools present)
+        run: python3 scripts/doctor.py
+      - name: Validate sample storyboard
+        run: python3 scripts/validate_scenes.py examples/sample-project/storyboard/scenes.json
+      - name: Build captions from sample transcript
+        run: |
+          python3 scripts/build_captions.py \
+            --transcript examples/sample-project/script/transcript.json \
+            --scenes examples/sample-project/storyboard/scenes.json \
+            --out-dir /tmp/captions-ci
+      - name: Validate all style-sample storyboards
+        run: |
+          for f in examples/style-samples/*/storyboard/scenes.json; do
+            python3 scripts/validate_scenes.py "$f"
+          done

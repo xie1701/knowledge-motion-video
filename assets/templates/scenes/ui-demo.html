@@ -1,0 +1,47 @@
+<!--
+  Route: ui-demo (界面演示)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{APP_TITLE}} 应用名 | {{STEP_TEXT}} 步骤说明 | {{ACCENT}} 强调色
+  Swap .km-ui__screen content for a local screenshot <img> (object-fit:cover).
+  The fake UI below is only a code-drawn placeholder for pilot builds.
+  Cursor travel is an explicit fromTo path; press/release is a scale blip.
+-->
+<div class="km-ui" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#0F1114);">
+  <div class="km-ui__chrome" style="position:absolute;left:7%;top:14%;width:86%;height:58%;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);">
+    <div style="height:44px;background:#E8EAEE;display:flex;align-items:center;padding:0 16px;gap:8px;">
+      <span style="width:12px;height:12px;border-radius:50%;background:#FF5F57;"></span>
+      <span style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;"></span>
+      <span style="width:12px;height:12px;border-radius:50%;background:#28C840;"></span>
+      <span style="margin-left:12px;font:600 22px system-ui;color:#5F6368;">{{APP_TITLE}}</span>
+    </div>
+    <div class="km-ui__screen" style="position:relative;height:calc(100% - 44px);background:#FAFBFC;display:flex;flex-direction:column;gap:14px;padding:24px;">
+      <div style="height:56px;background:#E1E5EA;border-radius:10px;"></div>
+      <div class="km-ui__row" style="height:56px;background:#EDF0F4;border-radius:10px;"></div>
+      <div class="km-ui__row km-ui__target" style="height:56px;background:#EDF0F4;border-radius:10px;border:4px solid transparent;"></div>
+      <div class="km-ui__row" style="height:56px;background:#EDF0F4;border-radius:10px;"></div>
+    </div>
+    <!-- 焦点高亮框 -->
+    <svg class="km-ui__focusring" style="position:absolute;inset:0;opacity:0;" width="100%" height="100%" preserveAspectRatio="none" fill="none" stroke="#D8341F" stroke-width="4">
+      <rect x="4%" y="42%" width="92%" height="22%" rx="10"/>
+    </svg>
+  </div>
+  <svg class="km-ui__cursor" style="position:absolute;left:50%;top:50%;" width="34" height="42" viewBox="0 0 34 42">
+    <path d="M4 2 L4 34 L12 27 L18 40 L24 37 L18 24 L30 23 Z" fill="#11110F" stroke="#FFFFFF" stroke-width="2"/>
+  </svg>
+  <div class="km-ui__step" style="position:absolute;left:7%;bottom:12%;width:86%;background:rgba(17,17,15,.85);border-left:8px solid var(--km-accent,#F36B3D);padding:16px 22px;font:700 32px system-ui;color:#F5F1E8;">
+    {{STEP_TEXT}}
+  </div>
+</div>
+<!--
+  GSAP timeline fragment (deterministic: explicit path segments, no motion blur tricks):
+  tl.fromTo(".km-ui__chrome", { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.1)
+    .fromTo(".km-ui__cursor", { x: 260, y: 220, autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 0.5)
+    .to(".km-ui__cursor", { x: 180, y: 320, duration: 0.6, ease: "power2.inOut" }, 0.7)
+    .to(".km-ui__cursor", { scale: 0.85, duration: 0.1, yoyo: true, repeat: 1 }, 1.4)
+    .fromTo(".km-ui__focusring", { autoAlpha: 0, scale: 1.06 }, { autoAlpha: 1, scale: 1, duration: 0.3, ease: "power2.out", transformOrigin: "50% 50%" }, 1.6)
+    .fromTo(".km-ui__target", { borderColor: "rgba(216,52,31,0)" }, { borderColor: "rgba(216,52,31,1)", duration: 0.3 }, 1.6)
+    .fromTo(".km-ui__step", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.35 }, 1.9);
+  // Focus zoom alternative: tween .km-ui__chrome scale to 1.6 with transformOrigin
+  // set to the target control's percentage position. Always end zoomed-out or hold —
+  // never leave a zoom mid-state. Calibrate cursor segment coordinates to your screenshot.
+-->

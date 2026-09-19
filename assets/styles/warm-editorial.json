@@ -1,0 +1,24 @@
+{
+  "name": "warm-editorial",
+  "description": "暖调编辑风：米白纸感底、橙红强调，适合故事、历史、人物、评论。",
+  "design": {
+    "background": "#F2EDE2",
+    "foreground": "#11110F",
+    "accent": "#D8341F",
+    "muted": "#8C887F",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.3,
+    "breatheRatio": 0.45,
+    "resolveRatio": 0.25,
+    "holdFinalStateSec": 1.3,
+    "defaultEase": "power2.inOut",
+    "staggerSec": 0.18,
+    "transitionIn": "wipe-up",
+    "transitionOut": "match-cut"
+  },
+  "suggestedRoutes": ["editorial-collage", "timeline-history", "map-geo", "swiss-sketch"],
+  "notes": "拼贴素材注意授权；暖底上阴影用低透明度黑，不用纯灰描边。"
+}

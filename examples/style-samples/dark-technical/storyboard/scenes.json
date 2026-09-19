@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "project": {
+    "title": "文案不是成片 — dark-technical / data-viz 样片",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 10.4,
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1690,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "styleName": "dark-technical",
+  "design": {
+    "background": "#0F1114",
+    "foreground": "#F5F1E8",
+    "accent": "#4FD1C5",
+    "muted": "#5F6368",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "motion": {
+    "buildRatio": 0.35,
+    "breatheRatio": 0.4,
+    "resolveRatio": 0.25,
+    "holdFinalStateSec": 1.0,
+    "defaultEase": "power3.out",
+    "staggerSec": 0.12,
+    "transitionIn": "hard-cut",
+    "transitionOut": "fade"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0,
+      "durationSec": 2.8,
+      "route": "data-viz",
+      "narration": "文案写完，只是起点。",
+      "keywords": [
+        { "text": "起点", "atSec": 2.0 }
+      ],
+      "purpose": "hook",
+      "semanticClass": "argument",
+      "style": "data-viz",
+      "visualSubject": "Dark technical grid backdrop with headline lockup 文案不是成片 and subtitle 从观点到知识动画",
+      "visualVerb": "lockup-and-settle",
+      "layout": "top-left-headline-lockup",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.1, "action": "kicker // BUILD 01 slides in from left" },
+        { "atSec": 0.25, "action": "headline 文案不是成片 rises in with accent em on 成片" },
+        { "atSec": 0.75, "action": "accent baseline sweeps in under lockup" },
+        { "atSec": 0.9, "action": "subtitle 从观点到知识动画 fades up" },
+        { "atSec": 1.6, "action": "lockup settles with gentle drift; hold to hard-cut" }
+      ],
+      "finalState": "Full headline lockup readable for 1.0s before hard-cut",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 2.8,
+      "durationSec": 4.8,
+      "route": "data-viz",
+      "narration": "你负责把观点讲清楚，Skill 负责把逻辑变成观众看得懂的画面。",
+      "keywords": [
+        { "text": "讲清楚", "atSec": 0.8 },
+        { "text": "画面", "atSec": 4.1 }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "comparison",
+      "style": "data-viz",
+      "visualSubject": "Three-bar SVG chart from 原始文字量 (100) through 逻辑骨架 (38) to 观众理解 (86, accent key bar)",
+      "visualVerb": "axis-first-grow-and-highlight",
+      "layout": "full-width-bar-chart-centered",
+      "camera": "micro-drift",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.15, "action": "chart title and unit label enter" },
+        { "atSec": 0.3, "action": "muted gridlines then baseline axis draw in (axis before data)" },
+        { "atSec": 0.9, "action": "bars grow with scaleY from baseline, stagger 0.12 (100 / 38 / 86)" },
+        { "atSec": 1.45, "action": "value labels and category labels appear staggered" },
+        { "atSec": 2.2, "action": "note 文字 -62% · 理解保持 86% fades in" },
+        { "atSec": 3.1, "action": "non-key bars dim to 0.35, key bar 观众理解 pulses once in accent" },
+        { "atSec": 3.6, "action": "plot drifts gently as narration breathes; hold" }
+      ],
+      "finalState": "Dimmed bars with accent key bar and note readable for 1.0s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 7.6,
+      "durationSec": 2.8,
+      "route": "data-viz",
+      "narration": "真正难的，是把观点变成画面。",
+      "keywords": [
+        { "text": "难", "atSec": 0.6 }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "argument",
+      "style": "data-viz",
+      "visualSubject": "Responsibility cards 你：观点与故事 / Skill：逻辑变画面 resolving into 观点→画面 payoff",
+      "visualVerb": "resolve-and-hold",
+      "layout": "two-cards-above-transformation-payoff",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "fade",
+      "assets": [],
+      "beats": [
+        { "atSec": 0.15, "action": "responsibility cards rise in staggered 0.12" },
+        { "atSec": 0.75, "action": "payoff word 观点 lands on spoken 难" },
+        { "atSec": 1.1, "action": "accent arrow draws left-to-right" },
+        { "atSec": 1.25, "action": "accent word 画面 lands; underline track sweeps" },
+        { "atSec": 1.5, "action": "grid brightens slightly; final state fades and holds to 10.4" }
+      ],
+      "finalState": "Responsibility cards plus 观点→画面 payoff hold for 1.0s",
+      "renderer": "hyperframes"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+[Script Info]
+; Title: 文案不是成片
+; ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,PingFang SC,97,&H00E8F1F5,&H003D6BF3,&H000F1111,&H000F1111,0,0,0,0,100,100,0,0,1,2,0,2,72,72,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.18,0:00:02.76,Caption,,0,0,0,,文案写完只是起点，你负责把
+Dialogue: 0,0:00:02.80,0:00:05.46,Caption,,0,0,0,,观点讲清楚skill负责把逻辑变
+Dialogue: 0,0:00:05.46,0:00:07.56,Caption,,0,0,0,,成观众看得懂的画面，真正
+Dialogue: 0,0:00:07.60,0:00:10.01,Caption,,0,0,0,,难的是把观点变成画面。
+

@@ -1,0 +1,42 @@
+<!--
+  Route: whiteboard-tutorial (教学白板)
+  Paste the <div> below into one clip inside your composition root.
+  Replaceable slots: {{TITLE}} 标题 | {{STEP_1}}/{{STEP_2}}/{{STEP_3}} 三步推导 | {{ACCENT}} 强调色
+  All ink is SVG stroke; each path/class draws with stroke-dashoffset. Max 3-4
+  steps per screen — split into another scene beyond that.
+-->
+<div class="km-wb" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#F7F4EC);">
+  <div class="km-wb__title" style="position:absolute;left:8%;top:6%;font:800 40px system-ui;color:#26241F;">{{TITLE}}</div>
+  <svg class="km-wb__ink" style="position:absolute;inset:0;" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="#26241F" stroke-width="0.9" stroke-linecap="round">
+    <!-- 步骤 1 主笔迹 -->
+    <path class="km-wb__stroke km-wb__stroke--1" d="M8 26 H60" />
+    <path class="km-wb__stroke km-wb__stroke--1" d="M8 34 H48" />
+    <!-- 步骤 2：箭头 + 第二行 -->
+    <path class="km-wb__stroke km-wb__stroke--2" d="M30 42 L30 52 M24 47 L30 54 L36 47" />
+    <path class="km-wb__stroke km-wb__stroke--2" d="M8 62 H64" />
+    <!-- 步骤 3：结论框 -->
+    <rect class="km-wb__stroke km-wb__stroke--3" x="8" y="70" width="56" height="14" rx="2"/>
+  </svg>
+  <!-- 手写文字层（用正文栈模拟，实际项目可换手写感字体路径） -->
+  <div class="km-wb__text km-wb__text--1" style="position:absolute;left:10%;top:24.5%;font:700 30px system-ui;color:#26241F;">{{STEP_1}}</div>
+  <div class="km-wb__text km-wb__text--2" style="position:absolute;left:10%;top:59.5%;font:700 30px system-ui;color:#26241F;">{{STEP_2}}</div>
+  <div class="km-wb__text km-wb__text--3" style="position:absolute;left:12%;top:73.5%;font:800 30px system-ui;color:var(--km-accent,#D8341F);">{{STEP_3}}</div>
+  <!-- 圈注（关键词出现后再画） -->
+  <ellipse class="km-wb__circles" style="opacity:0;" cx="78" cy="77" rx="9" ry="6" fill="none" stroke="var(--km-accent,#D8341F)" stroke-width="0.8"/>
+</div>
+<!--
+  GSAP timeline fragment (deterministic; each stroke draws via dashoffset, ink syncs to narration):
+  tl.fromTo(".km-wb__title", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.1)
+    .fromTo(".km-wb__stroke--1", { strokeDasharray: 120, strokeDashoffset: 120 }, { strokeDashoffset: 0, duration: 0.6, stagger: 0.2, ease: "power1.inOut" }, 0.4)
+    .fromTo(".km-wb__text--1", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 0.6)
+    .fromTo(".km-wb__stroke--2", { strokeDasharray: 160, strokeDashoffset: 160 }, { strokeDashoffset: 0, duration: 0.6, stagger: 0.2, ease: "power1.inOut" }, 1.6)
+    .fromTo(".km-wb__text--2", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 1.8)
+    .fromTo(".km-wb__stroke--3", { strokeDasharray: 200, strokeDashoffset: 200 }, { strokeDashoffset: 0, duration: 0.5, ease: "power1.inOut" }, 2.8)
+    .fromTo(".km-wb__text--3", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 3.0)
+    .fromTo(".km-wb__circles", { autoAlpha: 0, strokeDasharray: 60, strokeDashoffset: 60 }, { autoAlpha: 1, strokeDashoffset: 0, duration: 0.5 }, 3.4);
+  // Erase-and-restart between steps (finite, explicit):
+  // tl.to(".km-wb__stroke--1, .km-wb__text--1", { autoAlpha: 0, x: -14, duration: 0.25 }, X)
+  //   .set(".km-wb__stroke--1, .km-wb__text--1", { autoAlpha: 0 }, X + 0.26);
+  // Calibrate strokeDasharray to each path's real length. Ink must never run while
+  // nothing is being said — tie each stroke group to its narration beat.
+-->
