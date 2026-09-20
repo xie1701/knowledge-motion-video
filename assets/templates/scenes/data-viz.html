@@ -2,12 +2,16 @@
   Route: data-viz (数据图表)
   Paste the <div> below into one clip inside your composition root.
   Replaceable slots: {{TITLE}} 图表标题 | {{UNIT}} 单位 | {{BARS}} 柱体/数值/类目标堆（生成）
-  {{BARS}} contract: for each bar j of n —
+  {{BARS}} contract: make_video.py fills this with one of two honest layouts —
+  (a) bars: for each bar j of n —
     group div .km-viz__group (left = 4 + j*84/n %, width = 84/n %)
       bar div .km-viz__bar (+ .km-viz__bar--key on the key item),
         height = 18 + 70*value/vmax % (real values, never fake identical bars)
     value div .km-viz__value pinned bottom = height+4 % above its bar
     label div .km-viz__label in the same slot at bottom 16%
+  (b) cards: .km-viz__cards row of .km-viz__card, each holding .km-viz__bar (accent rule),
+    .km-viz__value (big number) and .km-viz__label — used when values carry different units
+    (multipliers vs shares vs magnitudes), because such numbers cannot share one axis.
   Bars grow with scaleY from the axis baseline — never tween height/width
   (layout thrash breaks determinism). Colors always come from --bg/--fg/--accent
   so the wrapper palette decides light/dark — no hard-coded inks.

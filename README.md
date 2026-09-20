@@ -122,3 +122,7 @@ examples/                 complete runnable projects
 
 MIT — see [LICENSE](LICENSE). Third-party components and any assets you generate or import are
 governed by their own licenses; record provenance in `assets/manifest.json`.
+
+Bundled third-party data: `assets/lexicon/zh-words.txt` is derived from jieba's `dict.txt`
+(MIT License, Copyright (c) 2013 Sun Junyi) — trimmed and extended with project-authored
+vocabulary; provenance notes are in the file header.

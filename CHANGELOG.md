@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.4.2 — 2026-09-20
+
+- **data-viz honesty fix — no cross-unit axes**: 3倍 (a multiplier) and 三成 (a share) used to
+  share one bar axis, so 3 rendered shorter than 30 — visually false. Charts now carry a `mode`:
+  `bars` when every value shares a unit family, `cards` (metric callouts: value + label, no axis)
+  when units differ, `fallback` when the copy carries no unit-bearing numbers. Chart category
+  labels switched from muted gray to foreground at 0.78 opacity (dark palettes were unreadable).
+- **Keyword extraction rebuilt on real word segmentation**: the old 2–4 char sliding window
+  was boundary-blind — it happily returned fragments like「正能复现」or「果不到」. `make_video.py`
+  now segments Chinese by **maximum-probability path** (Σ log word-frequency + length bonus −
+  single-char penalty) using a bundled lexicon, then picks keywords among *content words*,
+  preferring compounds of adjacent words (人工|智能 → 人工智能, 论文|数量 → 论文数量,
+  小|模型 → 小模型). No shared-bigram duplicates (风格推荐 vs 推荐风格), no generic filler
+  (变成/结果/开始), and chart category labels anchor to the nearest real content word
+  (3倍 → 增长, 三成 → 复现). Segments like 在/手机/上, 人工/智能, 复现 now come out right.
+  Compounds never span clause boundaries (交付|业主 across a comma used to swallow the whole
+  scene's keywords, since per-clause keyword mapping found no match).
+- **Lexicon**: `assets/lexicon/zh-words.txt` — 83k words derived from jieba `dict.txt`
+  (MIT License, Copyright (c) 2013 Sun Junyi), trimmed to multi-char freq ≥ 15 / single-char
+  freq ≥ 400, plus a project-authored domain supplement (AI / content creation / home-renovation
+  vocabulary: 大模型, 分镜, 边界感, 增项…). Attribution is in the file header.
+
 ## v2.4.1 — 2026-09-20
 
 - **data-viz charts carry real numbers (auto pipeline)**: the one-shot orchestrator used to

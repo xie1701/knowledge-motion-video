@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -106,38 +107,288 @@ def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 
 
 # ---------------------------------------------------------------------------
-# 关键词提取：2–4 字 CJK 滑窗，零停用字，靠后位置加分，跨场景去重
+# 关键词提取：词边界模型（功能字不作词首/词尾）+ 边界强度 + 复现频率 + 词缀去重
+# 目标：只要完整词与语义单元，不要「正能复现」这种跨词碎片
 # ---------------------------------------------------------------------------
 
-def pick_keywords(text: str, chosen: list[str], max_k: int = 2) -> list[str]:
-    cands: list[tuple[float, int, str]] = []
+# 不能作词首的字：副词 / 连词 / 介词 / 能愿动词 / 代词指代
+_CANNOT_START = set("的了地在得着过们呢吗吧啊嗯而且并或与和及以于在为对向从把被将让使给"
+                    "能会要想要需可就是都也还很太更最又再才只仅既因如若虽其实正真已曾未不没别"
+                    "好难却竟倒尤皆均亦尚仍另每这那某各个该此些何谁怎哪多")
+# 不能作词尾的字：虚词 / 副词（名词短语不会以它们收尾）
+_CANNOT_END = set("的了地在得着过们呢吗吧啊嗯而且并或与和及以于在为对向从把被将让使给"
+                  "可很太更最都也就才只仅如若虽则不")
+# 词内绝不允许出现的字：结构助词 / 语气词
+_NEVER_INTERNAL = set("的了地得着过们呢吗吧啊嗯")
+_FUNC_BOUNDARY = _CANNOT_START | _CANNOT_END  # 邻字为功能字 → 软词边界信号
+# 单字修饰语：可与后词组成复合词（小+模型 → 小模型）
+_MODIFIER_CHARS = set("大小新老微总高低温软硬云端单双多少前后内外长短")
+# 数字/时间量词：不参与复合词（成本|三年 → 成本三年 这种语义歪接）
+_TIME_CHARS = set("年月日周天倍成分秒")
+
+
+def _shares_bigram(a: str, b: str) -> bool:
+    """共享任意二字片段 → 语义重复（风格推荐 / 推荐风格）。"""
+    if len(a) < 2 or len(b) < 2:
+        return a in b or b in a
+    grams = {a[i:i + 2] for i in range(len(a) - 1)}
+    return any(b[i:i + 2] in grams for i in range(len(b) - 1))
+# 泛义词：出现频率高但撑不起一个场景的关键词
+_GENERIC_KW = {"开始", "结果", "时候", "东西", "什么", "怎么", "变成", "这些", "那些", "这样", "那样",
+               "一个", "一种", "非常", "真正", "已经", "可以", "需要", "进行", "出现", "成为",
+               "不是", "没有", "就是", "还是", "这个", "那个", "我们", "他们", "大家", "自己",
+               "然后", "因为", "所以", "但是", "如果", "虽然", "同时", "目前", "现在", "过去",
+               "未来", "以及", "或者", "并且", "因此", "于是", "其实", "只是", "全球", "更加"}
+_LATIN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#.\-]*")
+_CJK_CHAR = re.compile(r"[\u4e00-\u9fff]")
+LEXICON_PATH = ROOT / "assets" / "lexicon" / "zh-words.txt"
+_LEX_CACHE: dict[str, int] | None = None
+
+
+def load_lexicon() -> dict[str, int]:
+    """词表（jieba dict.txt 裁剪 + 领域补充，MIT）。缺失时返回空 dict → 退化字符级启发式。"""
+    global _LEX_CACHE
+    if _LEX_CACHE is None:
+        lex: dict[str, int] = {}
+        if LEXICON_PATH.exists():
+            for line in LEXICON_PATH.open(encoding="utf-8"):
+                if line.startswith("#"):
+                    continue
+                parts = line.split()
+                if len(parts) == 2:
+                    try:
+                        lex[parts[0]] = int(parts[1])
+                    except ValueError:
+                        pass
+        _LEX_CACHE = lex
+    return _LEX_CACHE
+
+
+_ASCII_RUN_RE = re.compile(r"[A-Za-z0-9+#.\-]")
+_SINGLE_CHAR_PENALTY = 8.0   # 单字词代价：避免「小/模/型」式碎切（与最长匹配等价地偏好完整词）
+_LEN_BONUS = 1.2
+
+
+def segment(text: str) -> list[tuple[str, int, int]]:
+    """最大概率路径分词 → [(词, 起, 终)]：路径得分 = Σ(log(词频+1) + 长度奖励 − 单字罚)。
+    非汉字串（AI / 2024 / c++）整体作一个 token。"""
+    lex = load_lexicon()
     n = len(text)
+    if not lex:
+        return [(text[i:i + 1], i, i + 1) for i in range(n)]
+    best = [0.0] * (n + 1)
+    choice = [1] * n
+    for i in range(n - 1, -1, -1):
+        bscore, blen = None, 1
+        if _ASCII_RUN_RE.match(text[i]):
+            j = i
+            while j < n and _ASCII_RUN_RE.match(text[j]):
+                j += 1
+            bscore, blen = math.log(80) + best[j], j - i
+        else:
+            for w in (4, 3, 2, 1):
+                if i + w <= n and text[i:i + w] in lex:
+                    sc = (math.log(lex[text[i:i + w]] + 1) + _LEN_BONUS * (w - 1)
+                          - (_SINGLE_CHAR_PENALTY if w == 1 else 0) + best[i + w])
+                    if bscore is None or sc > bscore:
+                        bscore, blen = sc, w
+            if bscore is None:
+                bscore, blen = best[i + 1] - _SINGLE_CHAR_PENALTY, 1
+        best[i] = bscore
+        choice[i] = blen
+    out: list[tuple[str, int, int]] = []
+    i = 0
+    while i < n:
+        L = choice[i]
+        out.append((text[i:i + L], i, i + L))
+        i += L
+    return out
+
+
+def _is_content_word(word: str, lex: dict[str, int]) -> bool:
+    if len(word) < 2 or not CJK_RE.fullmatch(word):
+        return False
+    if word in _GENERIC_KW or word in STOPWORDS:
+        return False
+    if word[0] in _CANNOT_START or word[-1] in _CANNOT_END:
+        return False
+    if any(c in STOPWORDS or c in _NEVER_INTERNAL for c in word):
+        return False
+    return not lex or word in lex
+
+
+def _window_ok(text: str, i: int, w: int) -> bool:
+    """候选窗口必须落在纯 CJK 段内，且首/尾/内部都不是功能字。"""
+    win = text[i:i + w]
+    if not CJK_RE.fullmatch(win):
+        return False
+    if win in _GENERIC_KW:
+        return False
+    if win[0] in _CANNOT_START or win[-1] in _CANNOT_END:
+        return False
+    if any(c in _NEVER_INTERNAL for c in win):
+        return False
+    if any(c in STOPWORDS for c in win):  # 内部含功能字（在/和/与/一…）
+        return False
+    return True
+
+
+def _window_score(text: str, i: int, w: int) -> float:
+    """边界强度（两侧硬边界=完整词）+ 长度 + 复现频率。"""
+    n = len(text)
+    left_hard = i == 0 or not CJK_RE.fullmatch(text[i - 1])
+    right_hard = i + w >= n or not CJK_RE.fullmatch(text[i + w])
+    left_soft = i > 0 and text[i - 1] in _FUNC_BOUNDARY
+    right_soft = i + w < n and text[i + w] in _FUNC_BOUNDARY
+    boundary = 1.0 * (left_hard + right_hard) + 0.4 * (left_soft + right_soft)
+    freq = text.count(text[i:i + w])
+    return boundary + 0.5 * (w - 2) + 1.2 * (freq - 1)
+
+
+def keyword_spans(text: str, chosen: list[str], max_k: int = 2,
+                  ban: list[tuple[int, int]] | None = None) -> list[tuple[str, int, int]]:
+    """分词后按内容词选关键词：候选 = 单词 + 相邻双词复合（人工|智能 → 人工智能）。
+    评分：词频（对数，封顶）+ 词长 + 本文复现次数；复合词额外加权（完整语义单元更耐读）。"""
+    lex = load_lexicon()
+    ban = ban or []
+    toks = segment(text) if lex else [
+        (text[i:i + w], i, i + w) for w in (2, 3, 4) for i in range(max(len(text) - w + 1, 0))]
+
+    def wscore(word: str) -> float:
+        return min(math.log(lex.get(word, 40) + 1), 6.5)
+
+    counts: dict[str, int] = {}
+    raw: list[tuple[str, int, int, float]] = []
+    for idx, (w, s, e) in enumerate(toks):
+        counts[w] = counts.get(w, 0) + 1
+        if _is_content_word(w, lex):
+            raw.append((w, s, e, wscore(w) + 0.7 * (len(w) - 2)))
+        if idx + 1 < len(toks):
+            w2, s2, e2 = toks[idx + 1]
+            left_ok = _is_content_word(w2, lex) and (
+                len(w) >= 2 and _is_content_word(w, lex)
+                or (len(w) == 1 and w in _MODIFIER_CHARS and CJK_RE.fullmatch(w)))
+            if left_ok and s2 == e and len(w) + len(w2) <= 5:
+                comp = w + w2
+                if (CJK_RE.fullmatch(comp) and comp not in _GENERIC_KW
+                        and not any(c in STOPWORDS or c in _NEVER_INTERNAL for c in comp)
+                        and not any(c in _TIME_CHARS for c in comp)):
+                    raw.append((comp, s, e2,
+                                wscore(w) + wscore(w2) + 0.7 * (len(comp) - 2) + 1.2))
+    cands: list[tuple[float, int, str]] = []
+    for w, s, e, base in raw:
+        if any(s < b_e and e > b_s for b_s, b_e in ban):   # 数字 token 不作关键词
+            continue
+        if any(w in c or c in w for c in chosen):
+            continue
+        cands.append((-(base + 0.9 * (counts.get(w, 1) - 1)), s, w))
+    for m in _LATIN_RE.finditer(text):
+        tok = m.group(0)
+        if len(tok) >= 2 and not any(tok.lower() in c.lower() for c in chosen):
+            cands.append((-4.0, m.start(), tok))
+    cands.sort()
+    out: list[tuple[str, int, int]] = []
+    for _, s, win in cands:
+        if any(win in o for o, _, _ in out):
+            continue
+        if any(s < e and s + len(win) > st for _, st, e in out):
+            continue
+        # 共享二字片段（小模型/大模型、风格推荐/推荐风格）：语义重复，换个维度更丰富
+        if any(len(win) >= 2 and _shares_bigram(win, o) for o, _, _ in out):
+            continue
+        out.append((win, s, s + len(win)))
+        if len(out) >= max_k:
+            break
+    out.sort(key=lambda t: t[1])
+    return out
+
+
+def _unused_merge_left(kw: tuple[str, int, int], toks: list[tuple[str, int, int]],
+                      lex: dict[str, int], max_len: int = 5) -> tuple[str, int, int]:
+    """（已废弃：复合词改在候选阶段生成）向前合并相邻内容词。"""
+    word, s, e = kw
+    prev = [t for t in toks if t[2] == s and _is_content_word(t[0], lex)]
+    if not prev:
+        return kw
+    pw, ps, _ = prev[-1]
+    if len(pw) + len(word) <= max_len:
+        return (pw + word, ps, e)
+    return kw
+
+
+def pick_keywords(text: str, chosen: list[str], max_k: int = 2,
+                  ban: list[tuple[int, int]] | None = None) -> list[str]:
+    kws = [w for w, _, _ in keyword_spans(text, chosen, max_k, ban)]
+    if kws:
+        return kws
+    return _fallback_keywords(text, chosen, max_k, ban)
+
+
+def _fallback_keywords(text: str, chosen: list[str], max_k: int,
+                       ban: list[tuple[int, int]] | None = None) -> list[str]:
+    """词表不可用时的字符窗口启发式（保留兼容）。"""
+    n = len(text)
+    ban = ban or []
+    cands: list[tuple[float, int, str]] = []
     for w in (2, 3, 4):
         for i in range(0, max(n - w, 0) + 1):
+            if not _window_ok(text, i, w):
+                continue
+            if any(i < be and i + w > bs for bs, be in ban):
+                continue
             win = text[i:i + w]
-            if not CJK_RE.fullmatch(win):
-                continue
-            if any(c in STOPWORDS for c in win):
-                continue
-            if win[0] in EDGE_CHARS or win[-1] in EDGE_CHARS:
-                continue
             if any(win in c or c in win for c in chosen):
                 continue
-            score = w + 2.0 * (i / max(n - 1, 1))  # longer window + nearer the end
-            cands.append((score, i, win))
-    cands.sort(reverse=True)
-    out: list[str] = []
-    spans: list[tuple[int, int]] = []
+            cands.append((-_window_score(text, i, w), i, win))
+    cands.sort()
+    out, spans = [], []
     for _, i, win in cands:
         if any(win in o or o in win for o in out):
             continue
-        if any(i < e and i + len(win) > s for s, e in spans):  # same-region overlap
+        if any(i < e and i + len(win) > s for s, e in spans):
+            continue
+        if any(win[-2:] == o[-2:] or win[:2] == o[:2] for o in out):
             continue
         out.append(win)
         spans.append((i, i + len(win)))
         if len(out) >= max_k:
             break
     return out
+
+
+def label_before(text: str, pos: int, taken: list[tuple[int, int]]) -> str:
+    """数值 token 前最近的内容词（如 3倍 → 增长；三成 → 复现），作图表类目锚点。"""
+    lex = load_lexicon()
+    best = ""
+    if lex:
+        for w, s, e in segment(text):
+            if e > pos:
+                break
+            if not _is_content_word(w, lex):
+                continue
+            if w[-1] in "年月日周天分秒":   # 时间量词不做类目锚点
+                continue
+            if any(s < b_e and e > b_s for b_s, b_e in taken):
+                continue
+            best = w
+    if best:
+        return best
+    for j in range(pos - 1, max(pos - 8, -1), -1):
+        for w in (4, 3, 2):
+            i = j - w + 1
+            if i < 0:
+                continue
+            if any(i < e and j + 1 > s for s, e in taken):
+                continue
+            win = text[i:j + 1]
+            if not CJK_RE.fullmatch(win) or win in _GENERIC_KW:
+                continue
+            if win[0] in _CANNOT_START or win[-1] in _CANNOT_END:
+                continue
+            if any(c in STOPWORDS for c in win):
+                continue
+            return win
+    return ""
 
 
 def group_clauses(clauses: list[dict]) -> list[list[dict]]:
@@ -165,6 +416,12 @@ def group_clauses(clauses: list[dict]) -> list[list[dict]]:
 
 def clause_text(clause: dict) -> str:
     return "".join(t for t in clause["tokens"] if t not in PUNCT)
+
+
+def join_clauses(texts: list[str]) -> str:
+    """子句拼接用非汉字分隔符：防止分词把相邻子句的尾首词黏成一个复合词
+    （交付|业主 跨逗号→「交付业主」），保证关键词落在单一子句内。"""
+    return "\n".join(texts)
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +552,8 @@ def extract_numbers(text: str) -> list[dict]:
         return any(a < sp[1] and sp[0] < b for a, b in taken)
 
     def add(display: str, value: float, kind: str, sp: tuple[int, int]) -> None:
-        out.append({"display": display, "value": value, "kind": kind})
+        out.append({"display": display, "value": value, "kind": kind,
+                    "start": sp[0], "end": sp[1]})
         taken.append(sp)
 
     for m in _NUM_SCALE_RE.finditer(text):
@@ -333,7 +591,7 @@ def _scene_title(scene: dict, kws: list[str]) -> str:
 def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
     """图表数据三级来源：--data 结构化覆盖 > 文案数字提取 > 关键词占位。"""
     texts = scene.get("_clauseTexts") or [scene.get("narration", "")]
-    full = "".join(texts)
+    full = join_clauses(texts)
     kws = [k["text"] for k in scene.get("keywords", [])]
     chart = {
         "source": "extracted",
@@ -371,14 +629,59 @@ def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
         if len(years) >= 2:
             chart["years"] = years
     if not chart["labels"]:
-        chart["labels"] = (chart.get("years") or kws or ["起点", "变化", "关键"])
+        if chart.get("years") and len(chart["years"]) >= 2:
+            chart["labels"] = list(chart["years"])          # 年份天然就是类目轴
+        elif chart["values"]:
+            taken_spans: list[tuple[int, int]] = []
+            for ent in chart["values"]:
+                sp = (ent.get("start", 0), ent.get("end", 0))
+                lab = label_before(full, ent.get("start", 0), taken_spans)
+                if lab and lab not in chart["labels"]:
+                    chart["labels"].append(lab)
+                    taken_spans.append(sp)
+                else:
+                    chart["labels"].append("")
+        if not chart["labels"]:
+            chart["labels"] = kws or ["起点", "变化", "关键"]
+    kinds = {v.get("kind") for v in chart["values"]}
+    if chart["fallback"]:
+        chart["mode"] = "fallback"
+    elif len(chart["values"]) >= 2 and len(kinds) > 1:
+        chart["mode"] = "cards"        # 量纲不同：不做同一坐标轴比较，改指标卡
+    else:
+        chart["mode"] = "bars"
     return chart
 
 
+def _card_html(display: str, label: str, is_key: bool) -> str:
+    val_c = "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)"
+    key_cls = " km-viz__bar--key" if is_key else ""
+    return (
+        '    <div class="km-viz__card" style="flex:1;background:rgba(127,127,127,.10);'
+        'border-radius:20px;padding:40px 24px 32px;text-align:center;">\n'
+        f'      <div class="km-viz__bar{key_cls}" style="height:8px;width:56%;margin:0 auto 28px;'
+        f'background:{val_c};transform-origin:bottom center;"></div>\n'
+        f'      <div class="km-viz__value" style="font:800 88px system-ui;line-height:1.05;color:{val_c};">'
+        f'{display}</div>\n'
+        f'      <div class="km-viz__label" style="margin-top:24px;font:700 32px system-ui;'
+        f'color:var(--fg,#11110F);opacity:.78;">{label}</div>\n'
+        '    </div>')
+
+
 def render_bars(chart: dict, index: int) -> str:
-    """生成柱体/数值/类目标堆 HTML（类名与模板 timeline fragment 的选择器对齐）。"""
+    """生成柱体/数值/类目标堆 HTML（类名与模板 timeline fragment 的选择器对齐）。
+    量纲不同的值（倍数 vs 百分比）不做同一坐标轴比较，改用指标卡。"""
+    values = chart["values"]
+    kinds = {v.get("kind") for v in values}
+    if len(values) >= 2 and len(kinds) > 1:
+        labels = list(chart["labels"]) + [""] * len(values)
+        key = chart.get("key")
+        cards = [_card_html(v["display"], labels[j], (key if key is not None else len(values) - 1) == j)
+                 for j, v in enumerate(values)]
+        return ('  <div class="km-viz__cards" style="position:absolute;left:8%;top:26%;width:84%;'
+                'display:flex;gap:4%;align-items:stretch;">\n' + "\n".join(cards) + "\n  </div>")
     parts: list[str] = []
-    vals = chart["values"]
+    vals = values
     if vals:
         n = len(vals)
         vmax = max(v["value"] for v in vals) or 1.0
@@ -405,7 +708,8 @@ def render_bars(chart: dict, index: int) -> str:
             left, width = 4 + j * slot, slot * 0.62
             parts.append(
                 f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
-                f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--muted,#5F6368);">{lab}</div>')
+                f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
+                f'opacity:.78;">{lab}</div>')
     else:  # 占位：柱高随场景序变化，不三场同图；类目用关键词
         hs = _FALLBACK_HEIGHTS[index % len(_FALLBACK_HEIGHTS)]
         kws = list(chart["labels"])[:3] + [""] * 3
@@ -425,7 +729,8 @@ def render_bars(chart: dict, index: int) -> str:
             if kws[j]:
                 parts.append(
                     f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
-                    f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--muted,#5F6368);">{kws[j]}</div>')
+                    f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
+                    f'opacity:.78;">{kws[j]}</div>')
     return "\n".join(parts)
 
 
@@ -518,9 +823,10 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
         extra: dict = {}
         if "{{BARS}}" in tpl["fragment"]:
             chart = chart_for_scene(sc, i - 1, data_spec)
-            charts.append({"scene": sid, **{k: chart[k] for k in
-                          ("source", "title", "unit", "labels", "key", "fallback")},
-                          "values": [v.get("display", "") for v in chart["values"]]})
+            charts.append({"scene": sid, "mode": chart.get("mode", "bars"),
+                           **{k: chart[k] for k in
+                              ("source", "title", "unit", "labels", "key", "fallback")},
+                           "values": [v.get("display", "") for v in chart["values"]]})
             extra = {"TITLE": chart["title"], "UNIT": chart["unit"],
                      "BARS": render_bars(chart, i - 1)}
         frag = fill_slots(tpl["fragment"], sc, i - 1, extra)
@@ -698,7 +1004,9 @@ def step_storyboard(args, project: Path, transcript: Path, text: str, style: str
     for gi, grp in enumerate(groups):
         sid = f"s{gi + 1:02d}"
         texts = [clause_text(c) for c in grp]
-        kws = pick_keywords("".join(texts), chosen)
+        joined = join_clauses(texts)
+        ban = [(e["start"], e["end"]) for e in extract_numbers(joined)]  # 数字 token 不作关键词
+        kws = pick_keywords(joined, chosen, ban=ban)
         chosen.extend(kws)
         for c, t in zip(grp, texts):
             entry: dict = {"scene": sid, "text": t}

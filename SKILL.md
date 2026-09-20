@@ -77,7 +77,10 @@ python3 scripts/make_video.py --copy copy.txt --project outdir --go \
 - The gate is non-interactive by design: default behavior is STOP after printing the decision
   trace and writing `storyboard/style-decision.json`; `--go` (or an explicit `--style`) proceeds.
 - Auto storyboard: punctuation clauses grouped greedily into 6–8s scenes (12s cap), keywords
-  auto-extracted, timing derived from word-level ASR — the narration-clock constraint holds.
+  extracted by maximum-probability word segmentation over a bundled lexicon
+  (`assets/lexicon/zh-words.txt`, jieba-derived, MIT) — content words and adjacent-word
+  compounds only, never boundary-blind fragments; timing derived from word-level ASR — the
+  narration-clock constraint holds.
 - Composition assembly instantiates the style template per scene (ids namespaced, timeline
   positions remapped to `[scene start + 0.1s, scene end − hold]`). data-viz charts get real
   numbers: `make_video.py` extracts unit-bearing tokens from the copy (3倍/三成/千亿/2021年)
