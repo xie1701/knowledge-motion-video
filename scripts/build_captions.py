@@ -148,7 +148,7 @@ def wrap_lines(tokens: list[str], line_chars: int) -> list[str]:
 
 
 # chars that must not end a line: they bind forward into the next glyph
-_DANGLING_TAIL = set("的了之和与或每这那某被把将就也都")
+_DANGLING_TAIL = set("的了之和与或每这那某被把将就也在从向向往按据对冲沿至离")
 # chars that should not start a line: trailing function words read better
 # glued to the previous line
 _HEAD_BIND = set("的了之么呢吧啊吗")
@@ -156,10 +156,11 @@ _HEAD_BIND = set("的了之么呢吧啊吗")
 _NO_SPLIT = set(
     "怎么 什么 这么 那么 成为 作为 变成 一支 一遍 一个 一条 一次 一场 让人 看完 "
     "找到 真正 视频 照片 语义 论证 结构 文案 切成 分镜 意思 画面 需要 证据 真实 "
-    "配音 字幕 合成 跑完 成片 说服 来自 特效 知识 找画面".split()
+    "配音 字幕 合成 跑完 成片 说服 来自 特效 知识 找画面 结果 复现 手机 千亿 万亿 三成 "
+    "大模型 跑赢 膨胀 收缩 参数 全球 增长 模型 数量 密度 开始".split()
 )
 # chars that happily start a new line/segment: connectives and common verb starts
-_GOOD_HEAD = set("让而然但所需能并或且就合为去找说最后最再又还")
+_GOOD_HEAD = set("让而然但所需能并或且就合为去找说最后最再又还跑冲涨跌升引发爆")
 _MEASURE_HEAD = set("支遍个张次条句位名篇帧场轮件家项步")
 
 

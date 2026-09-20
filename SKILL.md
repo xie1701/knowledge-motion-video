@@ -61,6 +61,30 @@ ratio and platform, target duration, whether wording is locked, voice source (ex
 TTS / none), and any brand constraints. Never make the viewer choose among all styles — analyze
 the content, recommend a primary and secondary route, and justify in one sentence.
 
+## One-shot pipeline (`make_video.py`, v2.4)
+
+For a straight copy-to-film run, the orchestrator chains recommendation → confirmation gate →
+auto storyboard → template assembly → render → finalize → verify:
+
+```bash
+# 1. recommend (prints the full auditable trace, then STOPS at the gate)
+python3 scripts/make_video.py --copy copy.txt --project outdir
+# 2. confirm (human or agent) and finish
+python3 scripts/make_video.py --copy copy.txt --project outdir --go \
+    [--style <name>] [--narration audio.mp3] [--corrections "一只=一支"] [--bgm music.mp3]
+```
+
+- The gate is non-interactive by design: default behavior is STOP after printing the decision
+  trace and writing `storyboard/style-decision.json`; `--go` (or an explicit `--style`) proceeds.
+- Auto storyboard: punctuation clauses grouped greedily into 6–8s scenes (12s cap), keywords
+  auto-extracted, timing derived from word-level ASR — the narration-clock constraint holds.
+- Composition assembly instantiates the style template per scene (ids namespaced, timeline
+  positions remapped to `[scene start + 0.1s, scene end − hold]`). Template rhythm is preserved;
+  keyword-exact beats and rich scene visuals remain the agent-authored path (see Production
+  gates) — auto mode is the floor, not the ceiling.
+- Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
+  without either the tool exits 3 with guidance.
+
 ## Production gates
 
 Pause for approval at expensive boundaries:
