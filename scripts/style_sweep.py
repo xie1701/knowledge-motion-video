@@ -119,6 +119,19 @@ def main() -> int:
         charts = proj / "storyboard" / "charts.json"
         entry = {"style": style, "ok": ok, "durationSec": round(probe_duration(final), 2)
                  if ok else 0.0}
+        # motion 门禁的逐条结果（措词 P/W：这条风格的编排有没有抬到「画面不停」的地板）
+        vrep = proj / "verify" / "report.json"
+        if ok and vrep.exists():
+            try:
+                checks = json.loads(vrep.read_text(encoding="utf-8")).get("checks", [])
+                motion = next((c for c in checks if c.get("name") == "motion"), None)
+                if motion:
+                    det = motion.get("detail")
+                    entry["motion"] = "PASS" if motion.get("status") == "PASS" else "WARN"
+                    entry["motionDetail"] = det if isinstance(det, list) else {
+                        k: det[k] for k in ("meanDiff", "longestFrozenSec", "worstScene")}
+            except Exception:  # noqa: BLE001
+                pass
         if charts.exists():
             entry["charts"] = [f"{c['scene']}:{c['mode']}" for c in
                                json.loads(charts.read_text(encoding="utf-8"))]
@@ -198,10 +211,16 @@ def main() -> int:
     (out_dir / "sweep-report.json").write_text(
         json.dumps(table, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     ok_n = sum(1 for t in table if t["ok"])
-    print(f"\n完成 {ok_n}/{len(styles)} 条风格；报告：{out_dir / 'sweep-report.json'}")
+    motion_n = sum(1 for t in table if t.get("motion") == "PASS")
+    print(f"\n完成 {ok_n}/{len(styles)} 条风格；motion 门禁通过 {motion_n}/{ok_n}；"
+          f"报告：{out_dir / 'sweep-report.json'}")
     for t in table:
         flag = "✓" if t["ok"] else "✗"
-        print(f"  {flag} {t['style']:24s} {t['durationSec']:>5}s  {','.join(t.get('charts', []))}")
+        m = t.get("motion")
+        mflag = "" if not m else ("  motion ✓" if m == "PASS" else "  motion ! " + str(
+            (t.get("motionDetail") or {}) if m == "PASS" else t.get("motionDetail"))[:70])
+        print(f"  {flag} {t['style']:24s} {t['durationSec']:>5}s  "
+              f"{','.join(t.get('charts', []))}{mflag}")
     return 0 if ok_n == len(styles) else 1
 
 

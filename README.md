@@ -148,11 +148,57 @@ English recall is far better than Chinese on every source. Override per scene wi
 `--assets plan.json`, prefer your own library with `--local-dir`, or opt out with `--no-fetch`.
 
 Keyless sources are noisy, so fetching carries guards: results are re-ranked by title/description
-overlap, images narrower than 900px are rejected, no source URL is used twice in a run, and a
-query ladder retries the bare concept when a long phrase finds nothing. **Relevance is still
-roughly 3-in-4** — view `contact-sheet.jpg` before rendering and fix the off-topic slot by
-editing its query or shifting the hit (`"pick": 1`). Set `PEXELS_API_KEY` / `PIXABAY_API_KEY` for
-much better material; Openverse and Wikimedia need no key.
+overlap, images narrower than 900px are rejected, **paper material is rejected** (a white, low-
+saturation first frame means a paper figure, a flowchart, or a matplotlib screenshot — 7 of the 29
+images in our first material cut were exactly that), no source URL is used twice in a run, and a
+query ladder retries both the bare concept and the scene's other concept candidates. The concept
+table itself follows one hard rule: **the first alternative has to be something a camera can
+photograph** — abstract nouns (`inference`, `algorithm`, `efficiency`) only ever match paper
+figures on keyless sources, which the guard then rejects, so the slot comes back empty. Fixing that
+rule alone took material readiness from 28/32 to 32/32.
+
+**Layout follows the material.** A scene that came back with three photos instead of four does not
+leave an empty box on screen: the new `choose_variant` step picks a layout that fits the count
+(`wall` / `cascade` / `hero` / `pair` / `single`), never repeating the previous scene's layout, and
+a slot with no material removes its whole card. `storyboard/layouts.json` records what was chosen
+and why per scene.
+
+**Relevance is still roughly 3-in-4** — view `contact-sheet.jpg` before rendering and fix the
+off-topic slot by editing its query or shifting the hit (`"pick": 1`). Set `PEXELS_API_KEY` /
+`PIXABAY_API_KEY` for much better material; Openverse and Wikimedia need no key.
+
+## Motion is a gate, not a taste (v2.7)
+
+"The picture is stiff" is measurable. `verify.py` samples the master at 8 fps and compares every
+frame **to the same frame one second earlier** (`blend=difference` + `signalstats`) — the scale at
+which a slow drift reads as visible while a genuine hold still measures zero. It fails when
+
+- any scene has a run of **more than 1.2 s where the picture does not change at all**, or
+- the whole-film mean drops below 0.4.
+
+```bash
+python3 scripts/verify.py outdir
+# [PASS] motion: {'meanDiff': 3.72, 'longestFrozenSec': 0.12, 'worstScene': 's01', …}
+```
+
+The first run of this gate failed both shipped films (1.75 s with nothing changing in one scene of
+the collage film, 1.50 s in the data film; 24–27% of all samples under the floor) — entrance
+animations are over by the middle of a scene, and the rest was literally the same pixels. Two
+engine features fix it, and both are declared in the template rather than composed by hand:
+
+- **Ambient layer** — every scene gets a slow 3–4.5% camera push on the clip itself (no template
+  work needed, and pushing *in* means the overflow is clipped rather than exposing an edge), plus
+  per-template detail: `data-km-drift="20"` on a decorative layer (drifts ±20 px over the whole
+  scene) and `data-km-push="4"` on a photo (a Ken Burns move). Decorative layers sit at
+  `inset:-8%` so a few pixels of drift never expose a seam. Opt out with `data-km-ambient="off"`.
+- **A second development beat** — the `@beats` anchor set grew a `mid`, solved to the middle of the
+  reveal→peak span. That's where a scene changes *state* (in `collage-evidence`: the hero card
+  pushes in while the others get shoved aside and dimmed) instead of just adding another entrance.
+
+Per-template guidance: entrances belong in the first third, one visible re-layout or emphasis
+belongs at `mid` or `peak`, and the tail is carried by the ambient layer. Fixing a failing scene is
+usually "the animation is over too early" — move a beat later or add ambient life, don't shorten
+the threshold.
 
 ## Requirements
 

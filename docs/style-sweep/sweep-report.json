@@ -2,79 +2,161 @@
   {
     "style": "character-concept-comic",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 2.49,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "collage-evidence",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 13.78,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "data-viz",
     "ok": true,
     "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 2.07,
+      "longestFrozenSec": 0.38,
+      "worstScene": "s01"
+    },
     "charts": [
-      "s01:bignum"
+      "s01:bars"
     ]
   },
   {
     "style": "editorial-collage",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 6.37,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "generated-cinematic",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 2.84,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "hand-sketch",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 1.29,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "kinetic-typography",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "WARN",
+    "motionDetail": [
+      "s01 连续 1.25s 画面没变 > 1.2s"
+    ]
   },
   {
     "style": "map-geo",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "WARN",
+    "motionDetail": [
+      "s01 连续 2.00s 画面没变 > 1.2s"
+    ]
   },
   {
     "style": "paper-diorama",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 2.85,
+      "longestFrozenSec": 0.25,
+      "worstScene": "s01"
+    }
   },
   {
     "style": "paper-fold",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 1.65,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "process-flow",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "WARN",
+    "motionDetail": [
+      "s01 连续 1.25s 画面没变 > 1.2s"
+    ]
   },
   {
     "style": "swiss-sketch",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 0.44,
+      "longestFrozenSec": 0.88,
+      "worstScene": "s01"
+    }
   },
   {
     "style": "timeline-history",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "WARN",
+    "motionDetail": [
+      "s01 连续 1.88s 画面没变 > 1.2s"
+    ]
   },
   {
     "style": "ui-demo",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 4.61,
+      "longestFrozenSec": 0.0,
+      "worstScene": ""
+    }
   },
   {
     "style": "whiteboard-tutorial",
     "ok": true,
-    "durationSec": 7.6
+    "durationSec": 7.6,
+    "motion": "PASS",
+    "motionDetail": {
+      "meanDiff": 1.5,
+      "longestFrozenSec": 0.25,
+      "worstScene": "s01"
+    }
   }
 ]

@@ -110,12 +110,18 @@ MATERIAL_PLANS: dict[str, list[dict]] = {
         # 不要给检索词挂 cinematic 这类修饰词——长短语在全文检索里直接零命中（实测过）。
         # avoid：这条风格要的是有氛围的照片，实测检索会返论文插图/示意图，渲染出来是「幻灯
         # 片截图」而不是电影感画面——标题里带这些词的命中先排除。
-        {"slot": "media-1", "role": "氛围影像", "types": ["video", "photo"],
+        # 模板里是 <img> 槽位，所以只收照片：<img> 指视频会被 lint 判 media_src_kind_mismatch，
+        # 而嵌套 <video> 在 DOM 快照渲染里又不能确定性 seek（视频必须做顶层时间轴元素）。
+        {"slot": "media-1", "role": "氛围影像", "types": ["photo"],
          "avoid": ["diagram", "schema", "chart", "plot", "graph", "illustration",
                    "screenshot", "equation", "formula", "table", "flowchart"]},
     ],
 }
 MATERIAL_STYLES = tuple(MATERIAL_PLANS)
+
+# 素材型风格的槽位名（从 MATERIAL_PLANS 推导，供模板的「缺素材→整卡消失」规则与 selftest 对齐）
+MATERIAL_PLAN_SLOTS: dict[str, list[str]] = {
+    style: [it["slot"] for it in plan] for style, plan in MATERIAL_PLANS.items()}
 MATERIAL_ROLE_LABELS = ["主证据", "对照", "档案", "细节"]
 
 # 素材槽位（assets/media/photo-N.jpg）缺失时的内联占位（确定性、免外部文件、lint 干净）
@@ -588,6 +594,10 @@ def join_clauses(texts: list[str]) -> str:
 # 模板解析：fragment（<style>/<div>…</div>）+ 尾注里的 GSAP timeline JS + 全局 helper
 # ---------------------------------------------------------------------------
 
+def _has_cjk(text: str) -> bool:
+    return any("\u4e00" <= c <= "\u9fff" for c in text)
+
+
 def parse_template(style: str) -> dict:
     path = ROOT / "assets" / "templates" / "scenes" / f"{style}.html"
     if not path.exists():
@@ -638,8 +648,18 @@ def parse_template(style: str) -> dict:
             i += 1
             continue
         # prose (CJK without // prefix) is dropped; JS and // comments kept
-        if not s or s.startswith("//") or not any("\u4e00" <= c <= "\u9fff" for c in s):
+        if not s:
             js_lines.append(ln)
+        elif s.startswith("//") or not _has_cjk(s):
+            js_lines.append(ln)
+        elif "//" in ln:
+            # 行内尾注带中文（如 `... }, 0.50)   // 落纸回弹`）：以前整行丢掉，结果一条
+            # 跨行的 .fromTo( 少了后半截参数，lint 报 invalid_inline_script_syntax。
+            # 只切掉尾注、保留代码；代码里本身带中文（或在字符串里）就还是丢掉整行。
+            code = ln.split("//", 1)[0]
+            if code.strip() and not _has_cjk(code) and code.count('"') % 2 == 0:
+                js_lines.append(code.rstrip())
+        # else：整行都是中文散文（模板头部的说明段落）—— 丢掉
         i += 1
     scene_js = "\n".join(js_lines).strip()
     if "tl." not in scene_js:
@@ -661,8 +681,53 @@ def parse_template(style: str) -> dict:
 # 没声明也安全：自动从位置参数分布推出一套锚点（见 auto_anchors）。
 # ---------------------------------------------------------------------------
 
-ANCHOR_NAMES = ("enter", "build", "reveal", "peak", "settle")
+ANCHOR_NAMES = ("enter", "build", "reveal", "mid", "peak", "settle")
 ANCHOR_QUANTILES = {"build": 0.40, "reveal": 0.68, "peak": 0.92}
+
+# 版面变体：同一风格逐场换版面。候选池由**本场实际取到的素材数**决定——缺素材不是
+# 留个空框，而是换一套装得下的版面；内容再加一层偏好（有大数字 → hero，有对比语义 → pair）。
+LAYOUT_VARIANTS: dict[str, list[str]] = {
+    "collage-evidence": ["wall", "cascade", "hero", "pair", "single"],
+}
+VARIANT_BY_COUNT: dict[int, list[str]] = {
+    4: ["wall", "cascade", "hero"],
+    3: ["hero", "cascade"],   # wall 需要 4 张：只有 3 张时选它就会剩一个空框
+    2: ["pair", "hero"],
+    1: ["single", "hero"],
+    0: ["single"],
+}
+_CONTRAST_RE = re.compile(r"而不是|不是|对比|相反|但|却|相比|一半|三分之一|超过")
+
+
+def _has_big_number(text: str) -> bool:
+    """本场是否有值得占大图的大数字（量级/倍数/百分比）。"""
+    if _SCALE_WORD_RE.search(text) or _NUM_UNIT_RE.search(text):
+        return True
+    return any(abs(n.get("value", 0)) >= 1000 for n in extract_numbers(text))
+
+
+def choose_variant(style: str, scene: dict, n_avail: int, prev: str,
+                   forced: str | None = None) -> tuple[str, str]:
+    """挑本场版面，返回 (variant, 理由)。非变体风格返回 ("", "")。"""
+    if style not in LAYOUT_VARIANTS:
+        return "", ""
+    if forced:
+        return forced, "外部指定"
+    pool = list(VARIANT_BY_COUNT.get(max(0, min(n_avail, 4)), ["wall"]))
+    pref = ""
+    text = scene.get("narration", "") + "".join(scene.get("_clauseTexts") or [])
+    if n_avail >= 3 and _has_big_number(text):
+        pool = ["hero"] + [p for p in pool if p != "hero"]
+        pref = "有大数字，本想给满幅大图"
+    elif n_avail >= 2 and _CONTRAST_RE.search(text):
+        pool = ["pair"] + [p for p in pool if p != "pair"]
+        pref = "有对比语义，本想两张大图对看"
+    choice = next((v for v in pool if v != prev), pool[0]) or pool[0]
+    reason = f"素材 {n_avail} 张"
+    if pref:
+        reason += f"，{pref}" + ("（已采用）" if choice == pool[0] else "（上一场刚用过，让位）")
+    reason += f"，上一场 {prev or '—'}"
+    return choice, reason
 
 
 def parse_beat_anchors(js: str, style: str = "") -> dict[str, float]:
@@ -719,16 +784,19 @@ def anchor_schedule(scene: dict, start: float, dur: float) -> dict[str, float]:
     kw = sorted(float(k["atSec"]) + start for k in scene.get("keywords", []))
     if not kw:
         span = t_end_of_move - t_enter
-        sched = {"enter": t_enter, "build": t_enter + 0.38 * span,
-                 "reveal": t_enter + 0.62 * span, "peak": t_enter + 0.86 * span,
-                 "settle": t_end_of_move}
+        sched = {"enter": t_enter, "build": t_enter + 0.34 * span,
+                 "reveal": t_enter + 0.56 * span, "mid": t_enter + 0.74 * span,
+                 "peak": t_enter + 0.88 * span, "settle": t_end_of_move}
     else:
         # build 比第一个内容词早 0.7s 起势：柱子是“边说边长”的，不是说完才动
         build = min(max(kw[0] - 0.70, t_enter + 0.55), t_end_of_move - 1.2)
         reveal = min(kw[0] + 0.35, t_end_of_move - 0.9)
         peak = kw[-1] + 0.30 if len(kw) >= 2 else reveal + 0.70
         peak = min(max(peak, reveal + 0.35), t_end_of_move - 0.15)
-        sched = {"enter": t_enter, "build": build, "reveal": reveal, "peak": peak,
+        # mid：场景中段的第二个发屏点（看情况在 reveal 与 peak 之间），
+        # 没有它的话，长句场景的中段就是一片空白。
+        sched = {"enter": t_enter, "build": build, "reveal": reveal,
+                 "mid": reveal + 0.5 * max(peak - reveal, 0.0), "peak": peak,
                  "settle": min(t_end_of_move, peak + 1.40)}
     # 单调 + 最小间隔，避免锚点重叠把编排压成一帧
     out: dict[str, float] = {}
@@ -816,6 +884,9 @@ def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None
     for j in range(1, 5):
         slots[f"PH_{j}"] = take(j - 1) or headline
         slots[f"PH_{j}_ROLE"] = MATERIAL_ROLE_LABELS[j - 1]
+        # 档案标签：以前模板里写的是「NO.01 / 1998-03」这种假日期——成片里看着像笔记，
+        # 其实在讲 AI 的镜头上是误导。换成真实语义：编号 + 这张图在论证里的角色。
+        slots[f"TAG_{j}"] = f"NO.0{j} / {MATERIAL_ROLE_LABELS[j - 1]}"
     for j in range(3):     # 时间轴：年份能给就给，给不出就退到候选词
         slots[f"YEAR_{j + 1}"] = years[j] if j < len(years) else f"0{j + 1}"
     if extra:
@@ -1396,6 +1467,45 @@ def indent_block(text: str, pad: str = "    ") -> str:
     return "\n".join(pad + ln if ln.strip() else ln for ln in text.splitlines())
 
 
+AMBIENT_PUSH = (3.0, 3.75, 4.5)   # 通用镜头推近量（%），按场次轮换，避免每场一个样
+
+
+def ambient_js(clip_id: str, start: float, dur: float, index: int = 0) -> str:
+    """环境微动层：整场慢速漂移/推近，保证画面永不冻住。
+
+    为什么需要它：入场编排只在场景前段发生，旁白念到后半句时画面是真的**逐像素不动**
+    （实测旧成片单场连续静止 1.75s、数据片 2.25s），观感就是「呆板」。这不是靠再叠一个
+    入场动画能治的——得靠一个跟场景等长的低幅持续运动。
+
+    两层：
+
+    1. **通用镜头推近**：对整场的 <section class="clip"> 做 3–4.5% 的慢推。它对所有风格都
+       成立，不需要模板改一个字（模板本来就从不碰 section），而且推近是朝内，超出画面的部分
+       被 #root 裁掉、不会露边。想关掉的模板在根元素上写 data-km-ambient="off"。
+    2. **模板声明的局部微动**：data-km-drift="20"（装饰层上下浮 20px）、data-km-push="4"
+       （图片慢推近 4%）。属性不重叠就不与入场编排打架：漂移打在纸纹/底色上，推近打在卡片
+       内部的 <img> 上，卡片本身的 x/scale 入场动画不受影响。装饰层记得 inset:-8%，
+       否则浮几像素就会在边缘露出缝。
+    """
+    push = AMBIENT_PUSH[index % len(AMBIENT_PUSH)]
+    return (
+        f"  {{ /* ambient · 全程微动（{dur}s · 镜头推近 {push}%） */\n"
+        f"    tl.fromTo('#{clip_id}', {{ scale: 1 }}, {{ scale: {1 + push / 100:.4f}, "
+        f"duration: {dur}, ease: 'none', transformOrigin: '50% 50%' }}, {start});\n"
+        f"    const amb = gsap.utils.toArray('#{clip_id} [data-km-drift], "
+        f"#{clip_id} [data-km-push]');\n"
+        "    amb.forEach((el, i) => {\n"
+        "      const dir = (i % 2 ? -1 : 1);\n"
+        "      const amp = parseFloat(el.getAttribute('data-km-drift')) || 0;\n"
+        "      const push = parseFloat(el.getAttribute('data-km-push')) || 0;\n"
+        f"      if (amp) tl.fromTo(el, {{ y: dir * amp }}, {{ y: -dir * amp, duration: {dur}, "
+        f"ease: 'sine.inOut' }}, {start});\n"
+        f"      if (push) tl.fromTo(el, {{ scale: 1 }}, {{ scale: 1 + push / 100, duration: {dur}, "
+        f"ease: 'none', transformOrigin: '50% 50%' }}, {start});\n"
+        "    });\n  }"
+    )
+
+
 def build_composition(project: Path, manifest: dict, style: str, title: str,
                       slot_maps: dict[str, dict[str, str]] | None = None) -> Path:
     """组装 composition/index.html（wrapper 约定对齐 showcase gold standard）。"""
@@ -1425,11 +1535,29 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
     js_blocks: list[str] = []
     charts: list[dict] = []
     beat_log: dict[str, dict] = {}
+    layout_log: list[dict] = []
+    prev_variant = ""
+    forced_variants = manifest.get("_variantOverride") or {}
     data_spec = manifest.pop("_dataSpec", None)
     for i, sc in enumerate(scenes, 1):
         sid = sc["id"]
         start, sdur = round(sc["startSec"], 2), round(sc["durationSec"], 2)
         extra: dict = {}
+        # 版面变体：先数本场真正拿到手的素材，再挑版面（挑法见 choose_variant）
+        avail = sorted((slot_maps or {}).get(sid, {}))
+        variant, why = choose_variant(style, sc, len(avail), prev_variant,
+                                      forced_variants.get(sid))
+        # 缺素材的槽位整卡消失（有素材的场景才套；一个都没取到的场景保留关键词兜底层）
+        got_slots = [a["slot"] for a in (sc.get("assets") or []) if a.get("local")]
+        miss_slots = [a["slot"] for a in (sc.get("assets") or []) if not a.get("local")]
+        if slot_maps and got_slots and miss_slots:
+            extra["MISS"] = " ".join(f"km-ev--miss-{s}" for s in miss_slots)
+        if variant:
+            extra["VARIANT"] = variant
+            prev_variant = variant
+            sc["variant"] = variant
+            layout_log.append({"scene": sid, "variant": variant, "reason": why,
+                               "assets": avail})
         if "{{PLOT}}" in tpl["fragment"]:
             chart = chart_for_scene(sc, i - 1, data_spec)
             charts.append({"scene": sid, "mode": chart.get("mode", "bars"),
@@ -1459,7 +1587,7 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
                                "action": "build · 主体起势（首关键词前 0.7s）"}]
                               if "build" in sched else [])
                            + [{"atSec": round(sched[n] - start, 2), "action": f"{n} · 编排锚点"}
-                              for n in ("reveal", "peak", "settle") if n in sched])
+                              for n in ("reveal", "mid", "peak", "settle") if n in sched])
         sections += [
             f'  <!-- ============ {sid} · {start}–{round(start + sdur, 2)}s ============ -->',
             f'  <section class="clip" id="clip-{sid}" data-start="{start}" '
@@ -1469,6 +1597,9 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
         ]
         js_blocks.append(f"  {{ /* {sid} · {start}-{round(start + sdur, 2)}s */\n"
                          f"{indent_block(sc_js, '    ')}\n  }}")
+        # 每一场都要有「镜头推近」这一层：模板不声明也得有，否则长句场景的后半段就是冻帧
+        if 'data-km-ambient="off"' not in frag:
+            js_blocks.append(ambient_js(f"clip-{sid}", start, sdur, i - 1))
 
     helpers = tpl["helpers"]
     html = f"""<!doctype html>
@@ -1513,6 +1644,7 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
     out.write_text(html, encoding="utf-8")
     manifest["_charts"] = charts
     manifest["_beats"] = beat_log
+    manifest["_layouts"] = layout_log
     return out
 
 
@@ -1770,12 +1902,17 @@ def kinetic_lines(scene: dict, width: int = 13) -> dict[str, str]:
 
 
 def asset_query(scene: dict, item: dict, ordinal: int,
-                used: set[str] | None = None) -> str:
-    """一条素材的检索词：概念候选表里挑一个还没用过的英文短语（第 ordinal 顺位起找）。
+                used: set[str] | None = None) -> tuple[str, list[str]]:
+    """一条素材的检索词 + 备选阶梯：返回 (query, fallbacks)。
 
     候选来自 visual-concepts.txt（中文概念 → 英文检索短语）。命中不了概念表就退
     中文关键词——中文召回差，但总比空串强。mods 是槽位专属修饰词（如 cinematic
-    still），只在需要限定语气时使用：拼无意义修饰词只会把检索带到无关图片上。"""
+    still），只在需要限定语气时使用：拼无意义修饰词只会把检索带到无关图片上。
+
+    为什么要挂备选：取图护栏会把「白底图文」判掉（论文插图/流程图/截图），一条抽象的
+    检索词（inference、neural network architecture）就很容易变成「一张都取不到」。
+    阶梯里放同场景的其它概念候选，第一条被护栏拦下时还有路可走。
+    """
     used = used if used is not None else set()
     parts = scene.get("_clauseTexts") or [scene.get("narration", "")]
     text = join_clauses([p for p in parts if p])
@@ -1790,7 +1927,9 @@ def asset_query(scene: dict, item: dict, ordinal: int,
     base = base or pool[ordinal % len(pool)]
     used.add(base)
     mods = item.get("mods") or []
-    return f"{base} {mods[ordinal % len(mods)]}" if mods else base
+    q = f"{base} {mods[ordinal % len(mods)]}" if mods else base
+    fences = [c for c in pool if c != base and c not in (item.get("used_queries") or [])]
+    return q, fences[:3]
 
 
 def step_assets(args, project: Path, manifest: dict,
@@ -1806,6 +1945,8 @@ def step_assets(args, project: Path, manifest: dict,
     override: dict | None = None
     if getattr(args, "assets", None):
         override = json.loads(args.assets.read_text(encoding="utf-8"))
+    if override and isinstance(override.get("_variants"), dict):
+        manifest["_variantOverride"] = override["_variants"]
     if not plan and not override:
         return {}
     print(f"\n== 素材检索（{style}）==")
@@ -1820,12 +1961,17 @@ def step_assets(args, project: Path, manifest: dict,
         assets = []
         for k, it in enumerate(items):
             accept = it.get("types") or [it.get("type", "photo")]
-            q = it.get("query") or asset_query(sc, it, k, used_q)
+            if it.get("query"):
+                q, extra_fb = it["query"], []
+            else:
+                q, extra_fb = asset_query(sc, it, k, used_q)
             mods = it.get("mods") or []
             bare = q[: -len(mods[k % len(mods)]) - 1].strip() if mods else q
+            # 检索词阶梯：先退「去掉修饰词的裸概念」，再退同场景的其它概念候选
+            ladder = ([bare] if bare != q else []) + extra_fb
             assets.append({"id": f"{sid}-{it['slot']}", "slot": it["slot"],
                            "type": accept[0], "accept": accept, "query": q,
-                           "fallbacks": [bare] if bare != q else [],
+                           "fallbacks": ladder[:3],
                            "avoid": it.get("avoid") or [],
                            "description": f"{sid} {it.get('role', '素材')} · {q}",
                            "pick": it.get("pick", 0)})
@@ -1900,6 +2046,9 @@ def main() -> int:
     ap.add_argument("--no-fetch", action="store_true",
                     help="跳过素材检索（素材型风格会保留模板占位）")
     ap.add_argument("--no-render", action="store_true", help="只组装 + lint（跳过渲染与 final 合成）")
+    ap.add_argument("--strict-motion", action="store_true",
+                    help="motion 门禁（画面是否停住）也当硬失败；默认只告警，因为还有几条模板"
+                         "的编排没抬到门槛，不该挡住成片产出")
     ap.add_argument("--keep-work", action="store_true", help="不清理临时文件")
     args = ap.parse_args()
 
@@ -1958,6 +2107,14 @@ def main() -> int:
     comp = build_composition(project, manifest, style, title, slot_maps)
     charts = manifest.pop("_charts", [])
     beats = manifest.pop("_beats", {})
+    layouts = manifest.pop("_layouts", [])
+    manifest.pop("_variantOverride", None)
+    if layouts:
+        (project / "storyboard" / "layouts.json").write_text(
+            json.dumps({"style": style,
+                        "note": "逐场版面变体（按本场实际素材数 + 内容选，不邻场重复）",
+                        "items": layouts}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
     if charts:
         charts_path = project / "storyboard" / "charts.json"
         charts_path.write_text(json.dumps(charts, ensure_ascii=False, indent=2) + "\n",
@@ -2006,7 +2163,22 @@ def main() -> int:
         proc = run([sys.executable, SCRIPTS / "verify.py", project])
         print(proc.stdout)
         if proc.returncode != 0:
-            die("verify 未通过（见上）", 1)
+            # motion 是唯一「已知还没全抬起来」的检查项：它没过就直接 die 会挡住整条流水线，
+            # 但把成片悄悄放出来也不对。默认告警放行（--strict-motion 可要求硬失败），
+            # 其余任何检查不过都照旧 die。
+            only_motion = False
+            try:
+                rep = json.loads((project / "verify" / "report.json").read_text(encoding="utf-8"))
+                bad = [c["name"] for c in rep.get("checks", []) if c.get("status") != "PASS"]
+                only_motion = bad == ["motion"]
+            except Exception:  # noqa: BLE001
+                only_motion = False
+            if only_motion and not args.strict_motion:
+                print("WARNING: motion 门禁未过 —— 上述场景确实有「画面停住」的片段，"
+                      "成片仍然产出（要硬失败加 --strict-motion）。修法一般是把某个节拍往后挪，"
+                      "或给这一场加中段发屏 / 环境微动（data-km-drift、data-km-push）。")
+            else:
+                die("verify 未通过（见上）", 1)
 
     # 11. 汇总报告
     print("\n== 成片报告 ==")

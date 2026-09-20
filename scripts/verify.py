@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify a knowledge-motion project: manifest, master video, contact sheet.
+"""Verify a knowledge-motion project: manifest, master video, contact sheet, motion.
 
 Usage: python3 scripts/verify.py <project-dir>
 
@@ -12,6 +12,12 @@ Checks performed:
    ``project.width``/``project.height``.
 3. One frame is grabbed at the midpoint of every scene; all frames are tiled
    into ``verify/contact-sheet.jpg`` via ffmpeg's tile filter.
+4. Motion: the master is sampled at 8 fps and compared against itself one second earlier
+   (ffmpeg ``blend=difference`` + ``signalstats``), because that is the scale at which a slow
+   drift stops reading as "frozen" while a genuine hold still measures zero. Every scene must
+   keep changing: no run longer than ``MAX_FROZEN_SEC`` where the frame does not change at all,
+   and the whole-film mean must clear ``MIN_MEAN_DIFF``. This is how "the picture is stiff"
+   becomes a failing test instead of a matter of taste.
 
 A ``verify/report.json`` is written with per-check PASS/FAIL entries. Exit
 code is 0 when every check passes, 1 otherwise.
@@ -21,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +36,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_scenes import validate  # noqa: E402
 
 DURATION_TOLERANCE = 0.5
+SAMPLE_FPS = 8            # 运动采样率
+MOTION_LAG_SEC = 1.0      # 比较「一秒前的同一位置」——比 125ms 尺度接近「看着没动」的直觉
+FROZEN_DIFF = 0.4         # 一秒前后帧间平均差低于此值 = 这一秒画面没变
+MAX_FROZEN_SEC = 1.2      # 单段「没变」的上限（默认 1.2s）
+MIN_MEAN_DIFF = 0.4       # 全集一秒尺度平均运动的下限
 
 
 def run(cmd: list[str]) -> tuple[int, str]:
@@ -44,6 +56,86 @@ def ffprobe_json(path: Path) -> dict:
     if code != 0:
         raise RuntimeError(f"ffprobe failed: {out}")
     return json.loads(out)
+
+
+def motion_profile(visual: Path) -> tuple[list[float], int]:
+    """逐采样点的「跟 MOTION_LAG_SEC 秒前比，画面变了多少」（平均亮度差）。
+
+    为什么是「一秒前」而不是「上一帧」：低幅持续运动（比如 3% 的镜头推近）在 125ms 尺度上
+    每帧只挪不到一个像素，逐帧比会判成「没动」，但它在一秒里是看得见的。反过来，真正的
+    停住（画面逐像素不动）在哪个尺度上都是 0。所以这条门禁问的是「这一秒画面变了没有」。
+    """
+    lag = max(1, int(round(MOTION_LAG_SEC * SAMPLE_FPS)))
+    graph = (f"[0:v]fps={SAMPLE_FPS},scale=270:480,split=2[a][b];"
+             f"[b]trim=start_frame={lag},setpts=PTS-STARTPTS[bb];"
+             f"[a]setpts=PTS-STARTPTS[aa];[aa][bb]blend=all_mode=difference,"
+             "signalstats,metadata=print:key=lavfi.signalstats.YAVG")
+    proc = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "info", "-i", str(visual),
+         "-filter_complex", graph, "-f", "null", "-"],
+        capture_output=True, text=True)
+    vals = [float(x) for x in re.findall(r"YAVG=([0-9.]+)", proc.stderr or "")]
+    # vals[k] 对应「第 k+lag 个采样点 vs 第 k 个采样点」，即影片时间 (k+lag)/FPS 处的变化量。
+    # 把 lag 一起返回，调用方才能把采样下标对齐回场景窗口（不要在前面补零——补零会把
+    # 后面所有窗口整体错开 1 秒，看起来就像每场开场都「没变」）。
+    return vals, lag
+
+
+def frozen_runs(diffs: list[float]) -> list[tuple[float, float]]:
+    """返回 [(开始秒, 时长秒)]：所有低于 FROZEN_DIFF 的连续段（至少一秒长才算）。"""
+    runs: list[tuple[float, float]] = []
+    start: int | None = None
+    for i, v in enumerate(diffs):
+        if v < FROZEN_DIFF:
+            start = i if start is None else start
+        elif start is not None:
+            runs.append((start / SAMPLE_FPS, (i - start) / SAMPLE_FPS))
+            start = None
+    if start is not None:
+        runs.append((start / SAMPLE_FPS, (len(diffs) - start) / SAMPLE_FPS))
+    return runs
+
+
+def motion_check(visual: Path, scenes: list[dict]) -> dict:
+    """把「呆板」量一量：每场最长冻帧 + 全集平均运动。"""
+    diffs, lag = motion_profile(visual)
+    if len(diffs) < 2:
+        return {"name": "motion", "status": "FAIL", "detail": "no samples"}
+    mean = sum(diffs) / len(diffs)
+    per_scene: list[dict] = []
+    worst = ("", 0.0)
+    for scene in scenes:
+        start = float(scene["startSec"])
+        end = start + float(scene["durationSec"])
+        lo = max(0, int(round(start * SAMPLE_FPS)) - lag)
+        hi = max(lo + 1, int(round(end * SAMPLE_FPS)) - lag)
+        window = diffs[lo:hi]
+        if not window:
+            continue
+        runs = [(s + lo / SAMPLE_FPS, d) for s, d in frozen_runs(window)]
+        longest = max((d for _, d in runs), default=0.0)
+        per_scene.append({"scene": scene["id"], "longestFrozenSec": round(longest, 2),
+                          "meanDiff": round(sum(window) / len(window), 2)})
+        if longest > worst[1]:
+            worst = (scene["id"], longest)
+    problems: list[str] = []
+    if mean < MIN_MEAN_DIFF:
+        problems.append(f"mean diff {mean:.2f} < {MIN_MEAN_DIFF}（一秒尺度上全片太平）")
+    if worst[1] > MAX_FROZEN_SEC:
+        problems.append(f"{worst[0]} 连续 {worst[1]:.2f}s 画面没变 > {MAX_FROZEN_SEC}s")
+    return {
+        "name": "motion",
+        "status": "PASS" if not problems else "FAIL",
+        "detail": problems or {
+            "meanDiff": round(mean, 2),
+            "longestFrozenSec": round(worst[1], 2),
+            "worstScene": worst[0],
+            "thresholds": {"sampleFps": SAMPLE_FPS, "lagSec": MOTION_LAG_SEC,
+                           "frozenDiff": FROZEN_DIFF, "maxFrozenSec": MAX_FROZEN_SEC,
+                           "minMeanDiff": MIN_MEAN_DIFF},
+            "scenes": per_scene,
+        },
+    }
 
 
 def main() -> None:
@@ -185,6 +277,13 @@ def main() -> None:
                                "path": str(sheet_path)},
                 }
     checks.append(sheet_check)
+
+    # --- 4. motion: 每一场都得在动 ---
+    if scenes and visual.exists():
+        checks.append(motion_check(visual, scenes))
+    else:
+        checks.append({"name": "motion", "status": "FAIL",
+                       "detail": "skipped: no scenes or no master video"})
 
     all_pass = all(c["status"] == "PASS" for c in checks)
     report = {

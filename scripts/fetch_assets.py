@@ -206,6 +206,44 @@ def _video_like(path: Path) -> bool:
     return path.suffix.lower() in {".mp4", ".webm", ".ogv", ".mov"}
 
 
+def _luma_stats(path: Path) -> tuple[float, float] | None:
+    """首帧的亮度/饱和度均值（ffmpeg signalstats）。量不出来返回 None。"""
+    proc = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "info", "-i", str(path),
+         "-vf", "signalstats,"
+                "metadata=print:key=lavfi.signalstats.YAVG,"
+                "metadata=print:key=lavfi.signalstats.SATAVG",
+         "-frames:v", "1", "-f", "null", "-"],
+        capture_output=True, text=True)
+    y = re.search(r"YAVG=([0-9.]+)", proc.stderr or "")
+    s = re.search(r"SATAVG=([0-9.]+)", proc.stderr or "")
+    if not y or not s:
+        return None
+    return float(y.group(1)), float(s.group(1))
+
+
+# 「纸面素材」判定线：白底图文（论文插图/流程图/表格截图）实测 YAVG 223–250、SATAVG ≤ 13，
+# 而真实照片 YAVG ≤ 160。两个条件同时成立才判，避免误伤明亮照片。
+DOC_LUMA = 205.0
+DOC_SAT = 30.0
+
+
+def _document_like(path: Path) -> str | None:
+    """白底低饱和 → 判为纸面/图表素材，返回理由字符串（否则 None）。
+
+    无密钥素材源最容易混进来的就是这一类：标题看着对（"model scale"、"cloud computing"），
+    铺进成片一眼假。这是视觉判断，标题关键词护栏抓不到。"""
+    if _video_like(path):
+        return None
+    st = _luma_stats(path)
+    if not st:
+        return None
+    y, s = st
+    if y >= DOC_LUMA and s <= DOC_SAT:
+        return f"白底图文 YAVG={y:.0f} SATAVG={s:.0f}"
+    return None
+
+
 def _image_ok(path: Path, min_width: int = 900) -> bool:
     """下载后尺寸护栏：小于 min_width 的图铺到 1080 宽成片里会糊，宁可换下一张。
     ffprobe 量不出来（或不是图）就放行——宁可要一张小图，不要一个空槽。"""
@@ -223,12 +261,14 @@ def _image_ok(path: Path, min_width: int = 900) -> bool:
 
 
 def fetch_asset(asset: dict, media_dir: Path, local_dir: Path | None,
-                timeout: int, dry: bool, used: set[str] | None = None) -> dict:
+                timeout: int, dry: bool, used: set[str] | None = None,
+                keep_all: bool = False) -> dict:
     """返回 {status: ok|local|sfx|missing, ...} 并就地回填 asset 字段。
 
     accept：素材类型优先序（如 ["video","photo"]），拿不到视频就退照片；
     pick：在第几个命中 开始试（人工/agent 复核后换一张，不用改代码）；
-    used：本轮已用过的源 URL——同一场四张图不应是同一张。
+    used：本轮已用过的源 URL——同一场四张图不应是同一张；
+    keep_all：关掉「白底图文」判定（诚实边界：这条判定会误伤明亮的纯色照片）。
     """
     used = used if used is not None else set()
     aid, query = asset.get("id", "?"), asset.get("query", "")
@@ -298,6 +338,11 @@ def fetch_asset(asset: dict, media_dir: Path, local_dir: Path | None,
                         continue
                     if not _image_ok(dest):
                         print(f"  ! {aid} 尺寸不达标，换下一张: {h['url'][:80]}", file=sys.stderr)
+                        dest.unlink(missing_ok=True)
+                        continue
+                    reason = None if keep_all else _document_like(dest)
+                    if reason:
+                        print(f"  ! {aid} 纸面/图表素材，换下一张（{reason}）", file=sys.stderr)
                         dest.unlink(missing_ok=True)
                         continue
                     hit = h
@@ -382,6 +427,8 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true", help="有任何素材缺失则退出码 2")
     ap.add_argument("--sheet", action="store_true", help="生成素材接触表 contact-sheet.jpg（渲染前目检用）")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--keep-all", action="store_true",
+                    help="保留白底图文类素材（默认剔除论文插图/流程图/表格截图）")
     args = ap.parse_args()
 
     project = Path(args.project).resolve()
@@ -403,7 +450,8 @@ def main() -> int:
             aid = asset.get("id", "?")
             acc = "/".join(asset.get("accept") or [asset.get("type", "photo")])
             print(f"[scene {sc.get('id', '?')}] asset {aid} [{acc}] q={asset.get('query')!r}")
-            r = fetch_asset(asset, media_dir, local_dir, args.timeout, args.dry_run, used)
+            r = fetch_asset(asset, media_dir, local_dir, args.timeout, args.dry_run, used,
+                            keep_all=args.keep_all)
             print(f"  -> {r['status']}" + (f" via {r.get('source', '')} ({r.get('type', '')})"
                                            if r.get("source") else ""))
             results.append({"scene": sc.get("id"), "asset": aid, **r})

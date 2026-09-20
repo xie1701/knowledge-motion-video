@@ -3,40 +3,71 @@
   Paste the <div> below into one clip inside your composition root.
   适用题材: 证据/档案/历史/人物/新闻报道类 beat——需要"真实照片上墙"的拼贴论证。
   素材槽位 (scenes.json scene.assets, 设计文档 §2.1 约定):
-    photo-1 → {{assets.photo-1}} 主证据照（左上大卡）
-    photo-2 → {{assets.photo-2}} 对照照（右上小卡）
-    photo-3 → {{assets.photo-3}} 文献/档案照（左下卡）
-    photo-4 → {{assets.photo-4}} 细节照（右下小卡）
+    photo-1 → {{assets.photo-1}} 主证据照
+    photo-2 → {{assets.photo-2}} 对照照
+    photo-3 → {{assets.photo-3}} 文献/档案照
+    photo-4 → {{assets.photo-4}} 细节照
     每张 <img src="assets/media/photo-N.jpg" onerror="this.remove()">：素材缺失时
     onerror 移除 <img>，露出下方 CSS 色块兜底层，画面永不空屏。
-  Replaceable slots: {{TITLE}} 档案标签 | {{CAPTION_1}}/{{CAPTION_2}} 图注 | {{ACCENT}} 强调色
-    | {{PH_1..4}} 兜底层关键词 | {{PH_1..4_ROLE}} 兜底层角色标签
-    素材缺失时的兜底层文字由填槽器写入当前场的关键词（不再是「素材占位」）。
-  音效挂点 (fetch_assets.py --sfx):
-    快门/翻纸声 → 每张照片卡平移切入的起点（见 GSAP 注释 SFX 标记）
-    纸张摩擦声 → caption box 压上图面的瞬间
+
+  —— 版面变体（v2.7 起）——
+  模板声明 {{VARIANT}}，由 make_video.py 逐场挑选（choose_variant）：
+    wall    四张卡铺满（默认）
+    cascade 四张卡斜向下叠放
+    hero    一张满幅大图 + 两张小图（三张素材时的正解）
+    pair    两张大图上下对看（对比语义）
+    single  一张大图 + 一句大字（只有一张素材时不留空框）
+  为什么要有变体：同一套卡片坐标在八场里重复出现，成片读起来像同一张幻灯片播了八遍。
+  挑变体的第一依据是**本场真正取到的素材数**——缺素材时不是留个空框，而是换一套装得
+  下的版面；内容再加一层偏好（有大数字 → hero，有对比语义 → pair），且不邻场重复。
+
+  Replaceable slots: {{VARIANT}} 版面 | {{TITLE}} 档案标签 | {{CAPTION_1}}/{{CAPTION_2}} 图注
+    | {{TAG_1..4}} 卡角编号（编号 + 该图在论证里的角色，不再写假日期）
+    | {{ACCENT}} 强调色 | {{PH_1..4}}/{{PH_1..4_ROLE}} 兜底层关键词与角色
+
+  —— 动效契约 ——
+  1) 入场：四张卡按序切入（0.1–1.3s），stamp 打上，箭头指示，caption 压字 —— 全部落在
+     @beats 声明的锚点上，由引擎重定时到旁白念到那句话的时候。
+  2) 中段发屏（mid）：焦点收拢 —— 主卡推近到 1.07，其余卡压到 0.55 透明度。这是一次
+     **可见的状态改变**，不是又一个入场动画；没有它，长句场景的中段就是一片静止。
+  3) 收束（peak）：手绘圈注画上 + 角色标签贴出，落在末个内容词上。
+  4) 全程微动（ambient）：data-km-drift 打在纸纹/底色上、data-km-push="4" 打在卡片内部
+     的 <img> 上，由引擎按整场时长铺一条与落点无关的慢运动。**画面永不逐像素冻住**，
+     这是 verify.py motion 门禁用像素量出来的那条线（最长冻帧 ≤ 1.2s）。
+  音效挂点 (fetch_assets.py --sfx): 快门/翻纸声 → 每张卡入场起点; 纸摩擦声 → caption 落位。
   Assemble inside a 1080×1920 composition: local @font-face (PingFang SC/Noto Sans SC),
   a full-duration #furniture-base clip, vendor/gsap.min.js relative script, and keep all
-  text above y=1690 (bottom 230px caption safe area). See examples/style-samples/.
+  text above y=1690 (bottom 230px caption safe area).
 -->
-<div class="km-ev" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-ev-bg,#EFE7D6);">
+<div class="km-ev {{MISS}}" data-km-variant="{{VARIANT}}" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-ev-bg,#EFE7D6);">
   <style>
-    /* —— 米色纸纹底：CSS 渐变 + 噪点近似，无外部图片 —— */
-    .km-ev__bg { position:absolute; inset:0;
+    /* —— 米色纸纹底：CSS 渐变 + 噪点近似，无外部图片。装饰层一律超出画布，
+          这样环境微动把整层挪几像素也不会在边缘露出缝。 —— */
+    .km-ev__bg { position:absolute; inset:-8%;
       background:
         radial-gradient(1200px 800px at 20% 10%, rgba(255,253,246,.9), transparent 60%),
         radial-gradient(1000px 900px at 85% 85%, rgba(210,196,168,.55), transparent 65%),
         linear-gradient(160deg, #F2EBDC 0%, #E9DFC9 55%, #E2D6BC 100%); }
-    .km-ev__grain { position:absolute; inset:0; opacity:.35; mix-blend-mode:multiply;
+    .km-ev__grain { position:absolute; inset:-8%; opacity:.4; mix-blend-mode:multiply;
       background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='evn'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23evn)' opacity='0.5'/></svg>");
       background-size:260px 260px; }
+    .km-ev__vig { position:absolute; inset:-8%; pointer-events:none;
+      background:radial-gradient(120% 78% at 50% 42%, transparent 45%, rgba(72,60,38,.28) 100%); }
     /* —— 撕纸毛边：SVG 感不规则 polygon clip-path ×4 变体 —— */
-    .km-ev__card { position:absolute; filter:drop-shadow(16px 18px 20px rgba(38,36,31,.3)); }
-    .km-ev__tear { width:100%; height:100%; background:var(--km-ev-paper,#FBF7EC); position:relative; }
+    .km-ev__card { position:absolute; }
+    .km-ev__tear { width:100%; height:100%; background:var(--km-ev-paper,#FBF7EC); position:relative;
+      filter:drop-shadow(14px 20px 26px rgba(38,36,31,.34)); }
     .km-ev__tear--a { clip-path:polygon(0% 3%,4% 1%,9% 4%,15% 2%,22% 5%,30% 1%,38% 4%,47% 2%,55% 5%,63% 2%,72% 4%,80% 1%,88% 4%,95% 2%,100% 5%,99% 14%,100% 24%,98% 34%,100% 44%,99% 55%,100% 66%,98% 77%,100% 88%,99% 96%,94% 99%,86% 97%,77% 100%,68% 97%,58% 100%,48% 98%,38% 100%,28% 97%,18% 100%,10% 98%,4% 100%,1% 92%,2% 81%,0% 70%,2% 59%,0% 48%,2% 37%,0% 26%,1% 14%); }
     .km-ev__tear--b { clip-path:polygon(2% 0%,10% 3%,19% 1%,28% 4%,37% 0%,46% 3%,56% 1%,65% 4%,74% 0%,83% 3%,92% 1%,100% 4%,98% 13%,100% 23%,97% 33%,99% 43%,98% 54%,100% 64%,97% 75%,99% 86%,98% 95%,92% 98%,83% 100%,73% 98%,63% 100%,53% 97%,43% 100%,33% 98%,23% 100%,14% 98%,6% 100%,0% 94%,2% 83%,0% 72%,2% 61%,0% 50%,2% 39%,0% 28%,1% 17%,0% 8%); }
     .km-ev__tear--c { clip-path:polygon(1% 4%,7% 0%,14% 5%,23% 2%,31% 6%,40% 2%,49% 5%,58% 1%,67% 5%,76% 2%,85% 5%,93% 1%,100% 3%,99% 12%,97% 22%,100% 32%,98% 43%,100% 53%,97% 64%,99% 74%,98% 85%,100% 94%,93% 98%,84% 100%,74% 97%,64% 100%,54% 98%,44% 100%,34% 97%,24% 100%,15% 98%,7% 100%,0% 95%,2% 85%,0% 74%,2% 63%,0% 52%,2% 41%,0% 30%,1% 19%,0% 10%); }
     .km-ev__tear--d { clip-path:polygon(0% 2%,8% 5%,17% 2%,26% 5%,35% 1%,45% 4%,54% 2%,64% 5%,73% 1%,82% 4%,91% 2%,100% 5%,98% 15%,100% 25%,97% 35%,99% 45%,97% 56%,100% 66%,98% 76%,99% 87%,97% 96%,89% 99%,79% 97%,69% 100%,59% 98%,49% 100%,39% 97%,29% 100%,19% 98%,9% 100%,2% 97%,0% 88%,2% 78%,0% 67%,2% 56%,0% 45%,2% 34%,0% 23%,1% 12%); }
+    /* 胶带：卡角贴条（伪元素，不占 DOM、不参与编排） */
+    .km-ev__tear::before { content:""; position:absolute; z-index:4; left:-3%; top:-4%;
+      width:34%; height:11%; background:linear-gradient(105deg, rgba(255,255,255,.62), rgba(232,224,203,.42));
+      border-left:1px dashed rgba(120,108,84,.25); border-right:1px dashed rgba(120,108,84,.25);
+      transform:rotate(-6deg); box-shadow:0 3px 8px rgba(60,52,36,.12); }
+    /* 卡 C 的胶带贴到右上角（用 class 不用 id：id 会被 namespace_ids 改名，class 不会） */
+    .km-ev__card--c .km-ev__tear::before { left:auto; right:-3%; transform:rotate(5deg); }
     /* 照片卡内部：CSS 色块兜底层 + <img> 素材层（缺失即被移除） */
     .km-ev__ph { position:absolute; inset:4%; background:
         linear-gradient(135deg, rgba(255,255,255,.06), transparent 55%),
@@ -49,102 +80,181 @@
     .km-ev__ph-r { display:block; font:500 16px/1 "Noto Sans SC","PingFang SC",sans-serif;
       letter-spacing:.22em; color:#8C887F; }
     .km-ev__img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-    /* 档案式标签（编号/时间戳） */
-    .km-ev__tag { position:absolute; top:10px; left:14px; background:#26241F; color:#F5F1E8;
+    /* 档案式标签（编号 + 这张图在论证里的角色） */
+    .km-ev__tag { position:absolute; top:10px; left:14px; background:rgba(38,36,31,.86); color:#F5F1E8;
+      border:1px solid rgba(245,241,232,.42);
       padding:4px 12px; font:700 20px ui-monospace,SFMono-Regular,monospace; letter-spacing:.08em; z-index:3; }
-    /* caption box：色块压字，保证图面上可读 */
-    .km-ev__cap { position:absolute; left:6%; right:6%; bottom:7%; background:var(--km-ev-accent,#E34234);
-      color:#FBF7EC; padding:8px 16px; font:800 30px "Noto Sans SC","PingFang SC",sans-serif;
+    /* caption box：色块压字，保证图面上可读。宽度贴文字走（不再拉满整幅卡片——
+       整幅红条 + 圈注 + 芯片挤在同一条带里，放大看就是三个东西互相盖）。 */
+    .km-ev__cap { position:absolute; left:6%; right:auto; bottom:7%; max-width:88%;
+      background:var(--km-ev-accent,#E34234);
+      color:#FBF7EC; padding:10px 18px 14px; font:800 30px "Noto Sans SC","PingFang SC",sans-serif;
       line-height:1.25; z-index:3; box-shadow:0 8px 18px rgba(38,36,31,.25); }
     .km-ev__cap--ink { background:#26241F; }
-    /* 手帐箭头（视线引导） */
-    .km-ev__arrow { position:absolute; z-index:2; }
+    /* 重点下划线：peak 时从左往右画出来（一条直的、贴在图注下沿的线 —— 比一圈椭圆
+       干净得多，也不会画成一条跨图的乱线）。 */
+    .km-ev__cap-rule { position:absolute; left:10px; right:10px; bottom:6px; height:5px;
+      background:#FBF7EC; transform:scaleX(0); transform-origin:left center; }
+    /* 角色芯片：peak 时贴着图注条右侧推出来 */
+    .km-ev__cap-note { display:inline-block; margin-left:14px; padding:3px 12px; background:#26241F;
+      color:#F5F1E8; font:700 22px/1.1 "Noto Sans SC","PingFang SC",sans-serif;
+      letter-spacing:.16em; vertical-align:middle; }
+    /* 手帐箭头（视线引导）：墨色细线，scaleY(-1) 后指向右下，落在卡片之间的空档里
+       —— 上一版把它摆在照片中间，箭头指向真空，看着像随手画的一道。 */
+    .km-ev__arrow { position:absolute; z-index:2; transform:scaleY(-1) rotate(-6deg); }
     /* 中心聚焦区外的档案标签贴纸 */
-    .km-ev__stamp { position:absolute; right:7%; top:8.5%; background:var(--km-ev-accent,#E34234);
+    .km-ev__stamp { position:absolute; background:var(--km-ev-accent,#E34234);
       color:#FBF7EC; padding:10px 24px; font:800 30px "Noto Sans SC","PingFang SC",sans-serif;
       letter-spacing:.06em; transform:rotate(3deg); box-shadow:0 10px 24px rgba(38,36,31,.22); z-index:4; }
+
+    /* ================= 缺素材 → 整卡消失 =================
+       {{MISS}} 由 make_video.py 填成 `km-ev--miss-photo-2 …`（本场哪些槽位一张图都没取到）。
+       缺素材的正确表现是「这块版面不存在」，不是「留一个灰框」：灰框会让整幅画面看着像坏了。
+       一个素材都没取到的场景不套这套规则——那时保留关键词兜底层，画面才有东西可看。 */
+    .km-ev--miss-photo-1 .km-ev__card--a,
+    .km-ev--miss-photo-2 .km-ev__card--b,
+    .km-ev--miss-photo-3 .km-ev__card--c,
+    .km-ev--miss-photo-4 .km-ev__card--d { display:none; }
+
+    /* ================= 版面（variant）================= */
+    .km-ev__card--a { left:4%;  top:11%; width:56%; height:34%; transform:rotate(-2deg); }
+    .km-ev__card--b { left:63%; top:14%; width:33%; height:24%; transform:rotate(2.5deg); }
+    .km-ev__card--c { left:7%;  top:49%; width:45%; height:32%; transform:rotate(1.5deg); }
+    .km-ev__card--d { left:57%; top:63%; width:39%; height:22%; transform:rotate(-3deg); }
+    .km-ev__stamp { right:7%; top:8.5%; }
+    .km-ev__arrow { left:50%; top:43%; width:17%; height:11%; }
+
+    /* cascade：斜向下叠放，像照片被一张张铺在桌上 */
+    .km-ev[data-km-variant="cascade"] .km-ev__card--a { left:3%; top:9%;  width:52%; height:30%; }
+    .km-ev[data-km-variant="cascade"] .km-ev__card--b { left:44%; top:24%; width:50%; height:28%; }
+    .km-ev[data-km-variant="cascade"] .km-ev__card--c { left:5%; top:49%; width:50%; height:29%; }
+    .km-ev[data-km-variant="cascade"] .km-ev__card--d { left:47%; top:66%; width:47%; height:22%; }
+    .km-ev[data-km-variant="cascade"] .km-ev__arrow { left:50%; top:37%; width:16%; height:10%; }
+
+    /* hero：一张满幅大图 + 两张小图（三张素材的正解） */
+    .km-ev[data-km-variant="hero"] .km-ev__card--a { left:4%; top:10%; width:92%; height:40%; transform:rotate(-1.5deg); }
+    .km-ev[data-km-variant="hero"] .km-ev__card--b { left:6%; top:56%; width:44%; height:26%; transform:rotate(2deg); }
+    .km-ev[data-km-variant="hero"] .km-ev__card--c { left:54%; top:58%; width:42%; height:24%; transform:rotate(-2.5deg); }
+    .km-ev[data-km-variant="hero"] .km-ev__card--d { display:none; }
+    .km-ev[data-km-variant="hero"] .km-ev__stamp { right:6%; top:6%; }
+    .km-ev[data-km-variant="hero"] .km-ev__arrow { left:62%; top:51%; width:18%; height:11%; }
+
+    /* pair：两张大图上下对看（对比语义） */
+    .km-ev[data-km-variant="pair"] .km-ev__card--a { left:5%; top:12%; width:88%; height:33%; transform:rotate(-1deg); }
+    .km-ev[data-km-variant="pair"] .km-ev__card--c { left:5%; top:50%; width:88%; height:32%; transform:rotate(1deg); }
+    .km-ev[data-km-variant="pair"] .km-ev__card--b,
+    .km-ev[data-km-variant="pair"] .km-ev__card--d { display:none; }
+    .km-ev[data-km-variant="pair"] .km-ev__arrow { left:66%; top:45%; width:18%; height:11%; }
+
+    /* single：只有一张素材时不留空框 —— 大图 + 一句大字 */
+    .km-ev[data-km-variant="single"] .km-ev__card--a { left:7%; top:13%; width:86%; height:52%; transform:rotate(-1deg); }
+    .km-ev[data-km-variant="single"] .km-ev__card--b,
+    .km-ev[data-km-variant="single"] .km-ev__card--c,
+    .km-ev[data-km-variant="single"] .km-ev__card--d { display:none; }
+    .km-ev[data-km-variant="single"] .km-ev__arrow { display:none; }
+    .km-ev[data-km-variant="single"] .km-ev__stamp { left:7%; right:auto; top:70%;
+      font:800 58px/1.15 "Noto Sans SC","PingFang SC",sans-serif; padding:14px 30px; max-width:86%; }
   </style>
 
-  <div class="km-ev__bg"></div>
-  <div class="km-ev__grain" data-layout-ignore></div>
+  <div class="km-ev__bg" data-km-drift="20"></div>
+  <div class="km-ev__grain" data-layout-ignore data-km-drift="34"></div>
+  <div class="km-ev__vig" data-layout-ignore data-km-drift="14"></div>
 
-  <!-- 卡 A：主证据照 photo-1（左上，tear-a，caption 压字） -->
-  <div class="km-ev__card" id="km-ev-card-a" style="left:5%;top:15%;width:54%;height:36%;transform:rotate(-2deg);">
+  <!-- 卡 A：主证据照 photo-1（caption 压字） -->
+  <div class="km-ev__card km-ev__card--a" id="km-ev-card-a">
     <div class="km-ev__tear km-ev__tear--a">
       <div class="km-ev__ph"><span class="km-ev__ph-k">{{PH_1}}</span><span class="km-ev__ph-r">{{PH_1_ROLE}}</span></div>
-      <img class="km-ev__img" src="assets/media/photo-1.jpg" alt="" onerror="this.remove()">
-      <div class="km-ev__tag">NO.01 / 1998-03</div>
-      <div class="km-ev__cap">{{CAPTION_1}}</div>
+      <img class="km-ev__img" data-km-push="4" src="assets/media/photo-1.jpg" alt="" onerror="this.remove()">
+      <div class="km-ev__tag">{{TAG_1}}</div>
+      <div class="km-ev__cap">{{CAPTION_1}}<span class="km-ev__cap-note">{{PH_1_ROLE}}</span>
+        <span class="km-ev__cap-rule"></span></div>
     </div>
   </div>
-  <!-- 卡 B：对照照 photo-2（右上，tear-b） -->
-  <div class="km-ev__card" id="km-ev-card-b" style="left:63%;top:19%;width:32%;height:26%;transform:rotate(2.5deg);">
+  <!-- 卡 B：对照照 photo-2 -->
+  <div class="km-ev__card km-ev__card--b" id="km-ev-card-b">
     <div class="km-ev__tear km-ev__tear--b">
       <div class="km-ev__ph" style="--km-ev-tone:#3A362E;"><span class="km-ev__ph-k">{{PH_2}}</span><span class="km-ev__ph-r">{{PH_2_ROLE}}</span></div>
-      <img class="km-ev__img" src="assets/media/photo-2.jpg" alt="" onerror="this.remove()">
-      <div class="km-ev__tag">NO.02</div>
+      <img class="km-ev__img" data-km-push="4" src="assets/media/photo-2.jpg" alt="" onerror="this.remove()">
+      <div class="km-ev__tag">{{TAG_2}}</div>
     </div>
   </div>
-  <!-- 卡 C：文献照 photo-3（左下，tear-c，ink caption） -->
-  <div class="km-ev__card" id="km-ev-card-c" style="left:9%;top:55%;width:46%;height:30%;transform:rotate(1.5deg);">
+  <!-- 卡 C：文献照 photo-3（ink caption） -->
+  <div class="km-ev__card km-ev__card--c" id="km-ev-card-c">
     <div class="km-ev__tear km-ev__tear--c">
       <div class="km-ev__ph" style="--km-ev-tone:#4A443A;"><span class="km-ev__ph-k">{{PH_3}}</span><span class="km-ev__ph-r">{{PH_3_ROLE}}</span></div>
-      <img class="km-ev__img" src="assets/media/photo-3.jpg" alt="" onerror="this.remove()">
-      <div class="km-ev__tag">NO.03 / ARCHIVE</div>
+      <img class="km-ev__img" data-km-push="4" src="assets/media/photo-3.jpg" alt="" onerror="this.remove()">
+      <div class="km-ev__tag">{{TAG_3}}</div>
       <div class="km-ev__cap km-ev__cap--ink">{{CAPTION_2}}</div>
     </div>
   </div>
-  <!-- 卡 D：细节照 photo-4（右下，tear-d） -->
-  <div class="km-ev__card" id="km-ev-card-d" style="left:60%;top:57%;width:34%;height:27%;transform:rotate(-3deg);">
+  <!-- 卡 D：细节照 photo-4 -->
+  <div class="km-ev__card km-ev__card--d" id="km-ev-card-d">
     <div class="km-ev__tear km-ev__tear--d">
       <div class="km-ev__ph" style="--km-ev-tone:#57503F;"><span class="km-ev__ph-k">{{PH_4}}</span><span class="km-ev__ph-r">{{PH_4_ROLE}}</span></div>
-      <img class="km-ev__img" src="assets/media/photo-4.jpg" alt="" onerror="this.remove()">
-      <div class="km-ev__tag">NO.04</div>
+      <img class="km-ev__img" data-km-push="4" src="assets/media/photo-4.jpg" alt="" onerror="this.remove()">
+      <div class="km-ev__tag">{{TAG_4}}</div>
     </div>
   </div>
 
-  <!-- 档案标签贴纸 + 手帐箭头（视线引导 A→D） -->
-  <div class="km-ev__stamp">{{TITLE}}</div>
-  <svg class="km-ev__arrow" id="km-ev-arrow" style="left:47%;top:47%;width:20%;height:14%;" viewBox="0 0 200 120" fill="none">
-    <path d="M8 100 C 60 90, 120 60, 178 22" stroke="#26241F" stroke-width="8" stroke-linecap="round"/>
-    <path d="M150 18 L182 20 L172 50" stroke="#26241F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 手帐箭头（视线引导：主卡 → 右下那张对照/档案照） -->
+  <svg class="km-ev__arrow" id="km-ev-arrow" viewBox="0 0 200 120" fill="none">
+    <path d="M8 100 C 60 90, 120 60, 178 22" stroke="#26241F" stroke-width="6" stroke-linecap="round"/>
+    <path d="M150 18 L182 20 L172 50" stroke="#26241F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
+
+  <!-- 档案标签贴纸 -->
+  <div class="km-ev__stamp">{{TITLE}}</div>
 </div>
 <!--
   GSAP timeline fragment (deterministic; times scene-relative; first element in by 0.2s;
   every second fromTo on the same element carries immediateRender:false).
   运动规范（设计 §1.1）: 边缘平移切入 + 0.3s 快速缩放，全 ease-in-out 家族（power2.inOut / power3.out）。
-  SFX 挂点: 快门/翻纸声 → 每张卡入场起点; 纸摩擦声 → caption 落位（0.9s/2.1s 附近）。
+  三段式节奏（对应 @beats 的 build / mid / peak）：证件上墙 → 焦点收拢 → 圈注定案。
+  SFX 挂点: 快门/翻纸声 → 每张卡入场起点; 纸摩擦声 → caption 落位（1.6s/1.78s）。
 
-  tl.fromTo("#km-ev-card-a", { autoAlpha: 0, x: -90 },
-      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power2.inOut" }, 0.15)                    // SFX shutter
-    .fromTo("#km-ev-card-a", { scale: 1.06 }, { scale: 1, duration: 0.3, ease: "power3.out",
-      immediateRender: false, transformOrigin: "50% 50%" }, 0.6)
-    .fromTo("#km-ev-card-b", { autoAlpha: 0, x: 90 },
-      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power2.inOut" }, 0.55)                    // SFX shutter
-    .fromTo("#km-ev-card-b", { scale: 1.06 }, { scale: 1, duration: 0.3, ease: "power3.out",
-      immediateRender: false, transformOrigin: "50% 50%" }, 1.0)
-    .fromTo("#km-ev-card-c", { autoAlpha: 0, x: -90 },
-      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power2.inOut" }, 0.95)                    // SFX shutter
-    .fromTo("#km-ev-card-c", { scale: 1.06 }, { scale: 1, duration: 0.3, ease: "power3.out",
-      immediateRender: false, transformOrigin: "50% 50%" }, 1.4)
-    .fromTo("#km-ev-card-d", { autoAlpha: 0, x: 90 },
-      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power2.inOut" }, 1.35)                    // SFX shutter
-    .fromTo("#km-ev-card-d", { scale: 1.06 }, { scale: 1, duration: 0.3, ease: "power3.out",
-      immediateRender: false, transformOrigin: "50% 50%" }, 1.8)
-    .fromTo(".km-ev__stamp", { autoAlpha: 0, scale: 1.5, rotation: 8 },
-      { autoAlpha: 1, scale: 1, rotation: 3, duration: 0.3, ease: "power3.out" }, 0.35)
+  tl.fromTo("#km-ev-card-a", { autoAlpha: 0, x: -100 },
+      { autoAlpha: 1, x: 0, duration: 0.5, ease: "power2.out" }, 0.10)                       // SFX shutter
+    .fromTo("#km-ev-card-a", { scale: 1.06 }, { scale: 1, duration: 0.28, ease: "power3.out",
+      immediateRender: false, transformOrigin: "50% 50%" }, 0.50)                            // 落纸回弹
+    .fromTo("#km-ev-card-b", { autoAlpha: 0, x: 84 },
+      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power2.out" }, 0.42)                      // SFX shutter
+    .fromTo("#km-ev-card-b", { scale: 1.06 }, { scale: 1, duration: 0.28, ease: "power3.out",
+      immediateRender: false, transformOrigin: "50% 50%" }, 0.78)
+    .fromTo("#km-ev-card-c", { autoAlpha: 0, y: 76 },
+      { autoAlpha: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0.74)                      // SFX shutter
+    .fromTo("#km-ev-card-c", { scale: 1.06 }, { scale: 1, duration: 0.28, ease: "power3.out",
+      immediateRender: false, transformOrigin: "50% 50%" }, 1.10)
+    .fromTo("#km-ev-card-d", { autoAlpha: 0, x: 70 },
+      { autoAlpha: 1, x: 0, duration: 0.45, ease: "power3.out" }, 1.06)                      // SFX shutter
+    .fromTo("#km-ev-card-d", { scale: 1.06 }, { scale: 1, duration: 0.28, ease: "power3.out",
+      immediateRender: false, transformOrigin: "50% 50%" }, 1.42)
+    .fromTo(".km-ev__stamp", { autoAlpha: 0, scale: 1.5, rotation: 10 },
+      { autoAlpha: 1, scale: 1, rotation: 3, duration: 0.32, ease: "back.out(2)" }, 0.30)
     .fromTo("#km-ev-arrow path", { autoAlpha: 0, scale: 0.6 },
-      { autoAlpha: 1, scale: 1, duration: 0.3, ease: "power2.inOut", stagger: 0.15,
-        transformOrigin: "0% 50%" }, 2.0)
-    .fromTo("#km-ev-card-a .km-ev__cap", { autoAlpha: 0, y: 16 },
-      { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out" }, 2.1)                        // SFX paper-rub
-    .fromTo("#km-ev-card-c .km-ev__cap", { autoAlpha: 0, y: 16 },
-      { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out" }, 2.5)                        // SFX paper-rub
-  // Evidence push-in on the payoff keyword (hold final state >= 0.8s):
-  // tl.fromTo("#km-ev-card-a", { scale: 1 }, { scale: 1.1, duration: 1.0, ease: "power1.inOut",
-  //   immediateRender: false, transformOrigin: "50% 50%" }, 3.2);
-// @beats enter=0.15 build=0.60 reveal=1.40 peak=2.50 settle=3.20
-// 锚点语义：enter 证物入 / build 卡片陆续贴 / reveal 末卡到位 / peak 箭头与图注 / settle 印章压定
+      { autoAlpha: 1, scale: 1, duration: 0.3, ease: "power2.inOut", stagger: 0.12,
+        transformOrigin: "0% 50%" }, 1.45)
+    .fromTo("#km-ev-card-a .km-ev__cap", { autoAlpha: 0, y: 18, scale: 1.14 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: "power4.out",
+        transformOrigin: "0% 50%" }, 1.60)                                                   // SFX paper-rub
+    .fromTo("#km-ev-card-c .km-ev__cap", { autoAlpha: 0, y: 18, scale: 1.14 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.3, ease: "power4.out",
+        transformOrigin: "0% 50%" }, 1.78)                                                   // SFX paper-rub
+    // mid · 焦点收拢：主卡推近、其余被挤开并压暗 —— 中段的一次可见重排，
+    // 不是又一个入场动画（入场只是「东西出现」，重排才是「画面变了」）
+    .fromTo("#km-ev-card-a", { scale: 1 }, { scale: 1.1, duration: 1.1, ease: "power2.inOut",
+      immediateRender: false, transformOrigin: "50% 50%" }, 2.10)
+    .to("#km-ev-card-b", { x: 26, y: -14, autoAlpha: 0.5, duration: 0.7,
+      ease: "power2.inOut" }, 2.20)
+    .to("#km-ev-card-d", { x: 20, y: 16, autoAlpha: 0.5, duration: 0.7,
+      ease: "power2.inOut" }, 2.20)
+    .to("#km-ev-card-c", { x: -18, y: 18, autoAlpha: 0.5, duration: 0.7,
+      ease: "power2.inOut" }, 2.26)
+    // peak · 图注定案：下划线从左画到右 + 角色芯片推出来（批注要落在具体的东西上）
+    .fromTo("#km-ev-card-a .km-ev__cap-rule", { scaleX: 0 },
+      { scaleX: 1, duration: 0.42, ease: "power2.inOut", transformOrigin: "left center" }, 2.55)
+    .fromTo("#km-ev-card-a .km-ev__cap-note", { autoAlpha: 0, x: -14 },
+      { autoAlpha: 1, x: 0, duration: 0.3, ease: "back.out(2)" }, 2.72)
+// @beats enter=0.10 build=0.42 reveal=1.06 mid=2.10 peak=2.60 settle=3.30
+// 锚点语义：enter 首卡上墙 / build 卡片陆续贴 / reveal 末卡到位 / mid 焦点收拢重排 / peak 图注定案 / settle 收势
 
 -->

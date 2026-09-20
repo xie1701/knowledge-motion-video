@@ -17,6 +17,8 @@ jobs:
         run: python3 -m py_compile scripts/*.py
       - name: Doctor (core tools present)
         run: python3 scripts/doctor.py
+      - name: Engine self-test (structural contracts, no network, no render)
+        run: python3 scripts/selftest.py
       - name: Validate sample storyboard
         run: python3 scripts/validate_scenes.py examples/sample-project/storyboard/scenes.json
       - name: Build captions from sample transcript

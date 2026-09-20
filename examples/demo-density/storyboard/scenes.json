@@ -62,6 +62,10 @@
           "action": "reveal · 编排锚点"
         },
         {
+          "atSec": 3.28,
+          "action": "mid · 编排锚点"
+        },
+        {
           "atSec": 3.63,
           "action": "peak · 编排锚点"
         },
@@ -112,6 +116,10 @@
           "action": "reveal · 编排锚点"
         },
         {
+          "atSec": 3.91,
+          "action": "mid · 编排锚点"
+        },
+        {
           "atSec": 4.59,
           "action": "peak · 编排锚点"
         },
@@ -156,6 +164,10 @@
         {
           "atSec": 1.97,
           "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.32,
+          "action": "mid · 编排锚点"
         },
         {
           "atSec": 2.67,
@@ -208,6 +220,10 @@
           "action": "reveal · 编排锚点"
         },
         {
+          "atSec": 3.25,
+          "action": "mid · 编排锚点"
+        },
+        {
           "atSec": 3.7,
           "action": "peak · 编排锚点"
         },
@@ -256,6 +272,10 @@
         {
           "atSec": 2.63,
           "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 3.01,
+          "action": "mid · 编排锚点"
         },
         {
           "atSec": 3.38,
@@ -308,6 +328,10 @@
           "action": "reveal · 编排锚点"
         },
         {
+          "atSec": 4.29,
+          "action": "mid · 编排锚点"
+        },
+        {
           "atSec": 6.51,
           "action": "peak · 编排锚点"
         },
@@ -352,6 +376,10 @@
         {
           "atSec": 2.0,
           "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.35,
+          "action": "mid · 编排锚点"
         },
         {
           "atSec": 2.7,
@@ -402,6 +430,10 @@
         {
           "atSec": 1.73,
           "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.19,
+          "action": "mid · 编排锚点"
         },
         {
           "atSec": 2.64,

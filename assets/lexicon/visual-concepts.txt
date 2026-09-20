@@ -10,60 +10,65 @@
 # 取词规则：同一场要几张素材，就按候选表顺位往下取——第一张取第 1 名，第二张取第 2 名，
 #          所以每条尽量给 2–4 个语义同域但构图上不同的备选。
 #
-# 写词规则：英文短语必须自带语境。别用 model / scale / cloud / chip 这种单字词——
-# 「model scale」实测取回城堡模型照片，「cloud」取回云朵。宁可长一点、限定得死一点。
+# 写词规则（三条，都是实测撞出来的）：
+#   1. 英文短语必须自带语境。别用 model / scale / cloud / chip 这种单字词——
+#      「model scale」实测取回城堡模型照片，「cloud」取回云朵。宁可长一点、限定得死一点。
+#   2. 备选要「构图上不同、语义上同域」——同一场四张图都一个样子等于没变。
+#   3. **第一顺位必须是「能拍出来的东西」**。抽像名词（inference、algorithm、
+#      efficiency、market share）在无密钥素材源上只会命中论文插图和流程图；而取图护栏
+#      会把白底图文判掉，于是这一场直接变成「一张都取不到」。先说要拍什么（server rack
+#      closeup、stopwatch on desk），抽象词放末尾当兜底。
 #
 # 表是自撰的（MIT），按主题分组，可自由增补——加条目不会改变已有行为。
-#
 论文|文献|学术|投稿|论文数量|研究	academic journal stack|papers on a desk|library reading room|printed research report
 论文数量|投稿量|发表量|收录量	papers on a desk|stacks of printed papers|library shelves of journals
-引用|被引|引用量	citation index|bibliography list|reference book pile
-复现|可复现|复现实验|重复实验	reproducibility|reproduce experiment|laboratory experiment bench|scientist running an experiment
+引用|被引|引用量	reference book pile|library shelves of journals|bibliography list|citation index
+复现|可复现|复现实验|重复实验	laboratory experiment bench|scientist running an experiment|microscope and samples|reproducibility
 实验|实验室	laboratory bench|research laboratory|measurement instruments
-数据集|数据|样本|数据集规模	dataset|data analysis on screen|spreadsheet on a monitor
+数据集|数据|样本|数据集规模	data analysis on screen|spreadsheet on a monitor|server room aisle|dataset
 开源|代码|仓库|代码库|共享代码	source code on screen|programmer terminal|open source repository
-审稿|评审|同行评审	peer review|manuscript review desk|academic conference crowd
+审稿|评审|同行评审	academic conference crowd|conference hall speakers|manuscript review desk|peer review
 学位|毕业|大学|高校|论文答辩	university campus students|lecture hall|graduation ceremony
 图书馆|文献库	library bookshelf|reading room|card catalog
-模型|大模型|参数|参数量|参数规模|模型规模	neural network architecture|large language model|training datacenter|GPU cluster
-训练|训练成本|算力|预训练	training|GPU datacenter|supercomputer cluster|server farm night
-推理|推理成本|推理速度|吞吐	inference|server computing|circuit board macro|datacenter cooling
+模型|大模型|参数|参数量|参数规模|模型规模	training datacenter|GPU cluster|server rack closeup|neural network diagram
+训练|训练成本|算力|预训练	GPU datacenter|supercomputer cluster|server farm at night|training session
+推理|推理成本|推理速度|吞吐	server rack closeup|circuit board macro|datacenter cooling pipes|GPU cluster
 算力|芯片|GPU|显卡|半导体	GPU chip|semiconductor wafer|silicon die macro|circuit board macro
 芯片|处理器|处理器架构	semiconductor chip macro|microchip close up|wafer inspection
 服务器|机房|数据中心|云|云计算|云端	data center server racks|server room aisle|cloud computing infrastructure|network switch lights
-算法|神经网络|深度学习|人工智能|AI	algorithm|neural network visualization|robotics laboratory|abstract data visualization
+算法|神经网络|深度学习|人工智能|AI	robotics laboratory|server room aisle|circuit board macro|abstract data visualization
 手机|智能手机|端侧|移动|iPhone|安卓	smartphone in hand|phone screen close up|mobile device on desk
 笔记本|电脑|台式|laptop	laptop computer on desk|workstation setup|screen and keyboard close up
 平板|iPad|平板电脑	tablet device on desk|stylus on tablet|touchscreen close up
 耳机|音箱|可穿戴|手表	wearable device|headphones on desk|smartwatch close up
-屏幕|界面|应用|App|软件	app interface on screen|software dashboard|user interface mockup
-成本|价格|费用|报价|成本下降	cost and price|budget planning spreadsheet|calculator and receipts
-效率|性能|速度|吞吐量|耗时	efficiency|performance measurement|stopwatch and dials
-增长|上涨|膨胀|扩大|翻倍|激增	growth chart|rising graph on paper|stacked coin towers
-下降|收缩|减少|降低|下滑	decline chart|falling graph on paper|downward trend diagram
-竞争|赛场|赛道|对手	competition|race track overhead|runners starting line
-市场|份额|规模|产业	market share|business analytics charts|industry conference
-投资|融资|估值|资本	investment|startup funding pitch|stock market board
+屏幕|界面|应用|App|软件	software dashboard on monitor|app screen in hand|laptop screen close up|user interface mockup
+成本|价格|费用|报价|成本下降	calculator and receipts|price tags in shop|budget planning spreadsheet|cost and price
+效率|性能|速度|吞吐量|耗时	stopwatch on desk|factory robot arm|assembly line robots|performance dials
+增长|上涨|膨胀|扩大|翻倍|激增	stacked coin towers|city skyline under construction|rising bar display|growth chart
+下降|收缩|减少|降低|下滑	empty office desks|closed storefront shutter|empty warehouse shelves|decline chart
+竞争|赛场|赛道|对手	race track overhead|runners starting line|chess board close up|competition
+市场|份额|规模|产业	industry conference hall|trade show booths|business meeting room|market share chart
+投资|融资|估值|资本	stock market board|trading floor screens|startup funding pitch|investment
 团队|协作|会议|会议桌	team collaboration|meeting room whiteboard|people working together
-招聘|人才|岗位|团队规模	hiring|job interview office|office desk with laptop
+招聘|人才|岗位|团队规模	job interview office|recruitment fair hall|office desk with laptop|hiring
 城市|都市|城市群|建筑	city skyline aerial|urban district above|dense housing blocks
-交通|通勤|地铁|高铁|出行	traffic|subway train station|high speed rail
-能源|电力|电网|电|能耗	power grid|energy infrastructure|electricity pylon sunset
-环境|气候|碳|排放|绿色	climate aerial|environment forest aerial|smokestacks and wind turbines
+交通|通勤|地铁|高铁|出行	subway train station|high speed rail|city traffic at night|traffic
+能源|电力|电网|电|能耗	electricity pylon at sunset|power plant cooling towers|energy infrastructure|power grid
+环境|气候|碳|排放|绿色	wind turbines on hills|forest aerial|smokestacks and wind turbines|climate aerial
 医疗|医院|健康|诊断	hospital corridor|medical care equipment|doctor and patient
 教育|课堂|老师|学生|教学	classroom with students|teacher at whiteboard|university lecture hall
 家庭|生活|日常|个人	family daily life|person reading at home|living room window light
-档案|历史|年代|老照片|档案室	archive document|old photograph collection|historical manuscripts
-照片|图|影像|截图	photograph|printed photo prints|photo album pages
-文件|报告|白皮书|手册|报告书	printed report document|business report on desk|paper stacks office
-地图|地理|疆域|区域	vintage map|geography atlas|world map on wall
-图表|曲线|柱状|数据图|可视化	chart on paper|graph plotted on screen|data visualization dashboard
+档案|历史|年代|老照片|档案室	archive shelves boxes|historical manuscripts|old photograph collection|archive document
+照片|图|影像|截图	printed photo prints|vintage photographs on table|photo album pages|photograph
+文件|报告|白皮书|手册|报告书	paper stacks office|business report on desk|printed report document
+地图|地理|疆域|区域	world map on wall|geography atlas|vintage map
+图表|曲线|柱状|数据图|可视化	data visualization dashboard|chart plotted on screen|monitor with graphs at night|chart on paper
 手写|笔记|草稿|手稿	handwriting notebook notes|pen on paper draft|sketchbook pages
 金属|机械|工厂|产线|制造	factory machinery metal|assembly line robots|industrial workshop
 电路|主板|电路板|元件	circuit board macro|electronic components close up|soldering workbench
 纹理|细节|特写|局部	texture close up|macro detail surface|material sample
 纸张|印刷|书籍|书本	paper texture|printed book pages|stack of books close up
-时间|年表|进程|阶段	timeline concept|calendar pages|clock and calendar desk
-未来|趋势|前景|走向	futuristic city concept|horizon sunrise aerial|abstract futuristic light
-问题|难题|挑战|风险	complex problem diagram|question mark concept|difficult maze puzzle
-结论|结果|答案|验证	conclusion document|checkmark on paper|verified stamp close up
+时间|年表|进程|阶段	clock and calendar desk|clock tower face|calendar pages|timeline concept
+未来|趋势|前景|走向	horizon sunrise aerial|night city lights from above|futuristic architecture|abstract light trails
+问题|难题|挑战|风险	maze puzzle on desk|sticky notes brainstorm wall|question mark hold up|complex problem diagram
+结论|结果|答案|验证	verified stamp close up|signed contract close up|checkmark on paper|conclusion document

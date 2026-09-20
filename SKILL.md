@@ -61,7 +61,7 @@ ratio and platform, target duration, whether wording is locked, voice source (ex
 TTS / none), and any brand constraints. Never make the viewer choose among all styles — analyze
 the content, recommend a primary and secondary route, and justify in one sentence.
 
-## One-shot pipeline (`make_video.py`, v2.6)
+## One-shot pipeline (`make_video.py`, v2.7)
 
 For a straight copy-to-film run, the orchestrator chains recommendation → confirmation gate →
 auto storyboard → template assembly → render → finalize → verify:
@@ -114,7 +114,7 @@ python3 scripts/make_video.py --copy copy.txt --project outdir --go \
 - Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
   without either the tool exits 3 with guidance.
 
-## Style sweep (`style_sweep.py`, v2.6)
+## Style sweep (`style_sweep.py`, v2.7)
 
 To see what each of the 15 styles actually looks like on the same copy (not the template HTML —
 the rendered film), sweep one short excerpt across every style:
@@ -198,10 +198,14 @@ visual payoffs on spoken keywords (±0.3s). 6. Hold the resolved state ≥0.8s
 (1–1.5s for dense diagrams). 7. Subtitles go on the topmost layer, applied last in FFmpeg.
 
 When the pipeline assembles a template automatically, step 4–5 become the `@beats` anchor solve:
-the template's own choreography moments (`enter/build/reveal/peak/settle`) are pinned to scene
-time with `build` = first content word − 0.7s and `reveal`/`peak` on the spoken keywords.
-Hand-authored projects should keep the same shape: intro in ≤0.2s, the data move on the word,
-then a still hold.
+the template's own choreography moments (`enter/build/reveal/mid/peak/settle`) are pinned to scene
+time with `build` = first content word − 0.7s, `reveal`/`peak` on the spoken keywords, and `mid`
+solved to the middle of the reveal→peak span. **A scene needs a beat in the middle, not only at the
+start**: entrances are over by the first third, and everything after that is what makes a film feel
+stiff. Put one visible re-layout or emphasis at `mid`/`peak`, then let the ambient layer
+(`data-km-drift` / `data-km-push`, see the motion gate) carry the tail. Hand-authored projects
+should keep the same shape: intro in ≤0.2s, the data move on the word, a state change in the
+middle, then a still hold that is not actually still.
 
 Never hard-code final frame numbers before voice timing; estimates are for pilots only.
 
@@ -224,15 +228,33 @@ Then:
    `assets/media/`, backfills `local`/`attribution`/`license`, and writes
    `assets/media/manifest.json` (the license record you ship). Resume-safe; bundled SFX pack
    matches `audio-sfx` queries locally. `--sheet` renders a contact sheet of downloaded photos.
+   Guards applied to every hit: title-relevance ranking, width ≥ 900 px, no URL twice, a query
+   ladder (bare concept, then the scene's other concept candidates), and **paper-material
+   rejection** — a white, low-saturation first frame (`YAVG ≥ 205 && SATAVG ≤ 30`) is a paper
+   figure / flowchart / screenshot, not a photograph (`--keep-all` disables this).
+   When you write concept queries, the **first alternative must be photographable**:
+   `inference` / `algorithm` / `efficiency` match only paper figures on keyless sources, get
+   rejected by the guard, and leave the slot empty — say what the camera sees instead
+   (`server rack closeup`, `stopwatch on desk`).
 2. **Asset gate**: view the contact sheet (or the files) before rendering; judge match against
    the asset's rich `description`, not just the query. Reject → rewrite the query and re-fetch
    (at most two rounds per slot).
-3. Templates reference `{{assets.<id>}}` placeholders; a missing asset degrades to the
-   template's CSS fallback instead of an empty frame.
-4. `python3 scripts/mix_audio.py --scenes ... --narration ... --out audio/mix.wav` — mixes the
+3. Templates reference `{{assets.<id>}}` placeholders. **A missing asset must not leave a hole**:
+   in `collage-evidence` the engine emits `km-ev--miss-<slot>` and the whole card is removed, and
+   `choose_variant` (below) picks a layout that fits however many photos actually arrived. (A grey
+   placeholder box reads as "broken screen"; removing the card reads as a design choice.) If a
+   scene got *no* material at all, keep the keyword fallback layer instead — an empty frame is
+   worse than an abstract one.
+4. **Layout follows material** (`make_video.py` → `choose_variant`, log in
+   `storyboard/layouts.json`): the candidate pool comes from the number of photos the scene
+   actually got (`VARIANT_BY_COUNT`), then content preference (a big number → a full-width `hero`,
+   contrast in the copy → `pair`), and the previous scene's layout is skipped so consecutive
+   scenes never repeat. Declare variants in the template as `{{VARIANT}}` + `[data-km-variant]`
+   CSS. Eight identical layouts is the single biggest cause of "it feels stiff".
+5. `python3 scripts/mix_audio.py --scenes ... --narration ... --out audio/mix.wav` — mixes the
    narration with per-scene SFX at `startSec + atSec` (SFX sit at -12dB with fades; default to
    **no SFX** and let BGM carry cohesion unless an effect is explicitly authored).
-5. **BGM**: prefer a local `assets/bgm/` track, else fetch CC0/CC-BY music via the Openverse
+6. **BGM**: prefer a local `assets/bgm/` track, else fetch CC0/CC-BY music via the Openverse
    audio API (keyless), trim with fade-in/out, and mix via `finalize.py --bgm` (0.18 under the
    narration). Record attribution in the asset manifest.
 
@@ -260,7 +282,16 @@ burn-in (always last), and encoding. All render-critical motion must be seek-saf
 
 ## Quality gate
 
-Before delivery: manifest validated; `npx hyperframes check --snapshots` (or fallback-render
+Before delivery: manifest validated; **`python3 scripts/verify.py <dir>` passes** — it checks the
+manifest, the master's duration/dimensions/codec, builds a per-scene contact sheet, and runs the
+**motion gate** at 8 fps — each frame is compared to the same frame one second earlier, so a slow
+drift counts as motion while a real hold measures zero: no scene may go more than 1.2 s without the
+picture changing, whole-film mean ≥ 0.4. A failing scene usually means its animation finished too
+early, not that the threshold is wrong; `make_video.py` treats a motion-only failure as a warning
+(`--strict-motion` makes it fatal) because a few templates are still below the floor.
+`python3 scripts/selftest.py` separately asserts the structural contracts (anchor monotonicity,
+variant CSS, query ladders) in a second and needs no render.
+Then `npx hyperframes check --snapshots` (or fallback-render
 snapshots) reviewed — first frame, every scene midpoint, every transition, final frame; no empty
 frame, clipped text, hidden subtitle, duplicate ID, missing media, or unintended reset; every
 scene has one dominant idea and at least one non-text visual subject; audio below clipping with
