@@ -124,7 +124,7 @@ _FUNC_BOUNDARY = _CANNOT_START | _CANNOT_END  # 邻字为功能字 → 软词边
 # 单字修饰语：可与后词组成复合词（小+模型 → 小模型）
 _MODIFIER_CHARS = set("大小新老微总高低温软硬云端单双多少前后内外长短")
 # 数字/时间量词：不参与复合词（成本|三年 → 成本三年 这种语义歪接）
-_TIME_CHARS = set("年月日周天倍成分秒")
+_TIME_CHARS = "年月日周天秒"
 
 
 def _shares_bigram(a: str, b: str) -> bool:
@@ -138,7 +138,8 @@ _GENERIC_KW = {"开始", "结果", "时候", "东西", "什么", "怎么", "变�
                "一个", "一种", "非常", "真正", "已经", "可以", "需要", "进行", "出现", "成为",
                "不是", "没有", "就是", "还是", "这个", "那个", "我们", "他们", "大家", "自己",
                "然后", "因为", "所以", "但是", "如果", "虽然", "同时", "目前", "现在", "过去",
-               "未来", "以及", "或者", "并且", "因此", "于是", "其实", "只是", "全球", "更加"}
+               "未来", "以及", "或者", "并且", "因此", "于是", "其实", "只是", "全球", "更加",
+               "时期", "同等", "方面", "情况", "水平", "并不", "不再", "确实", "可能"}
 _LATIN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#.\-]*")
 _CJK_CHAR = re.compile(r"[\u4e00-\u9fff]")
 LEXICON_PATH = ROOT / "assets" / "lexicon" / "zh-words.txt"
@@ -263,20 +264,42 @@ def keyword_spans(text: str, chosen: list[str], max_k: int = 2,
         counts[w] = counts.get(w, 0) + 1
         if _is_content_word(w, lex):
             raw.append((w, s, e, wscore(w) + 0.7 * (len(w) - 2)))
+        # 相邻词复合，允许中间隔一个「的/之」（论文的数量 → 论文数量）
+        def _join(w2: str, s2: int, e2: int, gap: str) -> None:
+            """相邻（可隔一个「的/之」）两个词合成复合词候选，跨标点不合成。"""
+            if _PUNCT_RE.search(gap):
+                return
+            if len(w) + len(w2) > 5 or not CJK_RE.fullmatch(w + w2):
+                return
+            left_ok = (len(w) >= 2 and _is_content_word(w, lex)) \
+                or (len(w) == 1 and w in _MODIFIER_CHARS and CJK_RE.fullmatch(w))
+            if w + w2 in _GENERIC_KW or any(c in STOPWORDS or c in _NEVER_INTERNAL
+                                            for c in w + w2):
+                return
+            if (w + w2)[-1] in _TIME_CHARS:   # 只看词尾：成本三年要拦，「成本」本身不拦
+                return
+            if not _is_content_word(w2, lex):
+                # 词尾单字后缀（投稿|量、复现|率）算作同一个语义单元
+                if not (len(w2) == 1 and w2 in _SUFFIX_CHARS and _is_content_word(w, lex)):
+                    return
+            if not left_ok:
+                return
+            raw.append((w + w2, s, e2,
+                        wscore(w) + wscore(w2) + 0.7 * (len(w + w2) - 2) + 1.2))
+
+        if idx + 2 < len(toks) and toks[idx + 1][0] in _LINK_CHARS:
+            w2, s2, e2 = toks[idx + 2]
+            if s2 == toks[idx + 1][2]:
+                _join(w2, s2, e2, "")
         if idx + 1 < len(toks):
             w2, s2, e2 = toks[idx + 1]
-            left_ok = _is_content_word(w2, lex) and (
-                len(w) >= 2 and _is_content_word(w, lex)
-                or (len(w) == 1 and w in _MODIFIER_CHARS and CJK_RE.fullmatch(w)))
-            if left_ok and s2 == e and len(w) + len(w2) <= 5:
-                comp = w + w2
-                if (CJK_RE.fullmatch(comp) and comp not in _GENERIC_KW
-                        and not any(c in STOPWORDS or c in _NEVER_INTERNAL for c in comp)
-                        and not any(c in _TIME_CHARS for c in comp)):
-                    raw.append((comp, s, e2,
-                                wscore(w) + wscore(w2) + 0.7 * (len(comp) - 2) + 1.2))
+            _join(w2, s2, e2, text[e:s2])
+    num_spans = banned_numeric_spans(text)
     cands: list[tuple[float, int, str]] = []
     for w, s, e, base in raw:
+        # 紧挨在数字前面的内容词就是这张图的类目名（成本/复现/增长），加权重
+        if any(0 <= bs - e <= 2 and not _PUNCT_RE.search(text[e:bs]) for bs, _ in num_spans):
+            base += 1.0
         if any(s < b_e and e > b_s for b_s, b_e in ban):   # 数字 token 不作关键词
             continue
         if any(w in c or c in w for c in chosen):
@@ -284,7 +307,7 @@ def keyword_spans(text: str, chosen: list[str], max_k: int = 2,
         cands.append((-(base + 0.9 * (counts.get(w, 1) - 1)), s, w))
     for m in _LATIN_RE.finditer(text):
         tok = m.group(0)
-        if len(tok) >= 2 and not any(tok.lower() in c.lower() for c in chosen):
+        if len(tok) >= 3 and not any(tok.lower() in c.lower() for c in chosen):
             cands.append((-4.0, m.start(), tok))
     cands.sort()
     out: list[tuple[str, int, int]] = []
@@ -301,6 +324,26 @@ def keyword_spans(text: str, chosen: list[str], max_k: int = 2,
             break
     out.sort(key=lambda t: t[1])
     return out
+
+
+def _keyword_in_text(kw: str, text: str) -> bool:
+    """关键词是否落在该子句里（复合词可跨修饰助词：论文数量 ⊂ 论文的数量）。"""
+    if kw in text:
+        return True
+    pat = "[的之]?".join(re.escape(ch) for ch in kw)
+    return re.search(pat, text) is not None
+
+
+def banned_numeric_spans(text: str) -> list[tuple[int, int]]:
+    """关键词禁入区间：带量纲的数字 token + 中文数词串（十年/十六分之…）。
+
+    数词串本身不是内容词，切出来的「十六」「三分」只会让关键词变傻。"""
+    spans = [(e["start"], e["end"]) for e in extract_numbers(text)]
+    spans += [m.span() for m in _NUMERAL_RUN.finditer(text)]
+    # 百分之／分之 这类前缀也一并禁掉
+    for m in re.finditer(r"百分之|分之", text):
+        spans.append(m.span())
+    return spans
 
 
 def _unused_merge_left(kw: tuple[str, int, int], toks: list[tuple[str, int, int]],
@@ -392,25 +435,46 @@ def label_before(text: str, pos: int, taken: list[tuple[int, int]]) -> str:
 
 
 def group_clauses(clauses: list[dict]) -> list[list[dict]]:
-    """6–8s 贪心归组：累计 <6s 继续并；尾句 <2s 并入上一场；硬上限 12s。"""
+    """按文案自己的句子结构分场：一句一场；超长句在内部标点处切成 5–7.5s 的段。
+
+    早先是纯按时长贪心（累计 <6s 就并下一句），结果句子被拦腰截断、两个话题挤进同一场：
+    「涨到二十五万八千篇投稿量还在涨」这种半句拼贴。文案的句号才是叙事单位 —— 尊重它。
+    """
+    max_sent, chunk = 8.2, 5.0
+
+    def dur(group: list[dict]) -> float:
+        return group[-1]["endTime"] - group[0]["stamps"][0]
+
+    sentences: list[list[dict]] = []
+    cur: list[dict] = []
+    for c in clauses:
+        cur.append(c)
+        if c["tokens"] and c["tokens"][-1] in "。！？!?":
+            sentences.append(cur)
+            cur = []
+    if cur:
+        sentences.append(cur)
+
     groups: list[list[dict]] = []
-    cur = [clauses[0]]
-    for c in clauses[1:]:
-        cur_dur = cur[-1]["endTime"] - cur[0]["stamps"][0]
-        c_dur = c["endTime"] - c["stamps"][0]
-        if cur_dur < 6.0 and cur_dur + c_dur <= 12.0:
-            cur.append(c)
-        else:
-            groups.append(cur)
-            cur = [c]
-    groups.append(cur)
-    if len(groups) > 1:
-        last = groups[-1]
-        last_dur = last[-1]["endTime"] - last[0]["stamps"][0]
-        prev_dur = groups[-2][-1]["endTime"] - groups[-2][0]["stamps"][0]
-        if last_dur < 2.0 and prev_dur + last_dur <= 12.0:
-            groups[-2].extend(last)
-            groups.pop()
+    for sent in sentences:
+        if dur(sent) <= max_sent:
+            groups.append(sent)
+            continue
+        piece = [sent[0]]
+        for c in sent[1:]:
+            if dur(piece) < chunk:
+                piece.append(c)
+            else:
+                groups.append(piece)
+                piece = [c]
+        if piece:
+            groups.append(piece)
+    # 极短尾场并入上一场（并入后仍在 max 内），避免 1 秒闪场
+    i = len(groups) - 1
+    while i > 0 and dur(groups[i]) < 2.2 and dur(groups[i - 1] + groups[i]) <= max_sent:
+        groups[i - 1].extend(groups[i])
+        groups.pop(i)
+        i -= 1
     return groups
 
 
@@ -486,24 +550,173 @@ def parse_template(style: str) -> dict:
         die(f"template {style}: extracted timeline JS references no tl — "
             f"style not supported by make_video.py auto-assembly "
             f"(smoke-tested styles are listed in the skill report)", 2)
-    return {"fragment": fragment, "helpers": "\n\n".join(helpers), "scene_js": scene_js}
+    return {"fragment": fragment, "helpers": "\n\n".join(helpers), "scene_js": scene_js,
+            "anchors": parse_beat_anchors(text, style)}
+
+
+# ---------------------------------------------------------------------------
+# 节拍锚点：把模板编排挂到旁白真正说出的字上
+#
+# 模板在尾注里声明一行：
+#   // @beats enter=0.1 build=0.6 reveal=1.0 peak=2.4 settle=2.5
+# 值是该模板 timeline 里的位置参数（秒，scene-relative）。make_video.py 把每个锚点解到
+# 场景内的绝对时间：enter=开场、build=主体起势、reveal=数据落地、peak=关键项强调、
+# settle=收势；然后按锚点分段线性重定时，动画就落在旁白念到那个词的时候。
+# 没声明也安全：自动从位置参数分布推出一套锚点（见 auto_anchors）。
+# ---------------------------------------------------------------------------
+
+ANCHOR_NAMES = ("enter", "build", "reveal", "peak", "settle")
+ANCHOR_QUANTILES = {"build": 0.40, "reveal": 0.68, "peak": 0.92}
+
+
+def parse_beat_anchors(js: str, style: str = "") -> dict[str, float]:
+    """读模板里的 `@beats` 声明；没有就返回空 dict（走自动推断）。
+
+    扫描所有出现（模板正文可能顺口提到 @beats，那种句子没有 `name=value` token，
+    自然贡献空集），后出现的声明覆盖前面的。"""
+    out: dict[str, float] = {}
+    for m in re.finditer(r"@beats\s+([^\n]*)", js):
+        for tok in re.split(r"[\s,]+", m.group(1).strip()):
+            if "=" not in tok:
+                continue
+            name, val = tok.split("=", 1)
+            name = name.strip().lower()
+            try:
+                t = float(val)
+            except ValueError:
+                continue
+            if name in ANCHOR_NAMES and t >= 0:
+                out[name] = t
+    if not out:
+        return out
+    missing = [n for n in ("enter", "build", "reveal", "peak") if n not in out]
+    if missing and style:
+        print(f"note: template {style} @beats 未声明 {','.join(missing)}，按事件分布补齐",
+              file=sys.stderr)
+    return out
+
+
+def template_event_times(js: str) -> list[float]:
+    """模板 timeline 的位置参数全集（去重升序）——与重定时用的是同一套数字。"""
+    return sorted({float(m.group(1)) for m in POS_PARAM_RE.finditer(js)})
+
+
+def auto_anchors(times: list[float]) -> dict[str, float]:
+    """没有 @beats 时按播出时间分布推锚点：首个事件=enter，末个=peak/settle。"""
+    if not times:
+        return {}
+    if len(times) == 1:
+        return {"enter": times[0], "peak": times[0]}
+    out = {"enter": times[0]}
+    n = len(times)
+    for name, q in ANCHOR_QUANTILES.items():
+        out[name] = times[min(n - 1, max(0, round(q * (n - 1))))]
+    out["settle"] = times[-1]
+    return out
+
+
+def anchor_schedule(scene: dict, start: float, dur: float) -> dict[str, float]:
+    """锚点→场景内绝对时间。有旁白关键词就挂在词上，没有就均分。"""
+    hold = min(1.5, 0.25 * dur)
+    t_enter = start + 0.12
+    t_end_of_move = start + dur - hold
+    kw = sorted(float(k["atSec"]) + start for k in scene.get("keywords", []))
+    if not kw:
+        span = t_end_of_move - t_enter
+        sched = {"enter": t_enter, "build": t_enter + 0.38 * span,
+                 "reveal": t_enter + 0.62 * span, "peak": t_enter + 0.86 * span,
+                 "settle": t_end_of_move}
+    else:
+        # build 比第一个内容词早 0.7s 起势：柱子是“边说边长”的，不是说完才动
+        build = min(max(kw[0] - 0.70, t_enter + 0.55), t_end_of_move - 1.2)
+        reveal = min(kw[0] + 0.35, t_end_of_move - 0.9)
+        peak = kw[-1] + 0.30 if len(kw) >= 2 else reveal + 0.70
+        peak = min(max(peak, reveal + 0.35), t_end_of_move - 0.15)
+        sched = {"enter": t_enter, "build": build, "reveal": reveal, "peak": peak,
+                 "settle": min(t_end_of_move, peak + 1.40)}
+    # 单调 + 最小间隔，避免锚点重叠把编排压成一帧
+    out: dict[str, float] = {}
+    prev = start + 0.06
+    for name in ANCHOR_NAMES:
+        if name not in sched:
+            continue
+        t = max(sched[name], prev + (0.0 if name == "enter" else 0.30))
+        out[name] = round(min(t, start + dur - 0.12), 2)
+        prev = out[name]
+    return out
 
 
 def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None) -> str:
-    """{{SLOT}} 填充：HEADLINE 取首关键词/旁白前 10 字；POINT 取后续子句片段；
-    图表槽位（TITLE/UNIT/BARS）由 extra 提供；其余置空。"""
+    """把场景内容填进模板声明的全部槽位。
+
+    模板的槽位词表见各模板头部注释：TITLE / HEADLINE / LINE_A / LINE_B / POINT_1..2 /
+    QUOTE / KEY_WORD / STEP_1..3 / EVENT_1..3 + YEAR_1..3 / NODE_A..C / PIN_1..3 /
+    LAYER_1..3_LABEL / CAPTION_1..2 / BRANCH_TAKEN / APP_TITLE / STEP_TEXT / IMG_LABEL /
+    PHOTO_CAP。以前只填 HEADLINE/POINT_*，其余一律留空 —— 渲染出来就是一堆空白占位框
+    （风格扫描一眼就能看见）。现在按「有序候选」逐槽分配：关键词 → 数字 → 短子句，
+    同一段内容不重复占两个槽。"""
     kws = [k["text"] for k in scene.get("keywords", [])]
     narr = scene.get("narration", "")
-    parts = scene.get("_clauseTexts") or [narr]
-    headline = kws[0] if kws else narr[:10]
-    point1 = parts[1][:12] if len(parts) > 1 else (parts[0][:12] if parts and parts[0] != headline else "")
-    point2 = parts[2][:12] if len(parts) > 2 else ""
-    slots = {
+    parts = [p for p in (scene.get("_clauseTexts") or [narr]) if p]
+    joined = join_clauses(parts)
+    nums = [n["display"] for n in extract_numbers(joined)]
+    years = _YEAR_RE.findall(joined)
+
+    def uniq(items: list[str], limit: int = 14) -> list[str]:
+        out: list[str] = []
+        for it in items:
+            it = (it or "").strip("，。,.、；;：: ")
+            if it and len(it) <= limit and it not in out:
+                out.append(it)
+        return out
+
+    headline = (extra or {}).get("TITLE") or (kws[0] if kws else (parts[0][:12] if parts else narr[:12]))
+    frags = [p[:12] for p in parts] if not kws else []
+    pool = uniq([*kws, *nums, *frags])
+    if not pool:
+        pool = uniq([narr[:12]])
+
+    def take(i: int) -> str:
+        return pool[i] if i < len(pool) else ""
+
+    quote = max((p for p in parts if 2 <= len(p) <= 16), key=len, default=headline)
+    slots: dict[str, str] = {
+        "TITLE": headline,
         "HEADLINE": headline,
-        "POINT_1": point1,
-        "POINT_2": point2,
+        "QUOTE": quote,
+        "KEY_WORD": kws[1] if len(kws) > 1 else (take(0) or headline),
+        "LINE_1": take(0) or headline,
+        "LINE_2": take(1) or quote,
+        "LINE_A": take(0) or headline,
+        "LINE_B": take(1) or quote,
+        "POINT_1": take(0) or headline,
+        "POINT_2": take(1) or quote,
+        "CAPTION_1": take(0) or headline,
+        "CAPTION_2": take(1) or quote,
+        "CAPTION": take(0) or headline,
+        "STEP_1": take(0) or headline,
+        "STEP_2": take(1) or quote,
+        "STEP_3": take(2) or headline,
+        "EVENT_1": take(0) or headline,
+        "EVENT_2": take(1) or quote,
+        "EVENT_3": take(2) or headline,
+        "NODE_A": take(0) or headline,
+        "NODE_B": take(1) or quote,
+        "NODE_C": take(2) or headline,
+        "PIN_1": take(0) or headline,
+        "PIN_2": take(1) or quote,
+        "PIN_3": take(2) or headline,
+        "LAYER_1_LABEL": take(0) or headline,
+        "LAYER_2_LABEL": take(1) or quote,
+        "LAYER_3_LABEL": take(2) or headline,
+        "BRANCH_TAKEN": take(1) or "已采用",
+        "APP_TITLE": headline,
+        "STEP_TEXT": take(0) or quote,
+        "IMG_LABEL": "素材占位",
         "PHOTO_CAP": f"FIG. {index + 1:02d}",
     }
+    for j in range(3):     # 时间轴：年份能给就给，给不出就退到候选词
+        slots[f"YEAR_{j + 1}"] = years[j] if j < len(years) else f"0{j + 1}"
     if extra:
         slots.update(extra)
     return re.sub(r"\{\{(\w+)\}\}", lambda m: slots.get(m.group(1), ""), fragment)
@@ -622,10 +835,11 @@ def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
         if len(nums) >= 2:
             chart["values"] = nums[:3]
             chart["key"] = len(chart["values"]) - 1  # 语义重心通常落在末值
+        elif len(nums) == 1:
+            chart["values"] = nums                 # 单个数：巨数卡，不是「没有数据」
+            chart["single"] = nums[0]["display"]
         else:
             chart["fallback"] = True
-            if len(nums) == 1:
-                chart["single"] = nums[0]["display"]
         if len(years) >= 2:
             chart["years"] = years
     if not chart["labels"]:
@@ -642,15 +856,93 @@ def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
                 else:
                     chart["labels"].append("")
         if not chart["labels"]:
-            chart["labels"] = kws or ["起点", "变化", "关键"]
+            chart["labels"] = kws          # 没数字就没有类目轴：不造「起点/变化/关键」这种假标签
     kinds = {v.get("kind") for v in chart["values"]}
-    if chart["fallback"]:
-        chart["mode"] = "fallback"
+    labels = chart["labels"]
+    # mode 判定：宁可换版式，不捏造同一坐标轴
+    if data_spec and index < len(data_spec) and data_spec[index] \
+            and data_spec[index].get("mode"):
+        chart["mode"] = data_spec[index]["mode"]
+    elif not chart["values"]:
+        chart["mode"] = "statement"        # 无数字：大字陈述，绝不画假柱
+    elif len(chart["values"]) == 1 and not chart.get("single_is_bar"):
+        chart["mode"] = "bignum"           # 单个数：巨数卡，不做无意义的单柱图
     elif len(chart["values"]) >= 2 and len(kinds) > 1:
-        chart["mode"] = "cards"        # 量纲不同：不做同一坐标轴比较，改指标卡
+        chart["mode"] = "cards"            # 量纲不同：不做同一坐标轴比较，改指标卡
+    elif (len(chart["values"]) >= 3 and labels
+          and all(_YEAR_RE_LABEL.fullmatch(str(l)) for l in labels[:len(chart["values"])])):
+        chart["mode"] = "trend"            # ≥3 个年份 → 趋势线，比柱子更像时间
     else:
         chart["mode"] = "bars"
+
+    # 副行（口径/单位）与来源行
+    note_bits: list[str] = []
+    if chart["mode"] in ("bars", "trend"):
+        if chart.get("unit"):
+            note_bits.append(f"单位：{chart['unit']}")
+        elif not data_spec:
+            note_bits.append("单位：原文口径")
+    elif chart["mode"] == "bignum" and chart.get("unit"):
+        note_bits.append(f"单位：{chart['unit']}")
+    yrs = chart.get("years") or []
+    if chart["mode"] == "trend" and len(yrs) >= 2:
+        note_bits.append(f"{yrs[0]}–{yrs[-1]}")
+    elif chart["mode"] == "cards":
+        note_bits.append("不同量纲，并列参照")
+    chart["note"] = " · ".join(note_bits)
+    if chart["source"] == "user-data":
+        src_txt = (str(data_spec[index].get("source"))
+                   if (data_spec and index < len(data_spec) and data_spec[index].get("source"))
+                   else "")
+        chart["source_label"] = f"数据来源：{src_txt}" if src_txt else ""   # 没来源就不写署名
+    elif chart["mode"] == "statement":
+        chart["source_label"] = ""
+    else:
+        chart["source_label"] = "数据来源：文案原句提取"
+    # 大字陈述的换行：按逗号拆行，每行≤10字，最多两行
+    chart["statement_lines"] = _statement_lines(scene, chart["title"]) \
+        if chart["mode"] == "statement" else []
+    if chart["mode"] == "statement" and len(chart["labels"]) == 1 \
+            and chart["labels"] == [chart["title"]]:
+        chart["labels"] = kws[1:3] or []
+    chart["values"] = [v for v in chart["values"] if v.get("display")]
     return chart
+
+
+_YEAR_RE_LABEL = re.compile(r"(?:19|20)\d{2}(?:年)?")
+_LINK_CHARS = "的之"
+_SUFFIX_CHARS = "量率数值度"
+_PUNCT_RE = re.compile(r"[，。、；：！？,.;:!?\s]")
+_NUMERAL_RUN = re.compile(
+    r"[零〇一二两三四五六七八九十百千万亿]{2,}"
+    r"|[零〇一二两三四五六七八九十百千万亿][年月日周个分秒倍成期]")
+_LEAD_CONNECTIVE = re.compile(
+    r"(?:但|可|而|而且|可是|但是|但可|然而|所以|因此|于是|不过|同时|同时期|另外)"
+    r"(?:是|从|在|到|那|这|此后|以后|之后|以来|如今|现在|后来|一?直)?(?:那?以后|之后|以来)?")
+
+
+def _statement_lines(scene: dict, title: str) -> list[str]:
+    """大字陈述取词：一个子句一行（「数量在膨胀／密度在收缩」），最多三行。
+
+    子句文本里没有标点（clause_text 已经把标点剥掉了），所以必须按子句分行，
+    不能再按标点切 —— 否则整句会被当成一行，第二句就丢了。"""
+    texts = [t.strip("，。,.、；;：: ") for t in
+             (scene.get("_clauseTexts") or [scene.get("narration", "")])]
+    pieces = [t for t in texts if len(t) >= 2]
+    if len(pieces) >= 2:   # 大字陈述不背连接词：「可从那以后」不是要说的那句话
+        pieces = [t for t in pieces if not _LEAD_CONNECTIVE.fullmatch(t)] or pieces
+    lines: list[str] = []
+    for piece in pieces:
+        if len(piece) <= 11:
+            lines.append(piece)
+        else:                       # 长句从中间断开，避免一行塞不下
+            cut = len(piece) // 2
+            lines.extend([piece[:cut], piece[cut:]])
+        if len(lines) >= 3:
+            break
+    if not lines:
+        lines = [(title or "")[:11]]
+    return lines[:3]
 
 
 def _slot_geometry(n: int) -> list[tuple[float, float]]:
@@ -662,88 +954,220 @@ def _slot_geometry(n: int) -> list[tuple[float, float]]:
 
 
 def _is_negative(label: str) -> bool:
+    """负向指标的标签（不可复现/没有…）：强调时不用「绿色＝好」的暗示色。"""
     return bool(label) and label[0] in "不没无否未别难"
 
 
-def _card_html(display: str, label: str, is_key: bool) -> str:
-    val_c = "var(--fg,#11110F)" if (is_key and _is_negative(label)) else (
-        "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)")
-    key_cls = " km-viz__bar--key" if is_key else ""
-    return (
-        '    <div class="km-viz__card" style="flex:1;background:rgba(127,127,127,.10);'
-        'border-radius:20px;padding:40px 24px 32px;text-align:center;">\n'
-        f'      <div class="km-viz__bar{key_cls}" style="height:8px;width:56%;margin:0 auto 28px;'
-        f'background:{val_c};transform-origin:bottom center;"></div>\n'
-        f'      <div class="km-viz__value" style="font:800 88px system-ui;line-height:1.05;color:{val_c};">'
-        f'{display}</div>\n'
-        f'      <div class="km-viz__label" style="margin-top:24px;font:700 32px system-ui;'
-        f'color:var(--fg,#11110F);opacity:.78;">{label}</div>\n'
-        '    </div>')
+def _fmt_num(v: float) -> str:
+    """数值格式化：整数不带小数点，小数留一位。"""
+    return f"{v:.0f}" if abs(v - round(v)) < 1e-9 else f"{v:.1f}"
 
 
-def render_bars(chart: dict, index: int) -> str:
-    """生成柱体/数值/类目标堆 HTML（类名与模板 timeline fragment 的选择器对齐）。
-    量纲不同的值（倍数 vs 百分比）不做同一坐标轴比较，改用指标卡。"""
-    values = chart["values"]
-    kinds = {v.get("kind") for v in values}
-    if len(values) >= 2 and len(kinds) > 1:
-        labels = list(chart["labels"]) + [""] * len(values)
-        key = chart.get("key")
-        cards = [_card_html(v["display"], labels[j], (key if key is not None else len(values) - 1) == j)
-                 for j, v in enumerate(values)]
-        return ('  <div class="km-viz__cards" style="position:absolute;left:8%;top:26%;width:84%;'
-                'display:flex;gap:4%;align-items:stretch;">\n' + "\n".join(cards) + "\n  </div>")
+def _plot_frame(axis_max: str = "", grid: bool = True) -> list[str]:
+    """绘图区底衬：极淡网格 + 基线 + 轴顶量值（真实图表语法，不是装饰）。"""
     parts: list[str] = []
-    vals = values
-    if vals:
-        n = len(vals)
-        vmax = max(v["value"] for v in vals) or 1.0
-        key = chart.get("key")
-        labels_all = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
-        for j, (ent, (left, width)) in enumerate(zip(vals, _slot_geometry(n))):
-            # 零基线线性比例（柱高必须与数值成正比，否则图表就在说谄）
-            h = min(82.0, max(2.5, 82.0 * ent["value"] / vmax))
-            is_key = (key if key is not None else n - 1) == j
-            bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
-            bar_bg = ("var(--fg,#11110F)" if _is_negative(labels_all[j])
-                      else "var(--accent,#F36B3D)") if is_key else "var(--fg,#11110F)"
-            val_c = "var(--fg,#11110F)" if is_key and _is_negative(labels_all[j]) else (
-                "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)")
-            parts.append(
-                f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
-                f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;justify-content:center;">\n'
-                f'      <div class="{bar_cls}" data-value="{ent["display"]}" '
-                f'style="width:70%;height:{h:.1f}%;background:{bar_bg};transform-origin:bottom;"></div>\n'
-                f'    </div>\n'
-                f'    <div class="km-viz__value" style="position:absolute;left:{left + width / 2:.1f}%;'
-                f'bottom:{h + 4:.1f}%;transform:translateX(-50%);font:800 30px system-ui;color:{val_c};">'
-                f'{ent["display"]}</div>')
-        labels = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
-        for j, ((left, width), lab) in enumerate(zip(_slot_geometry(n), labels)):
-            parts.append(
-                f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;top:calc(100% + 16px);'
-                f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
-                f'opacity:.78;">{lab}</div>')
-    else:  # 占位：柱高随场景序变化，不三场同图；类目用关键词
-        hs = _FALLBACK_HEIGHTS[index % len(_FALLBACK_HEIGHTS)]
-        kws = list(chart["labels"])[:3] + [""] * 3
-        for j, (left, width) in enumerate(_slot_geometry(3)):
-            h = hs[j]
-            is_key = j == 2
-            bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
-            bar_bg = "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)"
-            parts.append(
-                f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
-                f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;justify-content:center;">\n'
-                f'      <div class="{bar_cls}" style="width:70%;height:{h}%;background:{bar_bg};'
-                f'transform-origin:bottom;"></div>\n'
-                f'    </div>')
-            if kws[j]:
-                parts.append(
-                    f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;top:calc(100% + 16px);'
-                    f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
-                    f'opacity:.78;">{kws[j]}</div>')
+    if grid:
+        lines = "".join(f'<line x1="0" y1="{q}%" x2="100%" y2="{q}%"/>'
+                        for q in (25, 50, 75))
+        parts.append(
+            '    <svg class="km-viz__grid" style="position:absolute;inset:0;overflow:visible;'
+            'opacity:.16;stroke:var(--fg,#11110F);" width="100%" height="100%" '
+            'preserveAspectRatio="none" stroke-width="1" vector-effect="non-scaling-stroke">'
+            f'{lines}</svg>'
+            + (f'\n    <div style="position:absolute;left:0;top:-46px;font:700 26px '
+               f'ui-monospace,SFMono-Regular,monospace;color:var(--muted,#8C887F);">{axis_max}</div>'
+               if axis_max else ''))
+    parts.append('    <div class="km-viz__axis" style="position:absolute;left:0;bottom:0;width:100%;'
+                 'height:3px;background:var(--fg,#11110F);transform-origin:left center;"></div>')
+    return parts
+
+
+def _plot_bars(chart: dict, unit: str) -> str:
+    """同一量纲的数 → 零基线柱状图（柱高与数值严格成正比）。"""
+    values, n = chart["values"], len(chart["values"])
+    vmax = max(v["value"] for v in values) or 1.0
+    key = chart.get("key")
+    key = n - 1 if key is None else key
+    dmax = max(values, key=lambda v: v["value"])["display"]
+    labels = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
+    parts = _plot_frame(f"{dmax}{unit}")
+    for j, (ent, (left, width)) in enumerate(zip(values, _slot_geometry(n))):
+        h = min(82.0, max(2.5, 82.0 * ent["value"] / vmax))   # 零基线线性比例
+        is_key = key == j
+        neg = _is_negative(labels[j])
+        bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
+        bar_bg = ("var(--fg,#11110F)" if (is_key and neg)
+                  else "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)")
+        val_c = ("var(--fg,#11110F)" if (is_key and neg)
+                 else "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)")
+        parts.append(
+            f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
+            f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;'
+            f'justify-content:center;">\n'
+            f'      <div class="{bar_cls}" data-value="{ent["display"]}" '
+            f'style="width:74%;height:{h:.1f}%;background:{bar_bg};border-radius:6px 6px 0 0;'
+            f'transform-origin:bottom center;"></div>\n'
+            f'    </div>\n'
+            f'    <div class="km-viz__value" style="position:absolute;left:{left + width / 2:.1f}%;'
+            f'bottom:{h + 4.5:.1f}%;transform:translateX(-50%);font:800 36px system-ui;'
+            f'letter-spacing:-.01em;color:{val_c};">{ent["display"]}</div>')
+    for j, ((left, width), lab) in enumerate(zip(_slot_geometry(n), labels)):
+        parts.append(
+            f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;'
+            f'top:calc(100% + 18px);width:{width:.1f}%;text-align:center;font:700 28px system-ui;'
+            f'color:var(--fg,#11110F);opacity:.82;">{lab}</div>')
     return "\n".join(parts)
+
+
+def _plot_cards(chart: dict) -> str:
+    """量纲不同的数（倍数 vs 百分比 vs 规模）→ 指标卡：不做同一坐标轴比较。"""
+    values = chart["values"]
+    labels = list(chart["labels"]) + [""] * len(values)
+    key = chart.get("key")
+    key = len(values) - 1 if key is None else key
+    cards: list[str] = []
+    for j, ent in enumerate(values):
+        is_key = key == j
+        neg = _is_negative(labels[j])
+        rule_c = ("var(--fg,#11110F)" if (is_key and neg)
+                  else "var(--accent,#F36B3D)" if is_key else "var(--muted,#8C887F)")
+        num_c = ("var(--accent,#F36B3D)" if is_key and not neg else "var(--fg,#11110F)")
+        num = ent["display"]
+        sub = ""
+        if num.endswith("倍"):
+            num, sub = num[:-1], "倍"
+        elif num.endswith(("%", "％")):
+            num, sub = num[:-1], "%"
+        cards.append(
+            '    <div class="km-viz__card" style="flex:1;position:relative;background:rgba(127,127,127,.10);'
+            'border-radius:24px;padding:56px 22px 44px;text-align:center;">\n'
+            f'      <div class="km-viz__rule" '
+            f'style="height:10px;width:58%;margin:0 auto 40px;border-radius:5px;background:{rule_c};'
+            f'transform-origin:left center;"></div>\n'
+            f'      <div class="km-viz__value" style="font:900 96px/1 system-ui;'
+            f'letter-spacing:-.02em;color:{num_c};">{num}'
+            + (f'<span style="font:800 40px system-ui;margin-left:6px;">{sub}</span>' if sub else "")
+            + '</div>\n'
+            f'      <div class="km-viz__label" style="margin-top:30px;font:700 32px system-ui;'
+            f'color:var(--fg,#11110F);opacity:.8;">{labels[j]}</div>\n'
+            '    </div>')
+    return ('  <div style="position:absolute;left:0;top:112px;width:100%;display:flex;gap:4%;'
+            'align-items:stretch;">\n' + "\n".join(cards) + "\n  </div>")
+
+
+def _plot_trend(chart: dict, unit: str) -> str:
+    """时间序列（≥3 个年份口径）→ 折线生长 + 节点 + 数值。"""
+    values, n = chart["values"], len(chart["values"])
+    vmax = max(v["value"] for v in values) or 1.0
+    labels = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
+    xs = [10.0 + 80.0 * j / (n - 1) for j in range(n)] if n > 1 else [50.0]
+    ys = [100.0 - 82.0 * v["value"] / vmax for v in values]
+    d = "M " + " L ".join(f"{x:.2f},{y:.2f}" for x, y in zip(xs, ys))
+    parts = _plot_frame(f"{max(values, key=lambda v: v['value'])['display']}{unit}")
+    parts.append(
+        '    <svg class="km-viz__grid" style="position:absolute;inset:0;overflow:visible;" '
+        'width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">\n'
+        f'      <path class="km-viz__line" d="{d}" pathLength="100" fill="none" '
+        f'stroke="var(--accent,#F36B3D)" stroke-width="5" stroke-linecap="round" '
+        f'stroke-linejoin="round" vector-effect="non-scaling-stroke" '
+        f'stroke-dasharray="100" stroke-dashoffset="100"/>\n'
+        '    </svg>')
+    for j, (x, y, ent, lab) in enumerate(zip(xs, ys, values, labels)):
+        is_key = j == n - 1
+        parts.append(
+            f'    <div class="km-viz__dot" style="position:absolute;left:{x:.2f}%;top:{y:.2f}%;'
+            f'width:{26 if is_key else 18}px;height:{26 if is_key else 18}px;border-radius:50%;'
+            f'background:{"var(--accent,#F36B3D)" if is_key else "var(--bg,#FFFFFF)"};'
+            f'border:5px solid var(--accent,#F36B3D);transform:translate(-50%,-50%);"></div>\n'
+            f'    <div class="km-viz__value" style="position:absolute;left:{x:.2f}%;'
+            f'top:calc({y:.2f}% - 62px);transform:translateX(-50%);white-space:nowrap;'
+            f'font:800 34px system-ui;color:var(--fg,#11110F);">{ent["display"]}</div>\n'
+            f'    <div class="km-viz__label" style="position:absolute;left:{x - 12:.2f}%;'
+            f'top:calc(100% + 18px);width:24%;text-align:center;font:700 28px system-ui;'
+            f'color:var(--fg,#11110F);opacity:.82;">{lab}</div>')
+    return "\n".join(parts)
+
+
+def _plot_statement(chart: dict) -> str:
+    """没有可上屏的数字 → 大字陈述 + 关键词标签：宁可少画，绝不捏造。"""
+    lines = chart.get("statement_lines") or [chart.get("title", "")]
+    tags = [t for t in chart.get("labels", []) if t]
+    big = "".join(
+        f'<div style="margin-bottom:12px;">{ln}</div>' for ln in lines)
+    tag_html = ""
+    if tags:
+        chips = "".join(
+            f'    <div class="km-viz__tag" style="display:inline-block;margin:0 16px 16px 0;'
+            f'padding:18px 32px;border-radius:999px;border:3px solid var(--accent,#F36B3D);'
+            f'font:700 32px system-ui;color:var(--accent,#F36B3D);">{t}</div>\n' for t in tags)
+        tag_html = (f'  <div style="position:absolute;left:0;top:{90 + 128 * len(lines) + 46}px;'
+                    'width:100%;">\n' + chips + '  </div>')
+    return (f'  <div class="km-viz__rule" style="position:absolute;left:0;top:0;width:180px;'
+            f'height:10px;border-radius:5px;background:var(--accent,#F36B3D);'
+            f'transform-origin:left center;"></div>\n'
+            f'  <div class="km-viz__bigtype" style="position:absolute;left:0;top:90px;width:100%;'
+            f'font:900 96px/1.3 system-ui,-apple-system,\'PingFang SC\',sans-serif;'
+            f'letter-spacing:-.02em;color:var(--fg,#11110F);">{big}</div>\n' + tag_html)
+
+
+_BIGNUM_UNITS = ("万亿", "千亿", "百亿", "十亿", "亿", "万", "千", "倍", "%", "％")
+
+
+def _split_display(disp: str) -> tuple[str, str]:
+    """把「1750亿」拆成数字 + 量级单位，让量级用小一号字——300px 的字号放不下五个字。"""
+    for u in _BIGNUM_UNITS:
+        if disp.endswith(u) and len(disp) > len(u):
+            return disp[: -len(u)], u
+    return disp, ""
+
+
+def _bignum_size(digits: str) -> int:
+    """按数字长度自动收缩，避免溢出 936px 画宽。"""
+    n = len(digits)
+    if n <= 2:
+        return 300
+    if n == 3:
+        return 250
+    if n == 4:
+        return 205
+    if n == 5:
+        return 172
+    return 140
+
+
+def _plot_bignum(chart: dict) -> str:
+    """单个数字 → 巨数卡：不做比较，就把这一个数说清楚（附带口径标签）。"""
+    ent = chart["values"][0]
+    label = (chart.get("labels") or [""])[0]
+    disp, unit = _split_display(ent["display"])
+    size = _bignum_size(disp)
+    rule_c = "var(--fg,#11110F)" if _is_negative(label) else "var(--accent,#F36B3D)"
+    return (
+        '  <div class="km-viz__rule" style="position:absolute;left:0;top:40px;width:180px;height:10px;'
+        f'border-radius:5px;background:{rule_c};transform-origin:left center;"></div>\n'
+        f'  <div class="km-viz__value" style="position:absolute;left:0;top:110px;width:100%;'
+        f'font:900 {size}px/1 system-ui,-apple-system,sans-serif;letter-spacing:-.04em;'
+        f'color:var(--accent,#F36B3D);white-space:nowrap;">{disp}'
+        + (f'<span style="font:900 {max(64, size // 2)}px system-ui;margin-left:14px;">{unit}</span>'
+           if unit else "")
+        + '</div>\n'
+        f'  <div class="km-viz__label" style="position:absolute;left:0;top:470px;font:700 40px system-ui;'
+        f'color:var(--fg,#11110F);opacity:.85;">{label}</div>')
+
+
+def render_plot(chart: dict, index: int) -> str:
+    """按 mode 生成绘图区 HTML（类名与模板 timeline 选择器对齐）。"""
+    mode = chart.get("mode", "bars")
+    unit = chart.get("unit", "") or ""
+    if mode == "cards":
+        return _plot_cards(chart)
+    if mode == "trend":
+        return _plot_trend(chart, unit)
+    if mode == "statement":
+        return _plot_statement(chart)
+    if mode == "bignum":
+        return _plot_bignum(chart)
+    return _plot_bars(chart, unit)
 
 
 def namespace_ids(fragment: str, js: str, prefix: str) -> tuple[str, str]:
@@ -759,27 +1183,45 @@ def namespace_ids(fragment: str, js: str, prefix: str) -> tuple[str, str]:
 POS_PARAM_RE = re.compile(r",\s*(\d+(?:\.\d+)?)\s*\)")
 
 
-def remap_times(js: str, start: float, end: float) -> str:
-    """把模板的 scene-relative 位置参数线性映射到 [start+0.1, end-hold]（时长参数不动）。"""
-    hold = min(1.5, 0.25 * (end - start))
-    a, b = start + 0.1, end - hold
-    if b - a < 1.0:  # 极短场景兜底：留出进场与收尾
-        a, b = start + 0.05, end - 0.05
+def retime_js(js: str, scene: dict, start: float, end: float,
+              declared: dict[str, float]) -> tuple[str, dict[str, float]]:
+    """按节拍锚点重定时：模板位置参数经锚点分段线性映射到场景内绝对时间。
+
+    旧版把整套编排均匀拉满整个场景 —— 3.5s 的动作铺到 10s 上就全程慢动作，说完话
+    画面还在动。现在锚点挂在旁白念出的词上：起势、落地、强调各就各位，其余时间留给
+    静止阅读。返回 (重定时后的 JS, 锚点时间表)。"""
     matches = list(POS_PARAM_RE.finditer(js))
     times = sorted({float(m.group(1)) for m in matches})
     if not times:
-        return js
-    t0, t1 = times[0], times[-1]
+        return js, {}
+    anchors = {**auto_anchors(times), **declared}
+    sched = anchor_schedule(scene, start, end - start)
+    pairs = sorted((anchors[n], sched[n]) for n in ANCHOR_NAMES
+                   if n in anchors and n in sched)
+    if len(pairs) < 2:
+        a, b = start + 0.1, end - min(1.5, 0.25 * (end - start))
+        a, b = (a, b) if b - a >= 1.0 else (start + 0.05, end - 0.05)
+        t0, t1 = times[0], times[-1]
+        pairs = [(t0, a), (t1, b if t1 > t0 else a)]
+
+    lo, hi = start + 0.06, end - 0.12
 
     def mapt(t: float) -> float:
-        if t1 <= t0:
-            return a
-        return a + (t - t0) * (b - a) / (t1 - t0)
+        if t <= pairs[0][0]:
+            return min(max(pairs[0][1], lo), hi)
+        if t >= pairs[-1][0]:
+            return min(max(pairs[-1][1], lo), hi)
+        for (ta, sa), (tb, sb) in zip(pairs, pairs[1:]):
+            if ta <= t <= tb:
+                if tb <= ta:
+                    return min(max(sa, lo), hi)
+                return min(max(sa + (t - ta) * (sb - sa) / (tb - ta), lo), hi)
+        return hi
 
     out = js
     for m in reversed(matches):
         out = out[:m.start(1)] + f"{mapt(float(m.group(1))):.2f}" + out[m.end(1):]
-    return out
+    return out, {n: round(v, 2) for n, v in sched.items()}
 
 
 def resolve_asset_srcs(fragment: str, comp_dir: Path, project: Path) -> str:
@@ -819,8 +1261,9 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
         shutil.copytree(vendor_src, vendor_dst)
 
     sections = [
-        f'  <!-- ============ furniture · 0–{dur}s · track 0 ============ -->',
-        f'  <section class="clip" id="furniture-base" data-start="0" data-duration="{dur}" data-track-index="0">',
+        f'  <!-- ============ furniture · 0–{dur}s · track 3 (above scenes) ============ -->',
+        f'  <section class="clip" id="furniture-base" data-start="0" data-duration="{dur}" '
+        'data-track-index="3" style="background:transparent;pointer-events:none;">',
         '    <div class="fu-meta"><span>KNOWLEDGE / MOTION</span>'
         f'<span>{style.upper()} · {dur}s</span></div>',
         '    <div class="fu-rule" id="fu-rule"></div>',
@@ -828,23 +1271,37 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
     ]
     js_blocks: list[str] = []
     charts: list[dict] = []
+    beat_log: dict[str, dict] = {}
     data_spec = manifest.pop("_dataSpec", None)
     for i, sc in enumerate(scenes, 1):
         sid = sc["id"]
         start, sdur = round(sc["startSec"], 2), round(sc["durationSec"], 2)
         extra: dict = {}
-        if "{{BARS}}" in tpl["fragment"]:
+        if "{{PLOT}}" in tpl["fragment"]:
             chart = chart_for_scene(sc, i - 1, data_spec)
             charts.append({"scene": sid, "mode": chart.get("mode", "bars"),
                            **{k: chart[k] for k in
-                              ("source", "title", "unit", "labels", "key", "fallback")},
+                              ("source", "title", "unit", "labels", "key", "fallback",
+                               "note", "source_label")},
                            "values": [v.get("display", "") for v in chart["values"]]})
-            extra = {"TITLE": chart["title"], "UNIT": chart["unit"],
-                     "BARS": render_bars(chart, i - 1)}
+            extra = {"ACCENT": pal["accent"],
+                     "TITLE": "" if chart.get("mode") == "statement" else chart["title"],
+                     "NOTE": chart.get("note", ""),
+                     "SOURCE": chart.get("source_label", ""),
+                     "PLOT": render_plot(chart, i - 1)}
+        extra.setdefault("ACCENT", pal["accent"])   # 模板把 {{ACCENT}} 当颜色用
         frag = fill_slots(tpl["fragment"], sc, i - 1, extra)
         frag = resolve_asset_srcs(frag, comp_dir, project)
         frag, sc_js = namespace_ids(frag, tpl["scene_js"], sid)
-        sc_js = remap_times(sc_js, start, start + sdur)
+        sc_js, sched = retime_js(sc_js, sc, start, start + sdur, tpl.get("anchors", {}))
+        if sched:
+            beat_log[sid] = {k: round(v - start, 2) for k, v in sched.items()}
+            sc["beats"] = ([{"atSec": sched["enter"] - start, "action": "enter · 画面入场"}]
+                           + ([{"atSec": sched["build"] - start,
+                               "action": "build · 主体起势（首关键词前 0.7s）"}]
+                              if "build" in sched else [])
+                           + [{"atSec": round(sched[n] - start, 2), "action": f"{n} · 编排锚点"}
+                              for n in ("reveal", "peak", "settle") if n in sched])
         sections += [
             f'  <!-- ============ {sid} · {start}–{round(start + sdur, 2)}s ============ -->',
             f'  <section class="clip" id="clip-{sid}" data-start="{start}" '
@@ -897,6 +1354,7 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
     out = comp_dir / "index.html"
     out.write_text(html, encoding="utf-8")
     manifest["_charts"] = charts
+    manifest["_beats"] = beat_log
     return out
 
 
@@ -986,6 +1444,20 @@ def step_transcript(args, project: Path, narration: Path | None) -> Path:
         out.write_text(proc.stdout, encoding="utf-8")
         print(f"转写：coli asr → {out}")
 
+    # 文案为准的词级时间校正：ASR 的 ITN/误字（过去十年→过去1年、arXiv→Arc save）
+    # 既污染字幕也污染关键词分词，而旁白本就是照文案念的 —— 用文案文字 + ASR 时间。
+    raw = json.loads(out.read_text(encoding="utf-8"))
+    if raw.get("tokens"):
+        raw_copy = project / "script" / "transcript.raw.json"
+        if not raw_copy.exists():
+            raw_copy.write_text(json.dumps(raw, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8")
+        proc = run([sys.executable, SCRIPTS / "align_transcript.py",
+                    "--transcript", raw_copy, "--text", args.copy, "--out", out])
+        if proc.returncode != 0:
+            die(f"align_transcript failed:\n{proc.stderr.strip()}", 2)
+        print(proc.stdout.strip())
+
     # --corrections 词级纠错：bad=good，精确匹配 token 后替换
     if args.corrections:
         data = json.loads(out.read_text(encoding="utf-8"))
@@ -1017,12 +1489,12 @@ def step_storyboard(args, project: Path, transcript: Path, text: str, style: str
         sid = f"s{gi + 1:02d}"
         texts = [clause_text(c) for c in grp]
         joined = join_clauses(texts)
-        ban = [(e["start"], e["end"]) for e in extract_numbers(joined)]  # 数字 token 不作关键词
+        ban = banned_numeric_spans(joined)   # 数字/数词不作关键词
         kws = pick_keywords(joined, chosen, ban=ban)
         chosen.extend(kws)
         for c, t in zip(grp, texts):
             entry: dict = {"scene": sid, "text": t}
-            hit = [k for k in kws if k in t]
+            hit = [k for k in kws if _keyword_in_text(k, t)]
             if hit:
                 entry["keywords"] = hit
             spec_clauses.append(entry)
@@ -1200,17 +1672,25 @@ def main() -> int:
     # 8. 组装 composition + lint
     comp = build_composition(project, manifest, style, title)
     charts = manifest.pop("_charts", [])
+    beats = manifest.pop("_beats", {})
     if charts:
         charts_path = project / "storyboard" / "charts.json"
         charts_path.write_text(json.dumps(charts, ensure_ascii=False, indent=2) + "\n",
                                encoding="utf-8")
+    if beats:
+        (project / "storyboard" / "beats.json").write_text(
+            json.dumps(beats, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    # 编排锚点算完后回写 scenes.json（beats 以实际锚点为准）
+    for sc in manifest["scenes"]:
+        sc.pop("_clauseTexts", None)
+    scenes_path = project / "storyboard" / "scenes.json"
+    scenes_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+                           encoding="utf-8")
     print(f"\n== 组装 composition → {comp} ==")
     code, output = lint_composition(comp.parent)
     print(output)
     if code != 0 or re.search(r"[1-9]\d* error", output):
         die("hyperframes lint 报错（见上），composition 未达标", 2)
-    for sc in manifest["scenes"]:
-        sc.pop("_clauseTexts", None)
 
     # 9. 渲染 + 字幕 + final + verify
     if not args.no_render:

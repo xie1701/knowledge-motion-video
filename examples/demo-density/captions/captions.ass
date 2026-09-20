@@ -1,0 +1,33 @@
+[Script Info]
+; Title: 过去十年，AI 论文的数量从十万篇涨到二十五万八
+; ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Noto Sans SC,97,&H00F7F1ED,&H008AC34C,&H0016110E,&H0016110E,0,0,0,0,100,100,0,0,1,2,0,2,72,72,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.42,0:00:02.16,Caption,,0,0,0,,过去十年，
+Dialogue: 0,0:00:02.16,0:00:04.80,Caption,,0,0,0,,AI论文的数量\N从十万篇
+Dialogue: 0,0:00:04.80,0:00:07.26,Caption,,0,0,0,,涨到二十五\N万八千篇。
+Dialogue: 0,0:00:07.80,0:00:10.14,Caption,,0,0,0,,光是2025年，
+Dialogue: 0,0:00:10.14,0:00:13.50,Caption,,0,0,0,,arXiv就收到\N二十八万篇投稿。
+Dialogue: 0,0:00:14.04,0:00:16.38,Caption,,0,0,0,,但真正\N能复现的研究，
+Dialogue: 0,0:00:16.38,0:00:19.34,Caption,,0,0,0,,不到三分之二。
+Dialogue: 0,0:00:19.98,0:00:21.78,Caption,,0,0,0,,2020年，
+Dialogue: 0,0:00:21.78,0:00:25.86,Caption,,0,0,0,,GPT-3的参数量\N是一千七百五十亿。
+Dialogue: 0,0:00:26.52,0:00:28.50,Caption,,0,0,0,,可从那以后，
+Dialogue: 0,0:00:28.50,0:00:30.57,Caption,,0,0,0,,参数规模不再公开。
+Dialogue: 0,0:00:30.84,0:00:33.84,Caption,,0,0,0,,十五亿的小模型，
+Dialogue: 0,0:00:33.84,0:00:36.78,Caption,,0,0,0,,iPhone上\N每秒二十四个字，
+Dialogue: 0,0:00:36.78,0:00:38.79,Caption,,0,0,0,,三星只有十个。
+Dialogue: 0,0:00:39.54,0:00:42.06,Caption,,0,0,0,,同等能力的推\N理成本，
+Dialogue: 0,0:00:42.06,0:00:45.06,Caption,,0,0,0,,十八个月降了二\N百八十倍。
+Dialogue: 0,0:00:45.72,0:00:47.40,Caption,,0,0,0,,数量在膨胀，
+Dialogue: 0,0:00:47.40,0:00:48.89,Caption,,0,0,0,,密度在收缩。
+

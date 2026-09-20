@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-09-20T18:27:37",
+  "chosen_style": "data-viz",
+  "chosen_by": "user(--style)",
+  "recommendation": {
+    "text_stats": {
+      "chars": 170,
+      "sentences": 8,
+      "avg_sentence_chars": 21.2,
+      "questions": 0,
+      "numbers": 3,
+      "pacing_hint": "中长句，节奏留出呼吸，适合边画边讲"
+    },
+    "semantic_signals": {
+      "timeline_sequence": {
+        "strength": 1,
+        "evidence": [
+          "20、20×2"
+        ]
+      }
+    },
+    "film_decision_table_hit": {
+      "semantic_axis": "timeline_sequence",
+      "group": [
+        "timeline-history"
+      ],
+      "reason": "明确时间先后/演进：主轴线承载先后",
+      "blend_applied": false
+    },
+    "style_scores": [
+      {
+        "style": "timeline-history",
+        "score": 1.5,
+        "signals": [
+          "timeline_sequence=1"
+        ]
+      }
+    ],
+    "recommendation": {
+      "primary": "timeline-history",
+      "runner_up": null,
+      "why": "主轴线 + 节点依次点亮，适合年表与演进",
+      "film_reason": "明确时间先后/演进：主轴线承载先后",
+      "note": ""
+    }
+  }
+}

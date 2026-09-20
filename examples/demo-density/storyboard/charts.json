@@ -1,0 +1,146 @@
+[
+  {
+    "scene": "s01",
+    "mode": "trend",
+    "source": "user-data",
+    "title": "AI 论文数量：十年翻了一倍多",
+    "unit": "篇/年",
+    "labels": [
+      "2013",
+      "2023",
+      "2024"
+    ],
+    "key": null,
+    "fallback": false,
+    "note": "单位：篇/年",
+    "source_label": "数据来源：Stanford HAI, AI Index 2025/2026（Scopus 口径）",
+    "values": [
+      "10.2万",
+      "24.2万",
+      "25.8万"
+    ]
+  },
+  {
+    "scene": "s02",
+    "mode": "bars",
+    "source": "user-data",
+    "title": "arXiv 年度投稿量",
+    "unit": "篇",
+    "labels": [
+      "2024",
+      "2025"
+    ],
+    "key": 1,
+    "fallback": false,
+    "note": "单位：篇",
+    "source_label": "数据来源：arXiv 2024/2025 年度报告（+16%）",
+    "values": [
+      "24.4万",
+      "28.4万"
+    ]
+  },
+  {
+    "scene": "s03",
+    "mode": "bars",
+    "source": "user-data",
+    "title": "两项独立复现实验的成功率",
+    "unit": "%",
+    "labels": [
+      "独立复现 255 篇",
+      "限时复现 22 篇"
+    ],
+    "key": 0,
+    "fallback": false,
+    "note": "单位：%",
+    "source_label": "数据来源：NeurIPS 2019（255 篇）/ AAAI 2025（22 篇高被引）",
+    "values": [
+      "63.5%",
+      "50%"
+    ]
+  },
+  {
+    "scene": "s04",
+    "mode": "bignum",
+    "source": "user-data",
+    "title": "GPT-3 参数量",
+    "unit": "",
+    "labels": [
+      "GPT-3 参数量（2020）"
+    ],
+    "key": null,
+    "fallback": false,
+    "note": "",
+    "source_label": "数据来源：OpenAI, GPT-3 技术报告（NeurIPS 2020）",
+    "values": [
+      "1750亿"
+    ]
+  },
+  {
+    "scene": "s05",
+    "mode": "statement",
+    "source": "user-data",
+    "title": "参数不再公开",
+    "unit": "",
+    "labels": [
+      "参数规模",
+      "不再公开"
+    ],
+    "key": null,
+    "fallback": true,
+    "note": "",
+    "source_label": "数据来源：OpenAI, GPT-4 Technical Report（2023）",
+    "values": []
+  },
+  {
+    "scene": "s06",
+    "mode": "bars",
+    "source": "user-data",
+    "title": "同一个 15 亿参数模型的速度",
+    "unit": "tokens/s",
+    "labels": [
+      "iPhone 16 Pro",
+      "三星 S24 Ultra"
+    ],
+    "key": 0,
+    "fallback": false,
+    "note": "单位：tokens/s",
+    "source_label": "数据来源：Qwen2.5-1.5B 4-bit，连续推理热稳定态（arXiv 2603.23640）",
+    "values": [
+      "23.7",
+      "10.4"
+    ]
+  },
+  {
+    "scene": "s07",
+    "mode": "bignum",
+    "source": "user-data",
+    "title": "同等能力的推理成本",
+    "unit": "",
+    "labels": [
+      "18 个月里的推理成本降幅"
+    ],
+    "key": null,
+    "fallback": false,
+    "note": "",
+    "source_label": "数据来源：Stanford HAI, AI Index 2025（$20 → $0.07 / 百万 tokens）",
+    "values": [
+      "280倍"
+    ]
+  },
+  {
+    "scene": "s08",
+    "mode": "statement",
+    "source": "user-data",
+    "title": "数量在膨胀，密度在收缩",
+    "unit": "",
+    "labels": [
+      "数量",
+      "密度"
+    ],
+    "key": null,
+    "fallback": true,
+    "note": "",
+    "source_label": "",
+    "values": []
+  }
+]

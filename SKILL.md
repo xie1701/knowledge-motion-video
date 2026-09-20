@@ -61,7 +61,7 @@ ratio and platform, target duration, whether wording is locked, voice source (ex
 TTS / none), and any brand constraints. Never make the viewer choose among all styles — analyze
 the content, recommend a primary and secondary route, and justify in one sentence.
 
-## One-shot pipeline (`make_video.py`, v2.4)
+## One-shot pipeline (`make_video.py`, v2.5)
 
 For a straight copy-to-film run, the orchestrator chains recommendation → confirmation gate →
 auto storyboard → template assembly → render → finalize → verify:
@@ -71,26 +71,57 @@ auto storyboard → template assembly → render → finalize → verify:
 python3 scripts/make_video.py --copy copy.txt --project outdir
 # 2. confirm (human or agent) and finish
 python3 scripts/make_video.py --copy copy.txt --project outdir --go \
-    [--style <name>] [--narration audio.mp3] [--corrections "一只=一支"] [--bgm music.mp3]
+    [--style <name>] [--narration audio.mp3] [--corrections "一只=一支"] [--bgm music.mp3] \
+    [--data charts.json]
 ```
 
 - The gate is non-interactive by design: default behavior is STOP after printing the decision
   trace and writing `storyboard/style-decision.json`; `--go` (or an explicit `--style`) proceeds.
-- Auto storyboard: punctuation clauses grouped greedily into 6–8s scenes (12s cap), keywords
-  extracted by maximum-probability word segmentation over a bundled lexicon
-  (`assets/lexicon/zh-words.txt`, jieba-derived, MIT) — content words and adjacent-word
-  compounds only, never boundary-blind fragments; timing derived from word-level ASR — the
-  narration-clock constraint holds.
-- Composition assembly instantiates the style template per scene (ids namespaced, timeline
-  positions remapped to `[scene start + 0.1s, scene end − hold]`). data-viz charts get real
-  numbers: `make_video.py` extracts unit-bearing tokens from the copy (3倍/三成/千亿/2021年)
-  into `storyboard/charts.json` and scales bar heights from them — or pass `--data <json>`
-  (array of `{title,unit,labels,values,key}` per scene) for exact control. Scenes without
-  unit-bearing numbers fall back to labeled placeholder bars, clearly marked in charts.json.
-  Template rhythm is preserved; keyword-exact beats and rich scene visuals remain the
-  agent-authored path (see Production gates) — auto mode is the floor, not the ceiling.
+- **Scenes follow the copy's own sentences (v2.5)**: one sentence = one scene; a sentence longer
+  than 8.2s is split at its internal punctuation into 5–7.5s chunks; a trailing scene under 2.2s
+  merges back. Time-only greedy grouping used to saw sentences in half ("涨到二十五万八千篇投稿量
+  还在涨" — the tail of one topic glued to the head of the next).
+- **Transcripts are corrected against the copy (v2.5)**: `scripts/align_transcript.py` aligns the
+  ASR characters to the authoritative copy text with difflib and keeps the ASR timestamps
+  (`script/transcript.raw.json` keeps the raw pass). ASR ITN and mishearings (过去十年→过去1年,
+  arXiv→Aive) otherwise poison both captions and keyword segmentation. Similarity below 0.55
+  aborts the alignment rather than forcing it.
+- Keywords: maximum-probability segmentation over a bundled lexicon
+  (`assets/lexicon/zh-words.txt`, jieba-derived, MIT) — content words plus adjacent-word
+  compounds, across a single 「的/之」 (论文的数量 → 论文数量) and with single-char suffixes
+  (投稿|量, 复现|率); numeral runs (十年/十六/三分) are banned outright, and candidates that sit
+  right in front of a number get a bonus (that word is the chart's category label).
+- **Animation is anchored to the spoken word (v2.5)**: every template declares
+  `// @beats enter=… build=… reveal=… peak=… settle=…` in its trailing comment, and
+  `make_video.py` solves those five choreography moments onto scene time — `build` starts 0.7s
+  before the first content word, `reveal`/`peak` land on the spoken keywords, `settle` winds down
+  (see `storyboard/beats.json`). Previously the whole choreography was stretched linearly across
+  the scene, so a 3.5s move played in slow motion over 10s. Templates without `@beats` still
+  work: anchors are inferred from the position-parameter distribution.
+- Composition assembly instantiates the style template per scene (ids namespaced, furniture on
+  `data-track-index="3"` — track 0 does not render, and scenes' opaque clips would cover anything
+  below them). data-viz picks one of five honest layouts per scene from `--data` or from
+  unit-bearing tokens in the copy: `trend` (year series), `bars` (one unit), `cards` (mixed
+  units), `bignum` (a single number), `statement` (no numbers — big type, never fake bars).
+  Bar heights are zero-based linear; category labels sit below the baseline; the axis max is
+  labelled; every chart carries a `数据来源` line. Auto mode is the floor, not the ceiling.
 - Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
   without either the tool exits 3 with guidance.
+
+## Style sweep (`style_sweep.py`, v2.5)
+
+To see what each of the 15 styles actually looks like on the same copy (not the template HTML —
+the rendered film), sweep one short excerpt across every style:
+
+```bash
+python3 scripts/style_sweep.py --copy excerpt.txt --narration excerpt.m4a \
+    --transcript excerpt.json --out-dir q/ [--data one-chart.json] [--styles a,b]
+```
+
+It renders each style into `q/<style>/`, writes `sweep-contact-sheet.jpg` (5×3 frames at 65% of
+ each clip, labelled), `sweep-grid.mp4` (the 15 clips side by side) and `sweep-report.json`
+(duration, chart modes, failures). Use it to sanity-check a style choice or to show someone the
+difference — and as a regression net: it exercises every template's assembly path end to end.
 
 ## Production gates
 
@@ -157,6 +188,12 @@ clauses, beats land exactly on the spoken keyword's token time. Never hand-autho
 when word timestamps exist; hand-tuned beats are the #1 cause of perceived A/V desync. 5. Land
 visual payoffs on spoken keywords (±0.3s). 6. Hold the resolved state ≥0.8s
 (1–1.5s for dense diagrams). 7. Subtitles go on the topmost layer, applied last in FFmpeg.
+
+When the pipeline assembles a template automatically, step 4–5 become the `@beats` anchor solve:
+the template's own choreography moments (`enter/build/reveal/peak/settle`) are pinned to scene
+time with `build` = first content word − 0.7s and `reveal`/`peak` on the spoken keywords.
+Hand-authored projects should keep the same shape: intro in ≤0.2s, the data move on the word,
+then a still hold.
 
 Never hard-code final frame numbers before voice timing; estimates are for pilots only.
 

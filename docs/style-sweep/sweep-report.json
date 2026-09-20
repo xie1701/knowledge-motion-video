@@ -1,0 +1,80 @@
+[
+  {
+    "style": "character-concept-comic",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "collage-evidence",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "data-viz",
+    "ok": true,
+    "durationSec": 7.6,
+    "charts": [
+      "s01:bignum"
+    ]
+  },
+  {
+    "style": "editorial-collage",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "generated-cinematic",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "hand-sketch",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "kinetic-typography",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "map-geo",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "paper-diorama",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "paper-fold",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "process-flow",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "swiss-sketch",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "timeline-history",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "ui-demo",
+    "ok": true,
+    "durationSec": 7.6
+  },
+  {
+    "style": "whiteboard-tutorial",
+    "ok": true,
+    "durationSec": 7.6
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "project": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density",
+  "verdict": "PASS",
+  "checks": [
+    {
+      "name": "manifest",
+      "status": "PASS",
+      "detail": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density/storyboard/scenes.json is valid"
+    },
+    {
+      "name": "video",
+      "status": "PASS",
+      "detail": {
+        "durationSec": 49.9,
+        "width": 1080,
+        "height": 1920,
+        "codec": "h264"
+      }
+    },
+    {
+      "name": "contact-sheet",
+      "status": "PASS",
+      "detail": {
+        "frames": [
+          "s01@3.63s",
+          "s02@10.38s",
+          "s03@16.42s",
+          "s04@22.60s",
+          "s05@28.21s",
+          "s06@34.68s",
+          "s07@41.92s",
+          "s08@47.48s"
+        ],
+        "path": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density/verify/contact-sheet.jpg"
+      }
+    }
+  ]
+}

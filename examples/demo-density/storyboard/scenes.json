@@ -1,0 +1,419 @@
+{
+  "version": 1,
+  "project": {
+    "title": "过去十年，AI 论文的数量从十万篇涨到二十五万八",
+    "language": "zh-CN",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationSec": 49.89,
+    "style": "data-viz",
+    "captionSafeArea": {
+      "x": 72,
+      "y": 1570,
+      "width": 936,
+      "height": 230
+    }
+  },
+  "design": {
+    "background": "#0E1116",
+    "foreground": "#EDF1F7",
+    "accent": "#4CC38A",
+    "muted": "#6B7684",
+    "displayFont": "Noto Sans SC",
+    "bodyFont": "Noto Sans SC"
+  },
+  "timing": {
+    "method": "make_video.py auto"
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "startSec": 0.0,
+      "durationSec": 7.26,
+      "narration": "过去十年AI论文的数量从十万篇涨到二十五万八千篇",
+      "keywords": [
+        {
+          "text": "论文数量",
+          "atSec": 2.58
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.12,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 1.88,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 2.93,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 3.63,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 5.03,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s02",
+      "startSec": 7.26,
+      "durationSec": 6.24,
+      "narration": "光是2025年arXiv就收到二十八万篇投稿",
+      "keywords": [
+        {
+          "text": "arXiv",
+          "atSec": 2.88
+        },
+        {
+          "text": "投稿",
+          "atSec": 5.28
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1200000000000001,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 2.1799999999999997,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 3.23,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 4.59,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 4.89,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 13.5,
+      "durationSec": 5.84,
+      "narration": "但真正能复现的研究不到三分之二",
+      "keywords": [
+        {
+          "text": "复现研究",
+          "atSec": 1.62
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.11999999999999922,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 0.9199999999999999,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 1.97,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.67,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 4.07,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s04",
+      "startSec": 19.34,
+      "durationSec": 6.52,
+      "narration": "2020年GPT-3的参数量是一千七百五十亿",
+      "keywords": [
+        {
+          "text": "GPT-3",
+          "atSec": 2.45
+        },
+        {
+          "text": "参数量",
+          "atSec": 3.4
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.120000000000001,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 1.75,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 2.8,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 3.7,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 5.02,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s05",
+      "startSec": 25.86,
+      "durationSec": 4.71,
+      "narration": "可从那以后参数规模不再公开",
+      "keywords": [
+        {
+          "text": "参数规模",
+          "atSec": 2.64
+        },
+        {
+          "text": "公开",
+          "atSec": 3.96
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.120000000000001,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 1.9400000000000013,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 2.63,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 3.38,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 3.68,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.2s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s06",
+      "startSec": 30.57,
+      "durationSec": 8.22,
+      "narration": "十五亿的小模型iPhone上每秒二十四个字三星只有十个",
+      "keywords": [
+        {
+          "text": "小模型",
+          "atSec": 1.71
+        },
+        {
+          "text": "三星",
+          "atSec": 6.21
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.120000000000001,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 1.009999999999998,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 2.06,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 6.51,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 6.81,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s07",
+      "startSec": 38.79,
+      "durationSec": 6.27,
+      "narration": "同等能力的推理成本十八个月降了二百八十倍",
+      "keywords": [
+        {
+          "text": "推理成本",
+          "atSec": 1.65
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.11999999999999744,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 0.9500000000000028,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 2.0,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.7,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 4.1,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s08",
+      "startSec": 45.06,
+      "durationSec": 4.83,
+      "narration": "数量在膨胀密度在收缩",
+      "keywords": [
+        {
+          "text": "膨胀",
+          "atSec": 1.38
+        },
+        {
+          "text": "密度",
+          "atSec": 2.34
+        }
+      ],
+      "purpose": "auto",
+      "semanticClass": "auto",
+      "style": "data-viz",
+      "visualSubject": "Bars and values rise into the key chart",
+      "visualVerb": "auto",
+      "layout": "template",
+      "camera": "locked-frame",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.11999999999999744,
+          "action": "enter · 画面入场"
+        },
+        {
+          "atSec": 0.6799999999999997,
+          "action": "build · 主体起势（首关键词前 0.7s）"
+        },
+        {
+          "atSec": 1.73,
+          "action": "reveal · 编排锚点"
+        },
+        {
+          "atSec": 2.64,
+          "action": "peak · 编排锚点"
+        },
+        {
+          "atSec": 3.62,
+          "action": "settle · 编排锚点"
+        }
+      ],
+      "finalState": "Resolved template state holds 1.2s",
+      "renderer": "hyperframes"
+    }
+  ]
+}

@@ -75,6 +75,24 @@ final MP4, all verified — lives in [`examples/sample-project/`](examples/sampl
 复现：`python3 scripts/fetch_assets.py --project examples/showcase-project --sheet` → 目检素材 →
 渲染 → `python3 scripts/derive_timing.py …` 重建时间轴 → `finalize.py --bgm …`。
 
+## Data film（数据片示例，v2.5）
+
+[`examples/demo-density/`](examples/demo-density/) 是一条 8 场 / 49.9s 的数据叙事片
+《数量在膨胀，密度在收缩》（1080×1920，旁白 + CC0 BGM + 烧录字幕）：
+
+- **每个数字都能点回来源**：Stanford HAI AI Index 2025/2026、arXiv 年度报告、NeurIPS 2019、
+  AAAI 2025、arXiv 2603.23640；每张图底部署名，没来源就不写。
+- **五种版式按语义自动选**：趋势线（10.2万→24.2万→25.8万）→ 柱状图（arXiv 投稿量）→
+  柱状图（两项独立复现实验 63.5% / 50%）→ 巨数（GPT-3 1750 亿）→ 大字陈述（参数不再公开）→
+  柱状图（同一 15 亿模型的速度）→ 巨数（推理成本 280 倍）→ 大字陈述（结论）。
+- **动画挂在念出的字上**：模板的 `@beats` 锚点被解到旁白关键词的词级时间戳，
+  柱子是边说边长、数值在词后落地（`storyboard/beats.json` 可核）。
+- 成片：`renders/final-density.mp4`；数据源与口径记在 `storyboard/data.json`。
+
+复现：`python3 scripts/make_video.py --copy examples/demo-density/script/copy.txt \
+  --project /tmp/demo --go --style data-viz --narration examples/demo-density/audio/narration.mp3 \
+  --data examples/demo-density/storyboard/data.json --bgm examples/demo-density/audio/bgm.wav`
+
 ## Style gallery
 
 Four design presets × four routes, same 10-second script, rendered at 1080×1920.
@@ -91,6 +109,22 @@ material-driven case see the Showcase above:
 A side-by-side comparison GIF is at [`docs/style-comparison.gif`](docs/style-comparison.gif);
 per-style loops live next to each sample under `renders/`. Each sample contains the full
 `composition/` + `storyboard/scenes.json` pair, so you can re-render or remix any of them.
+
+### Sweep all 15 styles on one excerpt
+
+`scripts/style_sweep.py` renders the *same* excerpt through **every** route and builds a review
+sheet, so you can see what each grammar actually does to your copy:
+
+```bash
+python3 scripts/style_sweep.py --copy excerpt.txt --narration excerpt.m4a \
+    --transcript excerpt.json --out-dir q/
+# → q/sweep-contact-sheet.jpg（5×3 抽帧表）
+#   q/sweep-grid.mp4（15 格并排对比片）
+#   q/sweep-report.json（每格时长 / 版式 / 失败原因）
+```
+
+Renderings of the 15 routes on one sentence are in [`docs/style-sweep/`](docs/style-sweep/).
+It doubles as an end-to-end regression net: every template's assembly path gets exercised.
 
 ## Requirements
 

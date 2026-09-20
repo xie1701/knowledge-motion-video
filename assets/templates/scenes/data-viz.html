@@ -1,48 +1,57 @@
 <!--
   Route: data-viz (数据图表)
   Paste the <div> below into one clip inside your composition root.
-  Replaceable slots: {{TITLE}} 图表标题 | {{UNIT}} 单位 | {{BARS}} 柱体/数值/类目标堆（生成）
-  {{BARS}} contract: make_video.py fills this with one of two honest layouts —
-  (a) bars: for each bar j of n —
-    group div .km-viz__group (left = 4 + j*84/n %, width = 84/n %)
-      bar div .km-viz__bar (+ .km-viz__bar--key on the key item),
-        height = 18 + 70*value/vmax % (real values, never fake identical bars)
-    value div .km-viz__value pinned bottom = height+4 % above its bar
-    label div .km-viz__label in the same slot just BELOW the axis baseline
-      (top: calc(100% + 16px)) — labels inside the plot get covered by tall bars
-  (b) cards: .km-viz__cards row of .km-viz__card, each holding .km-viz__bar (accent rule),
-    .km-viz__value (big number) and .km-viz__label — used when values carry different units
-    (multipliers vs shares vs magnitudes), because such numbers cannot share one axis.
-  Bars grow with scaleY from the axis baseline — never tween height/width
-  (layout thrash breaks determinism). Colors always come from --bg/--fg/--accent
-  so the wrapper palette decides light/dark — no hard-coded inks.
+
+  Slots:
+    {{TITLE}}   场景大标题（一句话陈述，62px / 最多两行）
+    {{NOTE}}    副行：单位 / 口径 / 起点说明（28px muted）
+    {{PLOT}}    绘图区内容（由 make_video.py 生成，见下）
+    {{SOURCE}}  数据来源行（底部署名，24px muted mono）
+
+  {{PLOT}} 由 make_video.py 按场景语义在四种诚实的版式里选一种生成：
+    (a) bars      同一量纲的 2–4 个数 → 零基线柱状图
+                  柱高 h = 82%·v/vmax（线性、基线为 0），柱顶数值、基线下方类目标签、
+                  轴顶标出 vmax+单位；关键柱 accent 色，其余 --fg（负向指标不用强调色）。
+    (b) cards     量纲不同（倍数 vs 百分比 vs 规模）→ 指标卡，不做同一坐标轴比较
+                  卡内：细色条 .km-viz__rule + 大数字 .km-viz__value + 类目 .km-viz__label
+    (c) trend     时间序列（≥3 个年份口径）→ 折线 + 节点 + 数值
+                  折线 path 带 pathLength="100"，靠 stroke-dashoffset 从左到右生长
+    (d) statement 场景没有可上屏的数字 → 大字陈述 + 关键词标签，绝不捏造柱高
+                  大字 .km-viz__bigtype（96px）+ 标签 .km-viz__tag
+
+  动画由模板 timeline 驱动；锚点见下方 @beats —— make_video.py 把 enter/build/reveal/
+  peak/settle 挂到旁白真正念出的词上（关键词词级时间戳），所以柱子是「边说边长」的。
+  颜色一律走 --bg/--fg/--accent/--muted，由 wrapper 调色板决定明暗，模板不写死颜色。
+  柱体成长用 scaleY，不 tween height/width（避免 layout thrash 破坏确定性渲染）。
 -->
 <div class="km-viz" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg,#FFFFFF);">
-  <div class="km-viz__title" style="position:absolute;left:8%;top:8%;font:800 42px system-ui;color:var(--fg,#11110F);">{{TITLE}}</div>
-  <div class="km-viz__unit" style="position:absolute;right:8%;top:9%;font:600 26px system-ui;color:var(--muted,#8C887F);">{{UNIT}}</div>
-  <!-- 图表区：底部为基线 -->
-  <div class="km-viz__plot" style="position:absolute;left:8%;top:20%;width:84%;height:56%;">
-    <!-- 极淡网格线 -->
-    <svg style="position:absolute;inset:0;opacity:.15;" width="100%" height="100%" preserveAspectRatio="none" stroke="#11110F" stroke-width="1">
-      <line x1="0" y1="25%" x2="100%" y2="25%"/><line x1="0" y1="50%" x2="100%" y2="50%"/><line x1="0" y1="75%" x2="100%" y2="75%"/>
-    </svg>
-    <!-- 基线 -->
-    <div style="position:absolute;left:0;bottom:0;width:100%;height:3px;background:var(--fg,#11110F);"></div>
-{{BARS}}
+  <div class="km-viz__title" style="position:absolute;left:72px;top:236px;width:936px;font:900 62px/1.22 system-ui,-apple-system,'PingFang SC',sans-serif;letter-spacing:-.01em;color:var(--fg,#11110F);text-wrap:balance;transform-origin:left top;">{{TITLE}}</div>
+  <div class="km-viz__note" style="position:absolute;left:72px;top:474px;width:936px;text-align:right;font:600 28px/1.4 system-ui,-apple-system,'PingFang SC',sans-serif;color:var(--muted,#8C887F);">{{NOTE}}</div>
+  <div class="km-viz__plot" style="position:absolute;left:72px;top:600px;width:936px;height:762px;overflow:visible;">
+{{PLOT}}
   </div>
+  <div class="km-viz__source" style="position:absolute;left:72px;top:1444px;width:936px;font:600 24px/1.4 ui-monospace,SFMono-Regular,monospace;letter-spacing:.06em;color:var(--muted,#8C887F);">{{SOURCE}}</div>
 </div>
 <!--
-  GSAP timeline fragment (deterministic; axis first, then data; accent key bar):
-  tl.fromTo(".km-viz__title", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.1)
-    .fromTo(".km-viz__unit", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.2)
-    .fromTo(".km-viz__plot svg", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.3)
-    .fromTo(".km-viz__bar", { scaleY: 0 }, { scaleY: 1, duration: 0.6, stagger: 0.18, ease: "power3.out" }, 0.6)
-    .fromTo(".km-viz__value", { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.25, stagger: 0.18 }, 1.0)
-    .fromTo(".km-viz__label", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25, stagger: 0.1 }, 1.2)
-    // 压灰次要项、突出关键项（两态显式）：
-    .fromTo(".km-viz__bar:not(.km-viz__bar--key)", { opacity: 1 }, { opacity: 0.35, duration: 0.4 }, 2.4)
-    .fromTo(".km-viz__bar--key", { scale: 1 }, { scale: 1.04, duration: 0.3, yoyo: true, repeat: 1, transformOrigin: "bottom" }, 2.5);
-  // For a line chart: stroke-dasharray = path length, fromTo(strokeDashoffset: L -> 0).
-  // For ranking swaps: tween each row's y to the other row's slot (transform only).
-  // Bar heights/labels are generated by make_video.py from real values via {{BARS}}.
+  GSAP timeline fragment（确定性：先标题、再绘图区、数据随词落地、末尾强调并压灰）
+  @beats enter=0.10 build=0.60 reveal=1.40 peak=2.00 settle=2.40
+  enter 标题入场 / build 绘图区起势+柱体生长 / reveal 数值落地 /
+  peak 标签到位并压灰次要项、强调关键项 / settle 来源行
+tl.fromTo('.km-viz__title', { autoAlpha: 0, y: 26 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.10)
+  .fromTo('.km-viz__note', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35 }, 0.25)
+  .fromTo('.km-viz__plot', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35 }, 0.60)
+  .fromTo('.km-viz__grid', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.45 }, 0.70)
+  .fromTo('.km-viz__axis', { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'power3.out', transformOrigin: 'left center' }, 0.70)
+  .fromTo('.km-viz__bar', { scaleY: 0 }, { scaleY: 1, duration: 0.7, stagger: 0.16, ease: 'power3.out' }, 0.85)
+  .fromTo('.km-viz__line', { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.0, ease: 'power2.inOut' }, 0.85)
+  .fromTo('.km-viz__dot', { autoAlpha: 0, scale: 0.3 }, { autoAlpha: 1, scale: 1, duration: 0.32, stagger: 0.14, ease: 'back.out(2)' }, 1.05)
+  .fromTo('.km-viz__rule', { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'power3.out' }, 0.85)
+  .fromTo('.km-viz__card', { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.16, ease: 'power2.out' }, 0.85)
+  .fromTo('.km-viz__bigtype', { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.60)
+  .fromTo('.km-viz__tag', { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.14, ease: 'power2.out' }, 0.95)
+  .fromTo('.km-viz__value', { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.34, stagger: 0.14 }, 1.40)
+  .fromTo('.km-viz__label', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3, stagger: 0.10 }, 1.55)
+  .fromTo('.km-viz__bar:not(.km-viz__bar--key)', { opacity: 1 }, { opacity: 0.34, duration: 0.45, ease: 'power1.inOut' }, 2.00)
+  .fromTo('.km-viz__bar--key', { scaleY: 1 }, { scaleY: 1.035, duration: 0.26, yoyo: true, repeat: 1, ease: 'power1.inOut', transformOrigin: 'bottom' }, 2.10)
+  .fromTo('.km-viz__source', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 2.40);
 -->

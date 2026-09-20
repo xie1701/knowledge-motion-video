@@ -27,6 +27,30 @@ import sys
 from pathlib import Path
 
 PUNCT = set("，。？！、：；,.")
+FILLER = {"的", "之"}   # 复合关键词可以跨过修饰助词（论文|的|数量 → 论文数量）
+
+
+def find_keyword(tokens: list[str], word: str) -> int | None:
+    """在 token 序列里定位关键词起点：先找连续匹配，再允许跨过「的/之」。"""
+    for j in range(len(tokens)):
+        if "".join(tokens[j:j + len(word)]) == word:
+            return j
+    for j in range(len(tokens)):
+        k, pos, skipped = j, 0, False
+        while k < len(tokens) and pos < len(word):
+            tok = tokens[k]
+            if tok in FILLER:
+                k += 1
+                skipped = True
+                continue
+            if word.startswith(tok, pos):
+                pos += len(tok)
+                k += 1
+                continue
+            break
+        if pos == len(word) and skipped:
+            return j
+    return None
 
 
 def load(path: Path) -> dict:
@@ -113,8 +137,7 @@ def main() -> int:
         kws = []
         for c, d in g["clauses"]:
             for w in d.get("keywords", []):
-                idx = next((j for j, t in enumerate(c["tokens"])
-                            if "".join(c["tokens"][j:j + len(w)]) == w), None)
+                idx = find_keyword(c["tokens"], w)
                 if idx is None:
                     print(f"WARN: 关键词 {w!r} 未在场景 {g['id']} 找到，跳过", file=sys.stderr)
                     continue

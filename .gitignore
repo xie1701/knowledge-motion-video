@@ -20,3 +20,11 @@ examples/showcase-project/audio/mix.wav
 examples/showcase-project/renders/qc-frames/
 examples/showcase-project/renders/qc-final/
 !examples/showcase-project/renders/final-showcase.mp4
+!examples/demo-density/renders/final-density.mp4
+!examples/demo-density/renders/contact-sheet.jpg
+# 可再生的中间产物（旁白 ASR / BGM 拼接）
+examples/demo-density/audio/narration-asr.json
+examples/demo-density/audio/bgm.wav
+examples/demo-density/sweep/
+# 渲染临时目录（保留成片与抽帧）
+examples/demo-density/qc/

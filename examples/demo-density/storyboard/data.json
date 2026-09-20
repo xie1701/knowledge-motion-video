@@ -1,0 +1,82 @@
+[
+  {
+    "mode": "trend",
+    "title": "AI 论文数量：十年翻了一倍多",
+    "unit": "篇/年",
+    "labels": ["2013", "2023", "2024"],
+    "values": [
+      { "display": "10.2万", "value": 102000 },
+      { "display": "24.2万", "value": 242000 },
+      { "display": "25.8万", "value": 258000 }
+    ],
+    "source": "Stanford HAI, AI Index 2025/2026（Scopus 口径）"
+  },
+  {
+    "mode": "bars",
+    "title": "arXiv 年度投稿量",
+    "unit": "篇",
+    "labels": ["2024", "2025"],
+    "values": [
+      { "display": "24.4万", "value": 244031 },
+      { "display": "28.4万", "value": 284486 }
+    ],
+    "key": 1,
+    "source": "arXiv 2024/2025 年度报告（+16%）"
+  },
+  {
+    "mode": "bars",
+    "title": "两项独立复现实验的成功率",
+    "unit": "%",
+    "labels": ["独立复现 255 篇", "限时复现 22 篇"],
+    "values": [
+      { "display": "63.5%", "value": 63.5 },
+      { "display": "50%", "value": 50 }
+    ],
+    "key": 0,
+    "source": "NeurIPS 2019（255 篇）/ AAAI 2025（22 篇高被引）"
+  },
+  {
+    "mode": "bignum",
+    "title": "GPT-3 参数量",
+    "unit": "",
+    "labels": ["GPT-3 参数量（2020）"],
+    "values": [{ "display": "1750亿", "value": 1750 }],
+    "source": "OpenAI, GPT-3 技术报告（NeurIPS 2020）"
+  },
+  {
+    "mode": "statement",
+    "title": "参数不再公开",
+    "unit": "",
+    "labels": ["参数规模", "不再公开"],
+    "values": [],
+    "source": "OpenAI, GPT-4 Technical Report（2023）"
+  },
+  {
+    "mode": "bars",
+    "title": "同一个 15 亿参数模型的速度",
+    "unit": "tokens/s",
+    "labels": ["iPhone 16 Pro", "三星 S24 Ultra"],
+    "values": [
+      { "display": "23.7", "value": 23.67 },
+      { "display": "10.4", "value": 10.38 }
+    ],
+    "key": 0,
+    "source": "Qwen2.5-1.5B 4-bit，连续推理热稳定态（arXiv 2603.23640）"
+  },
+  {
+    "mode": "bignum",
+    "title": "同等能力的推理成本",
+    "unit": "",
+    "labels": ["18 个月里的推理成本降幅"],
+    "values": [{ "display": "280倍", "value": 280 }],
+    "source": "Stanford HAI, AI Index 2025（$20 → $0.07 / 百万 tokens）"
+  },
+  {
+    "mode": "statement",
+    "title": "数量在膨胀，密度在收缩",
+    "unit": "",
+    "labels": ["数量", "密度"],
+    "values": [],
+    "source": ""
+  }
+]

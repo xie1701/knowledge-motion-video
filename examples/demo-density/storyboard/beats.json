@@ -1,0 +1,58 @@
+{
+  "s01": {
+    "enter": 0.12,
+    "build": 1.88,
+    "reveal": 2.93,
+    "peak": 3.63,
+    "settle": 5.03
+  },
+  "s02": {
+    "enter": 0.12,
+    "build": 2.18,
+    "reveal": 3.23,
+    "peak": 4.59,
+    "settle": 4.89
+  },
+  "s03": {
+    "enter": 0.12,
+    "build": 0.92,
+    "reveal": 1.97,
+    "peak": 2.67,
+    "settle": 4.07
+  },
+  "s04": {
+    "enter": 0.12,
+    "build": 1.75,
+    "reveal": 2.8,
+    "peak": 3.7,
+    "settle": 5.02
+  },
+  "s05": {
+    "enter": 0.12,
+    "build": 1.94,
+    "reveal": 2.63,
+    "peak": 3.38,
+    "settle": 3.68
+  },
+  "s06": {
+    "enter": 0.12,
+    "build": 1.01,
+    "reveal": 2.06,
+    "peak": 6.51,
+    "settle": 6.81
+  },
+  "s07": {
+    "enter": 0.12,
+    "build": 0.95,
+    "reveal": 2.0,
+    "peak": 2.7,
+    "settle": 4.1
+  },
+  "s08": {
+    "enter": 0.12,
+    "build": 0.68,
+    "reveal": 1.73,
+    "peak": 2.64,
+    "settle": 3.62
+  }
+}
