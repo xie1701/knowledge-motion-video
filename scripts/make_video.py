@@ -653,8 +653,21 @@ def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
     return chart
 
 
+def _slot_geometry(n: int) -> list[tuple[float, float]]:
+    """柱位几何：柱宽 60/n%，柱心在 [4+w/2, 96−w/2] 内等距分布 → 任意 n 都铺满绘图区。"""
+    width = 60.0 / n
+    lo, hi = 4 + width / 2, 96 - width / 2
+    centers = [50.0] if n == 1 else [lo + (hi - lo) * j / (n - 1) for j in range(n)]
+    return [(c - width / 2, width) for c in centers]
+
+
+def _is_negative(label: str) -> bool:
+    return bool(label) and label[0] in "不没无否未别难"
+
+
 def _card_html(display: str, label: str, is_key: bool) -> str:
-    val_c = "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)"
+    val_c = "var(--fg,#11110F)" if (is_key and _is_negative(label)) else (
+        "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)")
     key_cls = " km-viz__bar--key" if is_key else ""
     return (
         '    <div class="km-viz__card" style="flex:1;background:rgba(127,127,127,.10);'
@@ -685,15 +698,17 @@ def render_bars(chart: dict, index: int) -> str:
     if vals:
         n = len(vals)
         vmax = max(v["value"] for v in vals) or 1.0
-        slot = 84.0 / n
         key = chart.get("key")
-        for j, ent in enumerate(vals):
-            left, width = 4 + j * slot, slot * 0.62
-            h = 18 + 70 * min(ent["value"] / vmax, 1.0)
+        labels_all = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
+        for j, (ent, (left, width)) in enumerate(zip(vals, _slot_geometry(n))):
+            # 零基线线性比例（柱高必须与数值成正比，否则图表就在说谄）
+            h = min(82.0, max(2.5, 82.0 * ent["value"] / vmax))
             is_key = (key if key is not None else n - 1) == j
             bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
-            bar_bg = "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)"
-            val_c = "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)"
+            bar_bg = ("var(--fg,#11110F)" if _is_negative(labels_all[j])
+                      else "var(--accent,#F36B3D)") if is_key else "var(--fg,#11110F)"
+            val_c = "var(--fg,#11110F)" if is_key and _is_negative(labels_all[j]) else (
+                "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)")
             parts.append(
                 f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
                 f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;justify-content:center;">\n'
@@ -704,18 +719,15 @@ def render_bars(chart: dict, index: int) -> str:
                 f'bottom:{h + 4:.1f}%;transform:translateX(-50%);font:800 30px system-ui;color:{val_c};">'
                 f'{ent["display"]}</div>')
         labels = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
-        for j, lab in enumerate(labels):
-            left, width = 4 + j * slot, slot * 0.62
+        for j, ((left, width), lab) in enumerate(zip(_slot_geometry(n), labels)):
             parts.append(
-                f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
+                f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;top:calc(100% + 16px);'
                 f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
                 f'opacity:.78;">{lab}</div>')
     else:  # 占位：柱高随场景序变化，不三场同图；类目用关键词
         hs = _FALLBACK_HEIGHTS[index % len(_FALLBACK_HEIGHTS)]
         kws = list(chart["labels"])[:3] + [""] * 3
-        slot = 84.0 / 3
-        for j in range(3):
-            left, width = 4 + j * slot, slot * 0.62
+        for j, (left, width) in enumerate(_slot_geometry(3)):
             h = hs[j]
             is_key = j == 2
             bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
@@ -728,7 +740,7 @@ def render_bars(chart: dict, index: int) -> str:
                 f'    </div>')
             if kws[j]:
                 parts.append(
-                    f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
+                    f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;top:calc(100% + 16px);'
                     f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--fg,#11110F);'
                     f'opacity:.78;">{kws[j]}</div>')
     return "\n".join(parts)

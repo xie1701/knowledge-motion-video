@@ -8,7 +8,8 @@
       bar div .km-viz__bar (+ .km-viz__bar--key on the key item),
         height = 18 + 70*value/vmax % (real values, never fake identical bars)
     value div .km-viz__value pinned bottom = height+4 % above its bar
-    label div .km-viz__label in the same slot at bottom 16%
+    label div .km-viz__label in the same slot just BELOW the axis baseline
+      (top: calc(100% + 16px)) — labels inside the plot get covered by tall bars
   (b) cards: .km-viz__cards row of .km-viz__card, each holding .km-viz__bar (accent rule),
     .km-viz__value (big number) and .km-viz__label — used when values carry different units
     (multipliers vs shares vs magnitudes), because such numbers cannot share one axis.

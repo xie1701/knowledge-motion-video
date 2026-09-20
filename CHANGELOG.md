@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.4.3 — 2026-09-20
+
+- **Zero-based bar scale**: bar heights were `18% + 70%·v/vmax` — a non-zero baseline, so 12 and
+  130 rendered as roughly 1:5 instead of 1:11. Bars now use a pure linear scale from the axis
+  (`h = 82%·v/vmax`, 2.5% floor). Measured on the rendered frame: 79 / 302 / 878 px for 12 / 45 /
+  130 → ratios 0.090 / 0.344 / 1.000 against the theoretical 0.092 / 0.346 / 1.000.
+- **Chart slot geometry**: bars were laid out as `left = 4% + j·(84/n)%`, which only fills 72% of
+  the plot at n=2 (the chart looked left-shifted and the second category label drifted away from
+  its bar). Bar centres are now distributed evenly across `[4 + w/2, 96 − w/2]` with `w = 60/n`.
+- **Labels below the axis**: category labels sat at `bottom: 16%` *inside* the plot, so any bar
+  taller than 16% painted over its own label — a white label on a white bar is invisible (the
+  middle scene lost 「不可复现」). Labels now sit under the baseline (`top: calc(100% + 16px)`),
+  which is also the standard chart grammar.
+
 ## v2.4.2 — 2026-09-20
 
 - **data-viz honesty fix — no cross-unit axes**: 3倍 (a multiplier) and 三成 (a share) used to
