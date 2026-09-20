@@ -232,8 +232,9 @@ def parse_template(style: str) -> dict:
     return {"fragment": fragment, "helpers": "\n\n".join(helpers), "scene_js": scene_js}
 
 
-def fill_slots(fragment: str, scene: dict, index: int) -> str:
-    """{{SLOT}} 填充：HEADLINE 取首关键词/旁白前 10 字；POINT 取后续子句片段；其余置空。"""
+def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None) -> str:
+    """{{SLOT}} 填充：HEADLINE 取首关键词/旁白前 10 字；POINT 取后续子句片段；
+    图表槽位（TITLE/UNIT/BARS）由 extra 提供；其余置空。"""
     kws = [k["text"] for k in scene.get("keywords", [])]
     narr = scene.get("narration", "")
     parts = scene.get("_clauseTexts") or [narr]
@@ -246,7 +247,186 @@ def fill_slots(fragment: str, scene: dict, index: int) -> str:
         "POINT_2": point2,
         "PHOTO_CAP": f"FIG. {index + 1:02d}",
     }
+    if extra:
+        slots.update(extra)
     return re.sub(r"\{\{(\w+)\}\}", lambda m: slots.get(m.group(1), ""), fragment)
+
+
+# ---------------- data-viz 图表数据（{{BARS}} 填充） ----------------
+_CN_DIGIT = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+             "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CN_NUM_CLS = "零〇一二两三四五六七八九十"
+_UNIT_MAG = {"千亿": 1e11, "万亿": 1e12, "百亿": 1e10, "十亿": 1e9, "亿": 1e8,
+             "千万": 1e7, "百万": 1e6, "十万": 1e5, "万": 1e4, "千": 1e3}
+_NUM_SCALE_RE = re.compile(  # 数字/中文数字 + 量级单位：五万、3亿、千亿级同理由 WORD 兽接
+    r"(\d+(?:\.\d+)?|[" + _CN_NUM_CLS + r"]+)(千亿|万亿|百亿|十亿|千万|百万|十万|亿|万|千)")
+_SCALE_WORD_RE = re.compile(r"(千亿|万亿|百亿|十亿|千万|百万|十万)")  # 单独出现的量级词（本身即数值）
+_NUM_UNIT_RE = re.compile(r"(\d+(?:\.\d+)?|[" + _CN_NUM_CLS + r"]+)\s*(成|倍|%|％)")
+_YEAR_RE = re.compile(r"(?<!\d)((?:19|20)\d{2})(?=年)")
+_FALLBACK_HEIGHTS = [(36, 58, 86), (44, 62, 88), (30, 54, 82)]
+
+
+def _cn_to_num(s: str) -> float | None:
+    total, num = 0, 0
+    for ch in s:
+        if ch in _CN_DIGIT:
+            num = _CN_DIGIT[ch]
+        elif ch == "十":
+            total += (num or 1) * 10
+            num = 0
+        else:
+            return None
+    return total + num
+
+
+def _parse_num(s: str) -> float | None:
+    if s[0].isdigit():
+        return float(s)
+    return _cn_to_num(s)
+
+
+def extract_numbers(text: str) -> list[dict]:
+    """从文案提取带量纲的数字 token（展示用原文，量值用可比较的 magnitude）。
+    不提纯裸数字——无单位的数字填进图表是捏造。"""
+    out: list[dict] = []
+    taken: list[tuple[int, int]] = []
+
+    def overlap(sp: tuple[int, int]) -> bool:
+        return any(a < sp[1] and sp[0] < b for a, b in taken)
+
+    def add(display: str, value: float, kind: str, sp: tuple[int, int]) -> None:
+        out.append({"display": display, "value": value, "kind": kind})
+        taken.append(sp)
+
+    for m in _NUM_SCALE_RE.finditer(text):
+        n = _parse_num(m.group(1))
+        if n is not None:
+            add(m.group(0), n * _UNIT_MAG[m.group(2)], "scale", m.span())
+    for m in _SCALE_WORD_RE.finditer(text):
+        if not overlap(m.span()):
+            add(m.group(0), _UNIT_MAG[m.group(1)], "scale", m.span())
+    for m in _NUM_UNIT_RE.finditer(text):
+        if overlap(m.span()):
+            continue
+        n = _parse_num(m.group(1))
+        if n is None:
+            continue
+        u = m.group(2)
+        disp = m.group(1) + "%" if u in ("%", "％") else m.group(0)
+        add(disp, n * 10 if u == "成" else n, "pct" if u != "倍" else "mult", m.span())
+    return out
+
+
+def _scene_title(scene: dict, kws: list[str]) -> str:
+    """图表标题：关键词优先；无关键词时取最长≤14字的子句（剥年份前缀），不硬切半句。"""
+    if kws:
+        return kws[0]
+    texts = scene.get("_clauseTexts") or [scene.get("narration", "")]
+    cands = [re.sub(r"^(?:19|20)\d{2}年[，,]?", "", t).strip("，。,.、；;：: ") for t in texts]
+    cands = [c for c in cands if c]
+    good = [c for c in cands if len(c) <= 14]
+    if good:
+        return max(good, key=len)
+    return (cands[0] if cands else "")[:14]
+
+
+def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
+    """图表数据三级来源：--data 结构化覆盖 > 文案数字提取 > 关键词占位。"""
+    texts = scene.get("_clauseTexts") or [scene.get("narration", "")]
+    full = "".join(texts)
+    kws = [k["text"] for k in scene.get("keywords", [])]
+    chart = {
+        "source": "extracted",
+        "title": _scene_title(scene, kws),
+        "unit": "",
+        "labels": [],
+        "values": [],       # [{display, value, kind}]
+        "key": None,        # 强调柱下标
+        "fallback": False,
+    }
+    if data_spec and index < len(data_spec) and data_spec[index]:
+        d = data_spec[index]
+        chart["source"] = "user-data"
+        chart["fallback"] = False
+        for k in ("title", "unit", "labels", "key"):
+            if k in d and d[k] is not None:
+                chart[k] = d[k]
+        if d.get("values"):
+            vals = d["values"]
+            chart["values"] = [
+                {"display": str(v), "value": float(v), "kind": "data"}
+                if not isinstance(v, dict) else v for v in vals]
+        if d.get("fallback"):
+            chart["fallback"] = True
+    if not chart["values"] and not chart["fallback"]:
+        nums = extract_numbers(full)
+        years = _YEAR_RE.findall(full)
+        if len(nums) >= 2:
+            chart["values"] = nums[:3]
+            chart["key"] = len(chart["values"]) - 1  # 语义重心通常落在末值
+        else:
+            chart["fallback"] = True
+            if len(nums) == 1:
+                chart["single"] = nums[0]["display"]
+        if len(years) >= 2:
+            chart["years"] = years
+    if not chart["labels"]:
+        chart["labels"] = (chart.get("years") or kws or ["起点", "变化", "关键"])
+    return chart
+
+
+def render_bars(chart: dict, index: int) -> str:
+    """生成柱体/数值/类目标堆 HTML（类名与模板 timeline fragment 的选择器对齐）。"""
+    parts: list[str] = []
+    vals = chart["values"]
+    if vals:
+        n = len(vals)
+        vmax = max(v["value"] for v in vals) or 1.0
+        slot = 84.0 / n
+        key = chart.get("key")
+        for j, ent in enumerate(vals):
+            left, width = 4 + j * slot, slot * 0.62
+            h = 18 + 70 * min(ent["value"] / vmax, 1.0)
+            is_key = (key if key is not None else n - 1) == j
+            bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
+            bar_bg = "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)"
+            val_c = "var(--accent,#D8341F)" if is_key else "var(--fg,#11110F)"
+            parts.append(
+                f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
+                f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;justify-content:center;">\n'
+                f'      <div class="{bar_cls}" data-value="{ent["display"]}" '
+                f'style="width:70%;height:{h:.1f}%;background:{bar_bg};transform-origin:bottom;"></div>\n'
+                f'    </div>\n'
+                f'    <div class="km-viz__value" style="position:absolute;left:{left + width / 2:.1f}%;'
+                f'bottom:{h + 4:.1f}%;transform:translateX(-50%);font:800 30px system-ui;color:{val_c};">'
+                f'{ent["display"]}</div>')
+        labels = list(chart["labels"])[:n] + [""] * max(0, n - len(chart["labels"]))
+        for j, lab in enumerate(labels):
+            left, width = 4 + j * slot, slot * 0.62
+            parts.append(
+                f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
+                f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--muted,#5F6368);">{lab}</div>')
+    else:  # 占位：柱高随场景序变化，不三场同图；类目用关键词
+        hs = _FALLBACK_HEIGHTS[index % len(_FALLBACK_HEIGHTS)]
+        kws = list(chart["labels"])[:3] + [""] * 3
+        slot = 84.0 / 3
+        for j in range(3):
+            left, width = 4 + j * slot, slot * 0.62
+            h = hs[j]
+            is_key = j == 2
+            bar_cls = "km-viz__bar km-viz__bar--key" if is_key else "km-viz__bar"
+            bar_bg = "var(--accent,#F36B3D)" if is_key else "var(--fg,#11110F)"
+            parts.append(
+                f'    <div class="km-viz__group" style="position:absolute;left:{left:.1f}%;bottom:3px;'
+                f'width:{width:.1f}%;height:100%;display:flex;align-items:flex-end;justify-content:center;">\n'
+                f'      <div class="{bar_cls}" style="width:70%;height:{h}%;background:{bar_bg};'
+                f'transform-origin:bottom;"></div>\n'
+                f'    </div>')
+            if kws[j]:
+                parts.append(
+                    f'    <div class="km-viz__label" style="position:absolute;left:{left:.1f}%;bottom:16%;'
+                    f'width:{width:.1f}%;text-align:center;font:700 26px system-ui;color:var(--muted,#5F6368);">{kws[j]}</div>')
+    return "\n".join(parts)
 
 
 def namespace_ids(fragment: str, js: str, prefix: str) -> tuple[str, str]:
@@ -330,10 +510,20 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
         '  </section>',
     ]
     js_blocks: list[str] = []
+    charts: list[dict] = []
+    data_spec = manifest.pop("_dataSpec", None)
     for i, sc in enumerate(scenes, 1):
         sid = sc["id"]
         start, sdur = round(sc["startSec"], 2), round(sc["durationSec"], 2)
-        frag = fill_slots(tpl["fragment"], sc, i - 1)
+        extra: dict = {}
+        if "{{BARS}}" in tpl["fragment"]:
+            chart = chart_for_scene(sc, i - 1, data_spec)
+            charts.append({"scene": sid, **{k: chart[k] for k in
+                          ("source", "title", "unit", "labels", "key", "fallback")},
+                          "values": [v.get("display", "") for v in chart["values"]]})
+            extra = {"TITLE": chart["title"], "UNIT": chart["unit"],
+                     "BARS": render_bars(chart, i - 1)}
+        frag = fill_slots(tpl["fragment"], sc, i - 1, extra)
         frag = resolve_asset_srcs(frag, comp_dir, project)
         frag, sc_js = namespace_ids(frag, tpl["scene_js"], sid)
         sc_js = remap_times(sc_js, start, start + sdur)
@@ -388,6 +578,7 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
 """
     out = comp_dir / "index.html"
     out.write_text(html, encoding="utf-8")
+    manifest["_charts"] = charts
     return out
 
 
@@ -432,7 +623,8 @@ def step_narration(args, project: Path, copy_path: Path) -> Path | None:
     if args.narration:
         suffix = args.narration.suffix or ".mp3"
         narr = audio_dir / f"narration{suffix}"
-        shutil.copy(args.narration, narr)
+        if args.narration.resolve() != narr.resolve():
+            shutil.copy(args.narration, narr)
         print(f"旁白：使用 --narration → {narr}")
         return narr
     try:
@@ -461,7 +653,8 @@ def step_transcript(args, project: Path, narration: Path | None) -> Path:
     (project / "script").mkdir(parents=True, exist_ok=True)
     out = project / "script" / "transcript.json"
     if args.transcript:
-        shutil.copy(args.transcript, out)
+        if args.transcript.resolve() != out.resolve():
+            shutil.copy(args.transcript, out)
         print(f"转写：使用 --transcript → {out}")
     else:
         if narration is None:
@@ -630,6 +823,8 @@ def main() -> int:
     ap.add_argument("--fps", type=int, choices=FPS_CHOICES, default=30)
     ap.add_argument("--bgm", type=Path, help="背景音乐（finalize 时 0.18 音量混入）")
     ap.add_argument("--speaker-hint", default="", help="配音音色提示（记录进 BRIEF，供 TTS 环节参考）")
+    ap.add_argument("--data", type=Path, help="图表数据 JSON（数组，按场景序："
+                   "[{title,unit,labels:[…],values:[…],key}]），覆盖文案自动提取")
     ap.add_argument("--no-render", action="store_true", help="只组装 + lint（跳过渲染与 final 合成）")
     ap.add_argument("--keep-work", action="store_true", help="不清理临时文件")
     args = ap.parse_args()
@@ -677,9 +872,18 @@ def main() -> int:
     clause_map = manifest.pop("_clauseMap", {})
     for sc in manifest["scenes"]:
         sc["_clauseTexts"] = clause_map.get(sc["id"], [sc.get("narration", "")])
+    data_spec = None
+    if args.data:
+        data_spec = json.loads(args.data.read_text(encoding="utf-8"))
+        manifest["_dataSpec"] = data_spec
 
     # 8. 组装 composition + lint
     comp = build_composition(project, manifest, style, title)
+    charts = manifest.pop("_charts", [])
+    if charts:
+        charts_path = project / "storyboard" / "charts.json"
+        charts_path.write_text(json.dumps(charts, ensure_ascii=False, indent=2) + "\n",
+                               encoding="utf-8")
     print(f"\n== 组装 composition → {comp} ==")
     code, output = lint_composition(comp.parent)
     print(output)
@@ -728,7 +932,7 @@ def main() -> int:
         print(f"  {sc['id']:<6}{sc['startSec']:>8.2f}{sc['durationSec']:>8.2f}  {kws}")
     print("  产物：")
     for rel in ("storyboard/style-decision.json", "storyboard/scenes.json",
-                "script/transcript.json", "composition/index.html",
+                "storyboard/charts.json", "script/transcript.json", "composition/index.html",
                 "renders/visual-master.mp4", "renders/final.mp4"):
         p = project / rel
         if p.exists():

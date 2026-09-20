@@ -79,9 +79,13 @@ python3 scripts/make_video.py --copy copy.txt --project outdir --go \
 - Auto storyboard: punctuation clauses grouped greedily into 6–8s scenes (12s cap), keywords
   auto-extracted, timing derived from word-level ASR — the narration-clock constraint holds.
 - Composition assembly instantiates the style template per scene (ids namespaced, timeline
-  positions remapped to `[scene start + 0.1s, scene end − hold]`). Template rhythm is preserved;
-  keyword-exact beats and rich scene visuals remain the agent-authored path (see Production
-  gates) — auto mode is the floor, not the ceiling.
+  positions remapped to `[scene start + 0.1s, scene end − hold]`). data-viz charts get real
+  numbers: `make_video.py` extracts unit-bearing tokens from the copy (3倍/三成/千亿/2021年)
+  into `storyboard/charts.json` and scales bar heights from them — or pass `--data <json>`
+  (array of `{title,unit,labels,values,key}` per scene) for exact control. Scenes without
+  unit-bearing numbers fall back to labeled placeholder bars, clearly marked in charts.json.
+  Template rhythm is preserved; keyword-exact beats and rich scene visuals remain the
+  agent-authored path (see Production gates) — auto mode is the floor, not the ceiling.
 - Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
   without either the tool exits 3 with guidance.
 

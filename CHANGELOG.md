@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.4.1 — 2026-09-20
+
+- **data-viz charts carry real numbers (auto pipeline)**: the one-shot orchestrator used to
+  blank every chart slot — no title, no values, hard-coded placeholder bar heights identical
+  across scenes. New `{{BARS}}` contract: unit-bearing tokens are extracted from the copy
+  (3倍 / 三成 / 千亿 / 2021年; bare unitless digits are deliberately not fabricated into bars),
+  bar heights scale from the real magnitudes, the key bar takes the accent color, and each
+  scene's chart lands in `storyboard/charts.json` (fallback scenes are honestly marked).
+  `--data <json>` accepts a per-scene `{title, unit, labels, values, key}` array for exact
+  control. Template colors now come from the wrapper palette (`--bg/--fg/--accent`) instead
+  of non-existent `--km-*` vars that silently fell back to light-theme inks on dark films.
+  Chart titles clip at clause boundaries, never mid-word.
+- **Caption breaks**: unbreakable bigram and dangling-tail sets extended (结果/复现/手机/千亿…;
+  从/在 bind forward), verb-initial heads favored — no more 结|果 or 手|机 splits; showcase
+  captions byte-identical after the change (regression-checked).
+
+## v2.4 — 2026-09-20
+
+- **One-shot pipeline** (`scripts/make_video.py`): copy in → style recommendation with a full
+  auditable decision trace → non-interactive confirmation gate (`--go`/`--style` passes) →
+  auto storyboard (punctuation clause grouping 6–8s, keyword extraction, word-level ASR
+  timing via derive_timing) → per-scene template assembly (id namespacing, timeline position
+  remapping, slot filling, SVG placeholder for missing photo slots) → lint → render →
+  finalize → verify. 15/15 styles assemble with zero lint errors. Auto mode is documented as
+  the floor; agent-authored scenes remain the ceiling.
+
 ## v2.3.1 — 2026-09-20
 
 - **Narration voice & prosody**: showcase re-voiced with a narration-grade male TTS
