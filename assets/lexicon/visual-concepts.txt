@@ -72,3 +72,25 @@
 未来|趋势|前景|走向	horizon sunrise aerial|night city lights from above|futuristic architecture|abstract light trails
 问题|难题|挑战|风险	maze puzzle on desk|sticky notes brainstorm wall|question mark hold up|complex problem diagram
 结论|结果|答案|验证	verified stamp close up|signed contract close up|checkmark on paper|conclusion document
+瓶颈|约束|限制|卡点|制约	traffic jam on highway|narrow bridge with cars|queue of people waiting|hourglass close up
+链条|链|最弱的一环|环节	iron chain links close up|heavy chain on dock|chain link macro|rusty chain
+订单|交付|发货|接单	delivery van loading boxes|warehouse dispatch dock|shipping containers port|courier handing parcel
+延期|延迟|超期|来不及	airport departure board delayed|clock on empty office wall|traffic queue at dusk|late night office lights
+采购|采购成本|供应商|降本	warehouse pallet inventory|procurement clipboard warehouse|supplier boxes stacked|forklift in warehouse
+生产|产能|产出|产量|制造	production line conveyor|factory floor workers|manufacturing plant interior|products on conveyor belt
+排程|调度|计划表|进度	production schedule board|planner calendar on wall|clipboard checklist factory|shift schedule board
+设备|机床|机械|产能不足	cnc machine shop|industrial lathe close up|machine tool cutting metal|factory machine close up
+换模|停机|维修|保养	maintenance technician repairing machine|worker adjusting machine parts|industrial repair workbench|engineer with wrench
+库存|仓库|存货|积压	warehouse pallet racks|inventory shelves stacked|storage warehouse interior|stacked cardboard boxes
+销售|客户|演示|转化率|流失	sales meeting presentation|business pitch meeting room|salesperson with client desk|handshake after meeting
+培训|学习|课程|不会	corporate training class|workshop seminar room|people studying at desks|instructor at whiteboard
+管理层|老板|领导|CEO|高管	boardroom meeting executives|manager reviewing reports office|business leaders at table|executive office window
+指标|考核|KPI|部门冲突	performance dashboard screen|kpi board in office|whiteboard with metrics|office wall charts
+流程|改善|优化|改造	flowchart on whiteboard|process sticky notes board|engineer drawing diagram|workflow board meeting
+战略|战术|规划|路线	strategic planning wall|business roadmap whiteboard|planning meeting table maps|corporate strategy session
+心理|阻力|情绪|抵触|不愿	person thinking alone by window|worried employee at desk|silhouette office alone|person in thought
+习惯|持续|循环|重复	runner on running track|circular arrow drawn on paper|clock pendulum close up|athlete training laps
+目标|结果|最终|达成	archery target on field|finish line marathon|target board arrows|goal post stadium
+项目|关键链|工期	project gantt chart on wall|construction project plan desk|site engineer with blueprint|project whiteboard planning
+复杂|系统|整体|全局	network of pipes industrial|electrical wiring panel|engineering control room|country road network aerial
+原因|因果|为什么|根因	detective board with strings|engineer inspecting machine parts|magnifying glass on documents|root cause analysis desk

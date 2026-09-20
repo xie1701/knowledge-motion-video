@@ -143,7 +143,8 @@ def main() -> int:
                     continue
                 kws.append({"text": w, "atSec": round(c["stamps"][idx] - start, 2)})
         scenes.append({"id": g["id"], "startSec": round(start, 2),
-                       "durationSec": round(end - start, 2), "keywords": kws,
+                       "durationSec": round(round(end, 2) - round(start, 2), 2),
+                       "keywords": kws,
                        "clauseText": text})
         cursor = last_c["endTime"]
 

@@ -60,6 +60,20 @@ python3 scripts/verify.py ~/Videos/my-explainer
 A complete worked example — script → storyboard → composition → narration → captions →
 final MP4, all verified — lives in [`examples/sample-project/`](examples/sample-project/).
 
+## From a long document to a 5-minute film（v2.8）
+
+用一份 44,484 字的研报（`TOC瓶颈理论从入门到精通.md`）跑出来的真实案例：
+
+- **先算预算再动笔**：这个音色实测 ≈3.35 字/秒，5 分钟 ≈ 1,050 字。4.4 万字压到 5 分钟是
+  **42:1** 的重写，不是朗读——脊柱比目录重要（案例命 6 幕：反直觉开场 → 概念翻转 →
+  五步法 → 为什么难 → 来历 → 判断）。
+- **旁白分段生成 + 逐段体检**：TTS 会**静默丢句**——实测两次各留下 41.3s / 58.5s 的纯静音，
+  不看波形根本发现不了（后果是时间轴错位或 `durationSec must be > 0`）。
+  `python3 scripts/check_narration.py audio/*.mp3` 已进管线，见
+  [`docs/document-to-film.md`](docs/document-to-film.md)。
+- **55 场 / 5 套版面**：同一部片里按句子形状逐场换（巨数字 / 一句话大片 / 对照 / 步骤进度 /
+  论证），最长同版面连续 2 场；「第 N 步」句自动拿到进度条 + 巨号步序。
+
 ## Showcase（完整素材化案例）
 
 [`examples/showcase-project/`](examples/showcase-project/) 是全链路案例（32.3s，1080×1920）：

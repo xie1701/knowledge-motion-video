@@ -95,6 +95,17 @@ DEFAULT_VOICE = "zh-CN-YunjianNeural"
 #   mods     检索修饰词轮转（同一场多个槽位用不同修饰词，避免四张图一个样）
 #   types    接受的素材类型，按优先序（拿不到视频就退照片）
 MATERIAL_PLANS: dict[str, list[dict]] = {
+    "hand-sketch": [
+        # 手绘论证风格也要一张配图：五套版面（thesis/statement/contrast/step/number）
+        # 都把照片放进自己的几何里，缺图时相框退 CSS 色块、不空屏。
+        # avoid：无密钥素材源上「档案/历史」很容易取回报纸、手稿、书页扫描件——
+        # 那些是**纸面图文**，铺进片子里一眼假；亮度/饱和度护栏抓不住泛黄的中灰纸页，
+        # 所以从标题先拦一遭。
+        {"slot": "photo-1", "role": "论证配图",
+         "avoid": ["newspaper", "manuscript", "clipping", "calligraphy", "letter",
+                    "document", "ledger", "poster", "book page", "printed page",
+                    "text page", "old paper", "wallpaper"]},
+    ],
     "collage-evidence": [
         {"slot": "photo-1", "role": "主证据照"},
         {"slot": "photo-2", "role": "对照照"},
@@ -684,11 +695,16 @@ def parse_template(style: str) -> dict:
 ANCHOR_NAMES = ("enter", "build", "reveal", "mid", "peak", "settle")
 ANCHOR_QUANTILES = {"build": 0.40, "reveal": 0.68, "peak": 0.92}
 
-# 版面变体：同一风格逐场换版面。候选池由**本场实际取到的素材数**决定——缺素材不是
-# 留个空框，而是换一套装得下的版面；内容再加一层偏好（有大数字 → hero，有对比语义 → pair）。
+# 版面变体：同一风格逐场换版面。两种驱动方式——素材型风格按「本场实际取到几张素材」选
+# （缺素材不是留个空框，而是换一套装得下的版面），内容型风格按「这句话是什么形状」选。
 LAYOUT_VARIANTS: dict[str, list[str]] = {
     "collage-evidence": ["wall", "cascade", "hero", "pair", "single"],
+    "hand-sketch": ["thesis", "statement", "contrast", "step", "number"],
 }
+# 内容形状驱动的风格：版面由句子形状（步骤/数字/对照/金句）决定，与素材数量无关。
+SHAPE_VARIANTS = ("hand-sketch",)
+# 形状优先级（越靠前越强）；step 是内容绑定的，连续出现是「进度在走」而不是重复版面。
+SHAPE_ORDER = ("step", "number", "contrast", "statement", "thesis")
 VARIANT_BY_COUNT: dict[int, list[str]] = {
     4: ["wall", "cascade", "hero"],
     3: ["hero", "cascade"],   # wall 需要 4 张：只有 3 张时选它就会剩一个空框
@@ -697,6 +713,83 @@ VARIANT_BY_COUNT: dict[int, list[str]] = {
     0: ["single"],
 }
 _CONTRAST_RE = re.compile(r"而不是|不是|对比|相反|但|却|相比|一半|三分之一|超过")
+_STEP_RE = re.compile(r"第\s*([一二三四五六七八九十两\d]+)\s*步")
+_STEP_CN = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+            "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def step_index(text: str) -> int:
+    """句子里的「第 N 步」序数；没有就 0。"""
+    m = _STEP_RE.search(text)
+    if not m:
+        return 0
+    raw = m.group(1)
+    if raw.isdigit():
+        return int(raw)
+    if raw in _STEP_CN:
+        return _STEP_CN[raw]
+    if raw.startswith("十") and len(raw) == 2 and raw[1] in _STEP_CN:
+        return 10 + _STEP_CN[raw[1]]
+    return 0
+
+
+_PCT_RE = re.compile(r"百分之([零〇一二两三四五六七八九十百]+)")
+
+
+def percent_display(text: str) -> str:
+    """「百分之八十」→「80%」。extract_numbers 不认中文百分比，但文案里到处都是。"""
+    m = _PCT_RE.search(text)
+    if not m:
+        return ""
+    val = _cn_to_num(m.group(1))
+    return f"{val:g}%" if val is not None else ""
+
+
+def _shape_candidates(text: str) -> list[str]:
+    """这句话适合哪些版面（按 SHAPE_ORDER 排序的候选）。"""
+    out: list[str] = []
+    if step_index(text):
+        out.append("step")
+    if _has_big_number(text) or percent_display(text) or re.search(r"\d+%", text):
+        out.append("number")
+    if _CONTRAST_RE.search(text) or text.count("：") >= 2 or text.count("问") >= 2:
+        # 对照：句子自带对比词（「不是…是…」「但」「却」），或者一句里两个「…问：…」主语
+        out.append("contrast")
+    if len(text) <= 26 and "contrast" not in out:
+        # 金句：短句（≤26 字）。长句被切成两场后前半截没有句末标点——它仍是「一句话大片」
+        # 的合理对象（字号会跟着长度自动降），只是不跟对照/步骤/数字抢形状。
+        out.append("statement")
+    out.append("thesis")
+    return [v for v in SHAPE_ORDER if v in out]
+
+
+def shape_variant(scene: dict, history: list[str]) -> tuple[str, str]:
+    """按句子形状挑版面。
+
+    形状优先，但不允许（step 之外）连着两场同一套：形状相同的句子按「全片用得最少」
+    的那套让位——一部 55 场的片子如果大半都是同一套版面，那就是又一次「呆板」。
+    """
+    # 注意：_clauseTexts 在单子句场景里就是 [narration] 本身，**不能**再跟 narration
+    # 相加（那样句子长度翻倍，短句判断就永远不成立）。
+    parts = [p for p in (scene.get("_clauseTexts") or [scene.get("narration", "")]) if p]
+    text = (join_clauses(parts) if parts else (scene.get("narration") or "")).strip()
+    cands = _shape_candidates(text)
+    prev = history[-1] if history else ""
+    tuned = ""
+    pick = cands[0]
+    if pick != "step" and pick == prev and len(cands) > 1:
+        # 让位：候选里挑全片用得最少的（同票时保持形状优先级）
+        pick = min(cands[1:], key=lambda v: history.count(v))
+        tuned = cands[0]
+    why = {"step": "句子是「第N步」，给进度版面",
+           "number": "句子里有大数字，给数字主角",
+           "contrast": "句子有对照/两个主语，给对看版面",
+           "statement": "短句，给一句话大片",
+           "thesis": "默认论证版面"}.get(pick, "默认")
+    if tuned:
+        why += f"（{tuned} 上一场刚用过，让位给全片用得最少的那套）"
+    why += f"；候选 {'/'.join(cands)}，上一场 {prev or '—'}"
+    return pick, why
 
 
 def _has_big_number(text: str) -> bool:
@@ -707,12 +800,15 @@ def _has_big_number(text: str) -> bool:
 
 
 def choose_variant(style: str, scene: dict, n_avail: int, prev: str,
-                   forced: str | None = None) -> tuple[str, str]:
+                   forced: str | None = None,
+                   history: list[str] | None = None) -> tuple[str, str]:
     """挑本场版面，返回 (variant, 理由)。非变体风格返回 ("", "")。"""
     if style not in LAYOUT_VARIANTS:
         return "", ""
     if forced:
         return forced, "外部指定"
+    if style in SHAPE_VARIANTS:
+        return shape_variant(scene, history if history is not None else ([prev] if prev else []))
     pool = list(VARIANT_BY_COUNT.get(max(0, min(n_avail, 4)), ["wall"]))
     pref = ""
     text = scene.get("narration", "") + "".join(scene.get("_clauseTexts") or [])
@@ -878,6 +974,13 @@ def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None
         "STEP_TEXT": take(0) or quote,
         "IMG_LABEL": kws[0] if kws else (take(0) or headline),
         "IMG_LABEL_2": take(1) or (kws[0] if kws else quote),
+        # hand-sketch 的变体槽位（内容由 hand_sketch_slots 覆写；不适用时留空，
+        # 对应分组本来就 display:none）
+        # hand-sketch 的变体槽位（内容由 hand_sketch_slots 覆写；不适用时留空，
+        # 对应分组本来就 display:none）
+        "STEP_NO": "", "STEP_PCT": "0%", "STEP_TICKS": "", "HEAD_CLASS": "",
+        "POINT_CLASS": "",
+        "BIGNUM": "", "BIGNUM_LABEL": "", "BIGNUM_LINE": "",
         "PHOTO_CAP": f"FIG. {index + 1:02d}",
     }
     # 素材卡兜底层（照片缺失时露出的那层）也要有内容，不能是「素材占位」
@@ -1537,6 +1640,12 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
     beat_log: dict[str, dict] = {}
     layout_log: list[dict] = []
     prev_variant = ""
+    variant_history: list[str] = []
+    # 全片步数（「第 N 步」出现到的最大 N）：给 hand-sketch 的进度版面用，
+    # 按文案推导而不是写死 5——别的稿子只有三步就画三格。
+    step_total = max((step_index(join_clauses(
+        [p for p in (sc.get("_clauseTexts") or [sc.get("narration", "")]) if p]))
+        for sc in scenes), default=0)
     forced_variants = manifest.get("_variantOverride") or {}
     data_spec = manifest.pop("_dataSpec", None)
     for i, sc in enumerate(scenes, 1):
@@ -1546,7 +1655,7 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
         # 版面变体：先数本场真正拿到手的素材，再挑版面（挑法见 choose_variant）
         avail = sorted((slot_maps or {}).get(sid, {}))
         variant, why = choose_variant(style, sc, len(avail), prev_variant,
-                                      forced_variants.get(sid))
+                                      forced_variants.get(sid), variant_history)
         # 缺素材的槽位整卡消失（有素材的场景才套；一个都没取到的场景保留关键词兜底层）
         got_slots = [a["slot"] for a in (sc.get("assets") or []) if a.get("local")]
         miss_slots = [a["slot"] for a in (sc.get("assets") or []) if not a.get("local")]
@@ -1555,9 +1664,12 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
         if variant:
             extra["VARIANT"] = variant
             prev_variant = variant
+            variant_history.append(variant)
             sc["variant"] = variant
             layout_log.append({"scene": sid, "variant": variant, "reason": why,
                                "assets": avail})
+        if style == "hand-sketch":
+            extra.update(hand_sketch_slots(sc, variant or "thesis", step_total, i - 1))
         if "{{PLOT}}" in tpl["fragment"]:
             chart = chart_for_scene(sc, i - 1, data_spec)
             charts.append({"scene": sid, "mode": chart.get("mode", "bars"),
@@ -1678,6 +1790,28 @@ def gate(chosen: str) -> None:
           f"--go --style {chosen}")
 
 
+def narration_silence_gaps(path: Path, min_gap: float = 3.0) -> list[tuple[float, float]]:
+    """旁白里的超长停顿（>min_gap 秒）——TTS 丢句子时就是这个样子。
+
+    实测（ListenHub 解说小明）：稿子里一个「：」引出的小问句没被读出来，音频里留下
+    41 秒纯静音，而 ASR 的 token 时间戳会在那 41 秒里直接跳到下一句——切场时就会出现
+    「某一小段的时长 0.00s」，或者整片时间轴错位。一个 ffmpeg 调用就能提前发现。
+    """
+    if shutil.which("ffmpeg") is None or not path.exists():
+        return []
+    proc = run(["ffmpeg", "-hide_banner", "-i", path, "-af",
+                f"silencedetect=noise=-45dB:d={min_gap}", "-f", "null", "/dev/null"])
+    gaps: list[tuple[float, float]] = []
+    start = None
+    for m in re.finditer(r"silence_(start|end): ([\d.]+)", proc.stderr or ""):
+        if m.group(1) == "start":
+            start = float(m.group(2))
+        elif start is not None:
+            gaps.append((start, float(m.group(2))))
+            start = None
+    return gaps
+
+
 def step_narration(args, project: Path, copy_path: Path) -> Path | None:
     audio_dir = project / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -1692,6 +1826,12 @@ def step_narration(args, project: Path, copy_path: Path) -> Path | None:
         if args.narration.resolve() != narr.resolve():
             shutil.copy(args.narration, narr)
         print(f"旁白：使用 --narration → {narr}")
+        gaps = narration_silence_gaps(narr)
+        if gaps:
+            worst = max(g[1] - g[0] for g in gaps)
+            print(f"  ! 旁白里有 {len(gaps)} 处 >3s 的停顿，最长 {worst:.1f}s"
+                  f"（第一处 {gaps[0][0]:.1f}s）——TTS 可能漏读了一整句，"
+                  "先听一眼再往下跑，否则时间轴会错位", file=sys.stderr)
         return narr
     try:
         import importlib.util
@@ -1712,6 +1852,10 @@ def step_narration(args, project: Path, copy_path: Path) -> Path | None:
     if proc.returncode != 0 or not narr.exists():
         die(f"tts_edge.py failed:\n{proc.stderr.strip()}", 1)
     print(f"旁白：edge-tts 生成 → {narr}")
+    gaps = narration_silence_gaps(narr)
+    if gaps:
+        worst = max(g[1] - g[0] for g in gaps)
+        print(f"  ! 旁白里有 {len(gaps)} 处 >3s 的停顿，最长 {worst:.1f}s", file=sys.stderr)
     return narr
 
 
@@ -1738,15 +1882,22 @@ def step_transcript(args, project: Path, narration: Path | None) -> Path:
     # 既污染字幕也污染关键词分词，而旁白本就是照文案念的 —— 用文案文字 + ASR 时间。
     raw = json.loads(out.read_text(encoding="utf-8"))
     if raw.get("tokens"):
+        # 快照「未校正的输入」再对齐。以前这里是「已经存在就不写」，结果换了一条旁白
+        # （--transcript 指向新音频）却拿上一轮留下的旧快照去对齐——时间轴整段错位，
+        # 成片里出现一场 49s 的静止画面（实测：换了旁白音频，忘同步 raw 快照）。
         raw_copy = project / "script" / "transcript.raw.json"
-        if not raw_copy.exists():
-            raw_copy.write_text(json.dumps(raw, ensure_ascii=False, indent=2) + "\n",
-                                encoding="utf-8")
+        if raw_copy.resolve() != out.resolve():
+            shutil.copy(out, raw_copy)
         proc = run([sys.executable, SCRIPTS / "align_transcript.py",
                     "--transcript", raw_copy, "--text", args.copy, "--out", out])
         if proc.returncode != 0:
             die(f"align_transcript failed:\n{proc.stderr.strip()}", 2)
         print(proc.stdout.strip())
+        m = re.search(r"相似度 ([\d.]+)", proc.stdout or "")
+        if m and float(m.group(1)) < 0.85:
+            print(f"  ! 转写与文案相似度 {m.group(1)}（<0.85）：ASR 可能读丢/读错了整句，"
+                  "字幕与关键词都会跟着错——听一眼音频，必要时重新生成旁白",
+                  file=sys.stderr)
 
     # --corrections 词级纠错：bad=good，精确匹配 token 后替换
     if args.corrections:
@@ -1901,8 +2052,108 @@ def kinetic_lines(scene: dict, width: int = 13) -> dict[str, str]:
     return {"LINE_1": line1, "KEY_WORD": key, "LINE_2": line2}
 
 
+def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
+                     index: int = 0) -> dict[str, str]:
+    """hand-sketch 各版面的专属槽位（内容取自本场句子，不写死题材）。
+
+    为什么标题不用关键词：这条风格的主视觉是**一句能读的话**（大标题 + 两条论点）。
+    拿第一个关键词填（「加班」「订单」）屏幕上就只有两个字，大片留白、信息为空——
+    实测过。所以：标题 = 首个子句，论点 = 后续子句；一句都装不下就不硬塞。
+
+    - thesis：HEADLINE = 首子句，POINT_1/2 = 后续子句（没有就不画）
+    - statement：HEADLINE = 整句（字号跟着长度降档）
+    - contrast：LINE_A/LINE_B = 这一句的前后两半（上行旧、下行新）
+    - step：STEP_NO/STEP_PCT/STEP_TICKS = 「第 N 步 / 共 M 步」的进度（M 全片推导）
+    - number：BIGNUM/BIGNUM_LABEL/BIGNUM_LINE = 最大的那个数字 + 它的宾语 + 另一句话
+    """
+    parts = [p for p in (scene.get("_clauseTexts") or [scene.get("narration", "")]) if p]
+    text = (join_clauses(parts) if parts else (scene.get("narration") or "")).strip()
+    kws = [k["text"] for k in scene.get("keywords", []) if k.get("text")]
+    out: dict[str, str] = {}
+    # 图注：编号 + 这张图跟这句话的关系（只有一个「FIG. 07」的话，观众看不出它跟论证的关系）
+    cap = f"FIG. {index + 1:02d}"
+    if kws:
+        cap += f" / {kws[0]}"
+    out["PHOTO_CAP"] = cap
+    clauses = [c.strip("，,。、；;：: ") for c in re.split(r"[，。；！？：、]", text)]
+    clauses = [c for c in clauses if c]
+
+    if variant == "contrast":
+        half = clauses
+        if len(half) < 2:
+            # 一句话里没有标点可分：就在对比词处切（「不是…而是…」「但」「却」）——
+            # 否则两行会填同一句，上行下行长得一模一样（实测看着像没擦干净的草稿）。
+            m = re.search(r"而是|但是|但|却|相反|相比", text)
+            if m and 3 <= m.start() <= len(text) - 3:
+                half = [text[:m.start()], text[m.start():]]
+        if len(half) >= 2:
+            mid = len(half) // 2
+            out["LINE_A"] = "".join(half[:mid])[:22]
+            out["LINE_B"] = "".join(half[mid:])[:22]
+        else:
+            out["LINE_A"] = text[:22]
+            out["LINE_B"] = text[:22]
+
+    elif variant == "step":
+        n = step_index(text)
+        total = step_total or max(n, 1)
+        out["STEP_NO"] = f"{n:02d}" if n else ""
+        pct = max(4.0, min(100.0, 100.0 * n / total)) if total else 0.0
+        out["STEP_PCT"] = f"{pct:g}%"
+        # 刻度：每步一根，均匀落在 84% 宽的进度条上（不确定步数就不画刻度）
+        ticks = "".join(f'<i style="left:{(100.0 * i / max(total - 1, 1)):g}%"></i>'
+                        for i in range(total)) if total > 1 else ""
+        out["STEP_TICKS"] = ticks
+        # 标题换成步骤名（去掉「第 N 步，」前缀），不跟进度条重复
+        bare = _STEP_RE.sub("", text, count=1).strip("，,。:：、；; ")
+        if bare:
+            out["HEADLINE"] = bare[:20]
+
+    elif variant == "number":
+        nums = sorted(extract_numbers(text), key=lambda n: abs(n.get("value", 0)), reverse=True)
+        shown = nums[0].get("display", "") if nums else ""
+        if not shown:
+            shown = percent_display(text)   # 中文百分比 extract_numbers 不认
+        out["BIGNUM"] = shown
+        out["HEADLINE"] = (clauses[0] if clauses else text)[:22]
+        label = next((k for k in kws if shown and shown not in k
+                      and not re.fullmatch(r"[\d\s%％.,、:：倍成万亿千百十]+", k)), "")
+        if not label:
+            label = next((h for h in re.split(r"[，。；：、]", text)
+                          if h and (not shown or shown not in h)), "")
+        out["BIGNUM_LABEL"] = label[:14]
+        others = [h for h in re.split(r"[，。；：、]", text)
+                  if h and h != label and (not shown or shown not in h)]
+        out["BIGNUM_LINE"] = (others[0] if others else "")[:20]
+
+    elif variant == "statement":
+        # 一句话大片：标题就是这句话本身，不是关键词（否则屏幕上只有两个字）
+        head = re.sub(r"[。？！]$", "", text) or text
+        out["HEADLINE"] = head[:26]
+        # 字号跟着长度降：24 字的句子在 104px 下是三行，会顶到照片带上
+        n = len(re.sub(r"[，。？！、：；]", "", head))
+        out["HEAD_CLASS"] = "km-sk--h-s" if n <= 14 else ("km-sk--h-m" if n <= 20
+                                                          else "km-sk--h-l")
+
+    else:
+        # thesis（默认论证版面）：标题 = 首子句，两条论点 = 后续子句。
+        # 子句不够就少画——不把同一句话拆两半充数，也不留一条带红方块的空行。
+        # 上限 26 字（约 2–3 行，仍落在论点行上方）：以前卡在 18 字，会把「百分之八十
+        # 的客户流失 发生在第一次演示」切成「…第一次演」这种半截词。
+        out["HEADLINE"] = (clauses[0] if clauses else text)[:26]
+        rest = clauses[1:3]
+        out["POINT_1"] = rest[0][:14] if rest else ""
+        out["POINT_2"] = rest[1][:14] if len(rest) > 1 else ""
+        out["POINT_CLASS"] = ("km-sk--p2" if len(rest) > 1 else
+                              ("km-sk--p1" if rest else "km-sk--p0"))
+
+    return out
+
+
 def asset_query(scene: dict, item: dict, ordinal: int,
-                used: set[str] | None = None) -> tuple[str, list[str]]:
+                used: set[str] | None = None,
+                counts: dict[str, int] | None = None,
+                max_uses: int = 2) -> tuple[str, list[str]]:
     """一条素材的检索词 + 备选阶梯：返回 (query, fallbacks)。
 
     候选来自 visual-concepts.txt（中文概念 → 英文检索短语）。命中不了概念表就退
@@ -1912,20 +2163,30 @@ def asset_query(scene: dict, item: dict, ordinal: int,
     为什么要挂备选：取图护栏会把「白底图文」判掉（论文插图/流程图/截图），一条抽象的
     检索词（inference、neural network architecture）就很容易变成「一张都取不到」。
     阶梯里放同场景的其它概念候选，第一条被护栏拦下时还有路可走。
+
+    counts/max_uses：**全片**检索词配额。一部 55 场的片子如果每句「瓶颈」都取
+    「traffic jam on highway」，画面里就是 11 张一样的高速堵车（实测发生过）。同一个
+    概念全片最多用 max_uses 次，超了就换同场景的下一候选（仍然同域，只是构图不同）。
     """
     used = used if used is not None else set()
+    counts = counts if counts is not None else {}
     parts = scene.get("_clauseTexts") or [scene.get("narration", "")]
     text = join_clauses([p for p in parts if p])
     kws = [k["text"] for k in scene.get("keywords", [])]
     pool = concept_candidates(text, kws) or ([kws[0]] if kws else [text[:10] or "abstract"])
     base = ""
+    # 第一轮：优先「本场没用过 + 全片没超配额」的候选
     for i in range(len(pool)):
         cand = pool[(ordinal + i) % len(pool)]
-        if cand not in used:
+        if cand not in used and counts.get(cand, 0) < max_uses:
             base = cand
             break
-    base = base or pool[ordinal % len(pool)]
+    # 第二轮：配额都满了，就挑全片用得最少的那一个（仍然尽量在场内换新的）
+    if not base:
+        fresh = [c for c in pool if c not in used] or list(pool)
+        base = min(fresh, key=lambda c: counts.get(c, 0))
     used.add(base)
+    counts[base] = counts.get(base, 0) + 1
     mods = item.get("mods") or []
     q = f"{base} {mods[ordinal % len(mods)]}" if mods else base
     fences = [c for c in pool if c != base and c not in (item.get("used_queries") or [])]
@@ -1953,18 +2214,19 @@ def step_assets(args, project: Path, manifest: dict,
 
     declared: list[dict] = []
     used_urls: set[str] = set()
+    query_counts: dict[str, int] = {}   # 全片检索词配额（避免 11 张一样的高速堵车）
     for sc in manifest["scenes"]:
         sid = sc["id"]
-        used_q: set[str] = set()   # 只在本场内去重：跨场重复的检索词交给 URL 去重换图，
-                                   # 否则会把后面几场挤到语义不对的概念上去（实测过）
+        used_q: set[str] = set()   # 场内去重：同一场两张图不应该是同一概念
         items = (override or {}).get(sid) or plan or []
         assets = []
         for k, it in enumerate(items):
             accept = it.get("types") or [it.get("type", "photo")]
             if it.get("query"):
                 q, extra_fb = it["query"], []
+                query_counts[q] = query_counts.get(q, 0) + 1
             else:
-                q, extra_fb = asset_query(sc, it, k, used_q)
+                q, extra_fb = asset_query(sc, it, k, used_q, query_counts)
             mods = it.get("mods") or []
             bare = q[: -len(mods[k % len(mods)]) - 1].strip() if mods else q
             # 检索词阶梯：先退「去掉修饰词的裸概念」，再退同场景的其它概念候选

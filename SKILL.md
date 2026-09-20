@@ -61,7 +61,27 @@ ratio and platform, target duration, whether wording is locked, voice source (ex
 TTS / none), and any brand constraints. Never make the viewer choose among all styles — analyze
 the content, recommend a primary and secondary route, and justify in one sentence.
 
-## One-shot pipeline (`make_video.py`, v2.7)
+## From a document to a film (v2.8)
+
+Handed a long source document (a report, a research note) rather than a finished copy, the writing
+step is editorial and cannot be scripted — full recipe with measured numbers in
+[`docs/document-to-film.md`](docs/document-to-film.md). The short version:
+
+- Budget first: the voice used in the shipped films runs at **≈3.35 字/秒**, so 5 minutes ≈ **1,050
+  characters**. A 44,000-character report compressed to a 5-minute film is a **42:1** rewrite, not a
+  read-through. Decide the length before writing.
+- Read the skeleton (`grep -n '^#\{1,4\} ' doc.md`), then only the sections that carry the
+  argument; write one sentence per line, every line a complete unit, full punctuation.
+- **Chunk the TTS and health-check every chunk**: `python3 scripts/check_narration.py audio/*.mp3`.
+  ListenHub silently drops sentences — measured twice in one session, leaving a 41.3s and a 58.5s
+  hole of pure silence where ~6–7s of speech belonged. It shows up later as
+  `scenes[N].durationSec must be > 0` or a drifting timeline. Regenerate the affected chunk (not the
+  whole script), splice with 0.45s gaps, then re-check the whole file. `make_video.py` now runs this
+  check on `--narration` itself and warns.
+- Then `coli asr -j` → `align_transcript.py` → `make_video.py`. An alignment similarity below 0.85 is
+  a signal that another sentence went missing.
+
+## One-shot pipeline (`make_video.py`, v2.8)
 
 For a straight copy-to-film run, the orchestrator chains recommendation → confirmation gate →
 auto storyboard → template assembly → render → finalize → verify:
@@ -105,12 +125,19 @@ python3 scripts/make_video.py --copy copy.txt --project outdir --go \
   units), `bignum` (a single number), `statement` (no numbers — big type, never fake bars).
   Bar heights are zero-based linear; category labels sit below the baseline; the axis max is
   labelled; every chart carries a `数据来源` line. Auto mode is the floor, not the ceiling.
-- **Material styles fetch their own photos (v2.6)**: when the chosen style is collage-evidence,
-  editorial-collage or generated-cinematic, the run inserts an asset step between the storyboard
-  and the composition: queries are synthesized from the scene's concepts, photos are downloaded
-  and mapped onto the template's slots, and `storyboard/assets-plan.json` +
-  `assets/media/manifest.json` record what was used (see the asset section below). `--no-fetch`
-  keeps the template fallback instead.
+- **Material styles fetch their own photos (v2.6–v2.8)**: when the chosen style carries photo slots
+  (collage-evidence, editorial-collage, generated-cinematic, hand-sketch), the run inserts an asset
+  step between the storyboard and the composition: queries are synthesized from the scene's
+  concepts, photos are downloaded and mapped onto the template's slots, and
+  `storyboard/assets-plan.json` + `assets/media/manifest.json` record what was used (see the asset
+  section below). `--no-fetch` keeps the template fallback instead.
+- **Layouts are rotated so a long film is not one slide shown N times (v2.7–v2.8)**: collage-evidence
+  picks by how many photos actually arrived (`wall/cascade/hero/pair/single`), hand-sketch picks by
+  the *shape of the sentence* (`number` big-number hero, `statement` one big line + photo band,
+  `contrast` two facing rows, `step` progress track + giant step number + step name, `thesis` the
+  default argument layout). Any shape other than `step` yields to the least-used layout when it
+  would repeat the previous scene, so a 55-scene film never shows the same silhouette twice in a
+  row. `storyboard/layouts.json` records each decision and its reason.
 - Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
   without either the tool exits 3 with guidance.
 
