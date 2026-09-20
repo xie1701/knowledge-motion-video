@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.3 — 2026-09-20
+
+- **Film-level style routing**: style is a whole-film decision recorded as `project.style`
+  (validator enforces one style per film); film-level decision table added to `style-router.md`;
+  per-scene mixing demoted to intentional long-form chapters. Fixes the v2.2 mistake of mixing
+  three grammars inside one 37.5s film.
+- **Narration-clock hard constraint**: new `scripts/derive_timing.py` derives scene boundaries
+  (pause midpoints) and keyword beats (exact ASR token times) from word-level transcripts —
+  hand-authored beats were measured up to 2.06s off the voice in v2.2.
+- **BGM**: keyless CC0/CC-BY music sourcing via the Openverse audio API; BGM mixed at 0.18
+  under narration with fade-in/out (finalize.py `--bgm`).
+- **Asset matching**: rich `description` field as the primary handle for the render-front asset
+  gate; `fetch_assets.py --sheet` renders a contact sheet for agent/human visual review.
+- **SFX restraint**: default no SFX; when used, effects sit at -12dB with 30ms/120ms fades
+  (v2.2's full-volume noise bursts read as jarring).
+- **Showcase rebuilt**: `examples/showcase-project/` — 32.3s single-grammar (hand-sketch)
+  film with narration, burned captions, CC0 piano BGM, and one semantically matched real photo;
+  every visual payoff lands on its spoken keyword within ±0.3s. Replaces the v2.2
+  mixed-style showcase.
+- `build_captions.py`: strip leading punctuation and drop punctuation-only cues.
+
 ## v2.2 — 2026-09-20
 
 - **Real-asset pipeline**: `scripts/fetch_assets.py` — per-scene semantic asset search and

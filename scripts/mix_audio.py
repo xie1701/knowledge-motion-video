@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SFX_GAIN = 0.5  # 约 -6dB
+SFX_GAIN = 0.25  # 约 -12dB，避免音效压过旁白或突兀
 
 
 def main() -> int:
@@ -62,14 +62,24 @@ def main() -> int:
     # 构造 filter_complex：旁白 + 每个音效 adelay 后 amix
     parts = ["[0:a]aformat=sample_rates=48000:channel_layouts=mono[n]"]
     labels = ["n"]
+    dur = float(doc.get("project", {}).get("durationSec", 0)) or None
     cmd = ["ffmpeg", "-loglevel", "error", "-y", "-i", str(narration)]
     for i, (at, f) in enumerate(events):
         ms = int(at * 1000)
         cmd += ["-i", str(f)]
+        # 音效淡入淡出（30ms/120ms）消除突兀感；长度用 ffprobe 实测
+        try:
+            fdur = float(subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(f)], check=True, capture_output=True, text=True
+            ).stdout.strip())
+        except Exception:  # noqa: BLE001
+            fdur = 0.0
+        fade_out = f",afade=t=out:st={max(0.0, fdur - 0.12):.3f}:d=0.12" if fdur > 0.2 else ""
         parts.append(f"[{i + 1}:a]aformat=sample_rates=48000:channel_layouts=mono,"
-                     f"volume={args.sfx_gain},adelay={ms}|{ms}[s{i}]")
+                     f"volume={args.sfx_gain},afade=t=in:d=0.03{fade_out},"
+                     f"adelay={ms}|{ms}[s{i}]")
         labels.append(f"s{i}")
-    dur = float(doc.get("project", {}).get("durationSec", 0)) or None
     amix_in = "".join(f"[{l}]" for l in labels)
     fc = ";".join(parts) + f";{amix_in}amix=inputs={len(labels)}:duration=longest:normalize=0"
     if dur:

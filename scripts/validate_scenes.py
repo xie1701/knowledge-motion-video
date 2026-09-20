@@ -118,6 +118,14 @@ def validate(path: Path) -> list[str]:
     declared = project.get("durationSec")
     if isinstance(declared, (int, float)) and abs(declared - previous_end) > 0.15:
         fail(errors, f"project.durationSec ({declared}) differs from scene end ({previous_end:.3f})")
+    # v2.3 整片风格约束：project.style 设置后，所有 scene.style 必须一致
+    proj_style = (data.get("project") or {}).get("style")
+    if proj_style:
+        for scene in data.get("scenes", []):
+            if scene.get("style") != proj_style:
+                fail(errors,
+                     f"scenes[{scene.get('id')}].style {scene.get('style')!r} conflicts with "
+                     f"project.style {proj_style!r} (film-level style routing: one style per film)")
     return errors
 
 

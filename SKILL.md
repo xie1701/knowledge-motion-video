@@ -72,7 +72,25 @@ Pause for approval at expensive boundaries:
 
 Explicitly autonomous requests may skip pauses, but the same artifacts are still produced.
 
-## Scene routing
+## Style routing: film-level first (v2.3)
+
+Style is a **whole-film decision**, not a per-scene mix. Analyze the entire copy's semantics —
+subject matter, persuasive structure, and real-asset availability — then commit the whole film
+to one visual grammar (reference video's four styles are complete film grammars, not scene
+filters). Record the choice as `project.style`; the validator then enforces that every scene
+uses it. Per-scene routing remains available only for intentionally mixed long-form chapters.
+
+Film-level decision table:
+
+- methods, tutorials, arguments, processes → **hand-sketch** or swiss-sketch (the pen leads attention; the process itself persuades)
+- history, events, people, real archives available → **collage-evidence** or editorial-collage
+- systems, engineering, nature, structures → **paper-fold** or paper-diorama
+- psychology, workplace, relationships, ethics → character-concept-comic
+- numbers, trends, rankings → data-viz
+
+Confirm the choice (with the user or in the storyboard notes) **before** writing the storyboard.
+
+## Scene routing (within the chosen grammar)
 
 Classify each beat by its explanatory job, then route it (details in `style-router.md`):
 
@@ -98,8 +116,11 @@ living creator frame-for-frame — reuse principles, never protected frames, cha
 ## Timing contract
 
 1. Lock narration. 2. Generate or import voice audio. 3. Obtain word/phrase timestamps
-(`coli asr -j`, edge-tts WordBoundary, WhisperX, or supplied). 4. Derive beats from semantic
-changes and pauses. 5. Land visual payoffs on spoken keywords. 6. Hold the resolved state ≥0.8s
+(`coli asr -j`, edge-tts WordBoundary, WhisperX, or supplied). 4. **Derive scene boundaries and
+keyword beats with `scripts/derive_timing.py`** — scene cuts land on pause midpoints between
+clauses, beats land exactly on the spoken keyword's token time. Never hand-author beat times
+when word timestamps exist; hand-tuned beats are the #1 cause of perceived A/V desync. 5. Land
+visual payoffs on spoken keywords (±0.3s). 6. Hold the resolved state ≥0.8s
 (1–1.5s for dense diagrams). 7. Subtitles go on the topmost layer, applied last in FFmpeg.
 
 Never hard-code final frame numbers before voice timing; estimates are for pilots only.
@@ -118,15 +139,22 @@ For material-style scenes, declare per-scene `assets` in `scenes.json` (see `sce
 
 Then:
 
-1. `python3 scripts/fetch_assets.py --project <dir>` — searches Pexels (set `PEXELS_API_KEY`),
+1. `python3 scripts/fetch_assets.py --project <dir> [--sheet]` — searches Pexels (set `PEXELS_API_KEY`),
    Pixabay (`PIXABAY_API_KEY`), then keyless Openverse and Wikimedia Commons; downloads to
    `assets/media/`, backfills `local`/`attribution`/`license`, and writes
    `assets/media/manifest.json` (the license record you ship). Resume-safe; bundled SFX pack
-   matches `audio-sfx` queries locally.
-2. Templates reference `{{assets.<id>}}` placeholders; a missing asset degrades to the
+   matches `audio-sfx` queries locally. `--sheet` renders a contact sheet of downloaded photos.
+2. **Asset gate**: view the contact sheet (or the files) before rendering; judge match against
+   the asset's rich `description`, not just the query. Reject → rewrite the query and re-fetch
+   (at most two rounds per slot).
+3. Templates reference `{{assets.<id>}}` placeholders; a missing asset degrades to the
    template's CSS fallback instead of an empty frame.
-3. `python3 scripts/mix_audio.py --scenes ... --narration ... --out audio/mix.wav` — mixes the
-   narration with per-scene SFX at `startSec + atSec`.
+4. `python3 scripts/mix_audio.py --scenes ... --narration ... --out audio/mix.wav` — mixes the
+   narration with per-scene SFX at `startSec + atSec` (SFX sit at -12dB with fades; default to
+   **no SFX** and let BGM carry cohesion unless an effect is explicitly authored).
+5. **BGM**: prefer a local `assets/bgm/` track, else fetch CC0/CC-BY music via the Openverse
+   audio API (keyless), trim with fade-in/out, and mix via `finalize.py --bgm` (0.18 under the
+   narration). Record attribution in the asset manifest.
 
 License notes: Pexels/Pixabay content licenses allow modification and redistribution inside a
 larger work; Openverse/Wikimedia return CC/PD content — record attribution in the manifest and

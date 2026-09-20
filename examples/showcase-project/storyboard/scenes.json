@@ -1,12 +1,13 @@
 {
   "version": 1,
   "project": {
-    "title": "文案进，成片出——知识动画完整闭环",
+    "title": "文案进，成片出——结构给知识视频说服力",
     "language": "zh-CN",
     "width": 1080,
     "height": 1920,
     "fps": 30,
-    "durationSec": 37.5,
+    "durationSec": 32.28,
+    "style": "hand-sketch",
     "captionSafeArea": {
       "x": 72,
       "y": 1570,
@@ -15,360 +16,311 @@
     }
   },
   "design": {
-    "background": "#F3EEE3",
-    "foreground": "#1C1A16",
+    "background": "#F4EFE6",
+    "foreground": "#11110F",
     "accent": "#E34234",
     "muted": "#8C887F",
     "displayFont": "PingFang SC",
     "bodyFont": "PingFang SC"
   },
+  "timing": {
+    "method": "derive_timing.py from word-level ASR (narration.mp3, sensevoice)",
+    "note": "所有 startSec/keywords.atSec 均由词级时间戳推导：场景边界=子句间停顿中点，beat=关键词 token 起点。禁止手工覆盖。"
+  },
   "scenes": [
     {
       "id": "s01",
       "startSec": 0,
-      "durationSec": 4.2,
-      "narration": "一段文案，凭什么变成一支让人看完的知识视频？",
+      "durationSec": 3.42,
+      "narration": "一篇文案，怎么变成一支让人看完的知识视频？",
       "keywords": [
         {
           "text": "文案",
-          "atSec": 0.4
+          "atSec": 0.48
         },
         {
           "text": "知识视频",
-          "atSec": 2.6
+          "atSec": 2.64
         }
       ],
       "purpose": "hook",
-      "semanticClass": "argument",
-      "style": "collage-evidence",
-      "visualSubject": "A torn-paper evidence wall: typewriter photo, notebook photo and a question card pinned like case files",
-      "visualVerb": "pin-and-question",
-      "layout": "floating-evidence-grid",
-      "camera": "micro-drift",
-      "transitionIn": "hard-cut",
-      "transitionOut": "hard-cut",
-      "assets": [
-        {
-          "id": "photo-typewriter",
-          "type": "photo",
-          "query": "vintage typewriter",
-          "local": "assets/media/photo-typewriter.jpg",
-          "attribution": "philhearing",
-          "license": "cc-by",
-          "source_page": "https://www.flickr.com/photos/36766427@N05/5520806412"
-        },
-        {
-          "id": "photo-notebook",
-          "type": "photo",
-          "query": "open notebook pen",
-          "local": "assets/media/photo-notebook.jpg",
-          "attribution": "None",
-          "license": "cc-cc0",
-          "source_page": "https://www.rawpixel.com/image/5916411/photo-image-public-domain-notebook-pens"
-        },
-        {
-          "id": "sfx-page",
-          "type": "audio-sfx",
-          "query": "paper",
-          "local": "assets/media/sfx-page.wav",
-          "license": "paper-rustle.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 0.6
-        }
-      ],
-      "beats": [
-        {
-          "atSec": 0.05,
-          "action": "evidence cards slide in staggered from edges"
-        },
-        {
-          "atSec": 0.6,
-          "action": "photos scale-settle onto paper board"
-        },
-        {
-          "atSec": 2.6,
-          "action": "question card 与 accent 下划线落在 知识视频"
-        }
-      ],
-      "finalState": "Evidence wall with question card readable 0.6s",
-      "renderer": "hyperframes"
-    },
-    {
-      "id": "s02",
-      "startSec": 4.2,
-      "durationSec": 6.7,
-      "narration": "答案不是特效，是结构。先锁定叙事，再把文案切成六到八秒的语义分镜。",
-      "keywords": [
-        {
-          "text": "结构",
-          "atSec": 2.0
-        },
-        {
-          "text": "语义分镜",
-          "atSec": 5.6
-        }
-      ],
-      "purpose": "explanation",
-      "semanticClass": "process",
+      "semanticClass": "question",
       "style": "hand-sketch",
-      "visualSubject": "Hand-drawn pipeline draws itself: narrative lock -> 6-8s semantic beats, pen tip leading each stroke",
-      "visualVerb": "draw-and-connect",
-      "layout": "grid-left-strokes-right-labels",
+      "visualSubject": "Document card on the left transforms into a hand-drawn play-button film frame on the right, pen leading every stroke",
+      "visualVerb": "question-and-transform",
+      "layout": "grid-left-doc-right-film",
       "camera": "static",
       "transitionIn": "hard-cut",
       "transitionOut": "hard-cut",
-      "assets": [
-        {
-          "id": "photo-pen",
-          "type": "photo",
-          "query": "fountain pen writing",
-          "local": "assets/media/photo-pen.jpg",
-          "attribution": "Francis Flinch",
-          "license": "cc-by,sa",
-          "source_page": "https://commons.wikimedia.org/w/index.php?curid=23990924"
-        },
-        {
-          "id": "sfx-pen",
-          "type": "audio-sfx",
-          "query": "pen",
-          "local": "assets/media/sfx-pen.wav",
-          "license": "pen-scratch.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 1.6
-        }
-      ],
+      "assets": [],
       "beats": [
         {
           "atSec": 0.1,
           "action": "headline underline draws itself"
         },
         {
-          "atSec": 1.6,
-          "action": "stroke 1 draws: 叙事锁定 box"
+          "atSec": 0.48,
+          "action": "document card outline draws (spoken 文案)"
         },
         {
-          "atSec": 4.2,
-          "action": "stroke 2 draws: 语义分镜 ruler with 6-8s ticks"
-        },
-        {
-          "atSec": 5.6,
-          "action": "arrow connects boxes, photo pinned as evidence"
+          "atSec": 2.64,
+          "action": "arrow draws toward film frame, frame strokes complete on spoken 知识视频"
         }
       ],
-      "finalState": "Drawn pipeline with labels readable 0.8s",
+      "finalState": "Doc-to-film sketch readable 0.6s",
       "renderer": "hyperframes"
     },
     {
-      "id": "s03",
-      "startSec": 10.9,
-      "durationSec": 7.5,
-      "narration": "每个分镜，被折叠成立体的知识画面：层级、折痕、厚度，让抽象的概念自己立起来。",
+      "id": "s02",
+      "startSec": 3.42,
+      "durationSec": 3.18,
+      "narration": "先读懂文案，找到它真正的论证结构。",
       "keywords": [
         {
-          "text": "折叠",
-          "atSec": 1.6
-        },
-        {
-          "text": "立起来",
-          "atSec": 5.8
+          "text": "论证结构",
+          "atSec": 2.34
         }
       ],
       "purpose": "explanation",
       "semanticClass": "process",
-      "style": "paper-fold",
-      "visualSubject": "Flat paper sheet folds into a pop-up layered diorama: back plate, mid concept card, foreground paper figure stand up in sequence",
-      "visualVerb": "fold-and-stand",
-      "layout": "centered-diorama-bottom-labels",
-      "camera": "slow-push-in",
+      "style": "hand-sketch",
+      "visualSubject": "Document is re-read: key sentences get hand-drawn brackets that resolve into a claim-evidence skeleton",
+      "visualVerb": "mark-and-skeletonize",
+      "layout": "grid-left-doc-right-skeleton",
+      "camera": "static",
       "transitionIn": "hard-cut",
       "transitionOut": "hard-cut",
-      "assets": [
-        {
-          "id": "sfx-fold-1",
-          "type": "audio-sfx",
-          "query": "paper",
-          "local": "assets/media/sfx-fold-1.wav",
-          "license": "paper-rustle.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 1.4
-        },
-        {
-          "id": "sfx-fold-2",
-          "type": "audio-sfx",
-          "query": "page",
-          "local": "assets/media/sfx-fold-2.wav",
-          "license": "page-flip.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 5.2
-        }
-      ],
+      "assets": [],
       "beats": [
         {
           "atSec": 0.1,
-          "action": "flat sheet with crease lines appears"
+          "action": "doc card slides to left column"
         },
         {
-          "atSec": 1.4,
-          "action": "back plate rotates up from crease (rotateX)"
+          "atSec": 1.2,
+          "action": "bracket strokes mark sentences"
         },
         {
-          "atSec": 3.0,
-          "action": "mid card folds up with thickness edge"
-        },
-        {
-          "atSec": 5.2,
-          "action": "foreground figure stands, shadows settle"
-        },
-        {
-          "atSec": 5.8,
-          "action": "diorama push-in as 立起来 lands"
+          "atSec": 2.34,
+          "action": "skeleton lines draw (claim box + evidence node) on spoken 论证结构"
         }
       ],
-      "finalState": "Standing paper diorama readable 0.9s",
+      "finalState": "Argument skeleton readable 0.5s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s03",
+      "startSec": 6.6,
+      "durationSec": 5.28,
+      "narration": "再把文案切成六到八秒的语义分镜，每个分镜，只讲一个意思。",
+      "keywords": [
+        {
+          "text": "语义分镜",
+          "atSec": 2.28
+        },
+        {
+          "text": "一个意思",
+          "atSec": 4.56
+        }
+      ],
+      "purpose": "explanation",
+      "semanticClass": "process",
+      "style": "hand-sketch",
+      "visualSubject": "One long timeline bar is cut into three 6-8s segments, each segment gets a single-idea label stamped by the pen",
+      "visualVerb": "cut-and-label",
+      "layout": "grid-center-timeline",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.1,
+          "action": "long bar draws across frame"
+        },
+        {
+          "atSec": 1.6,
+          "action": "two scissor strokes cut the bar"
+        },
+        {
+          "atSec": 2.28,
+          "action": "6-8s ticks and labels draw on spoken 语义分镜"
+        },
+        {
+          "atSec": 4.56,
+          "action": "one-idea dot lands in each segment on spoken 一个意思"
+        }
+      ],
+      "finalState": "Three labeled segments readable 0.6s",
       "renderer": "hyperframes"
     },
     {
       "id": "s04",
-      "startSec": 18.4,
-      "durationSec": 9.0,
-      "narration": "真实素材负责可信度。照片、档案、实拍视频，按语义逐镜检索，每一条都记录来源和许可证。",
+      "startSec": 11.88,
+      "durationSec": 8.7,
+      "narration": "然后，按语义为每个分镜找画面：能画出来的，直接画；需要证据的，去找真实的照片和视频。",
       "keywords": [
         {
-          "text": "真实素材",
-          "atSec": 0.3
+          "text": "找画面",
+          "atSec": 2.76
         },
         {
-          "text": "许可证",
-          "atSec": 6.6
+          "text": "直接画",
+          "atSec": 4.74
+        },
+        {
+          "text": "照片和视频",
+          "atSec": 7.74
         }
       ],
       "purpose": "evidence",
       "semanticClass": "process",
-      "style": "collage-evidence",
-      "visualSubject": "Real footage card plays inside a pinned frame while archive photo cards and a license tag accumulate around it",
-      "visualVerb": "play-and-file",
-      "layout": "video-card-center-tags-around",
-      "camera": "micro-drift",
+      "style": "hand-sketch",
+      "visualSubject": "Two branches draw from the timeline: left branch pens a small sketch icon (能画的直接画), right branch pins a REAL photo of a vintage film camera (需要证据找真实素材)",
+      "visualVerb": "branch-and-pin-evidence",
+      "layout": "grid-two-branches-photo-right",
+      "camera": "static",
       "transitionIn": "hard-cut",
       "transitionOut": "hard-cut",
       "assets": [
         {
-          "id": "video-real",
-          "type": "video",
-          "query": "timelapse city",
-          "local": "assets/media/video-real-card.mp4",
-          "attribution": "Google Earth",
-          "license": "wikimedia-CC BY 3.0",
-          "source_page": "https://commons.wikimedia.org/wiki/File:Al_Khiran_Pearl_City_Construction_Kuwait_Google_Earth_Timelapse_1984-2018.webm",
-          "note": "原始 webm 35MB，入库前裁 9s/720p"
-        },
-        {
-          "id": "photo-archive",
+          "id": "photo-evidence",
           "type": "photo",
-          "query": "archive boxes library",
-          "local": "assets/media/photo-archive.jpg",
-          "attribution": "BiblioArchives / LibraryArchives",
+          "query": "vintage film camera",
+          "description": "一台真实的复古胶片相机，作为「需要证据就找真实照片和视频」的画面证据",
+          "local": "assets/media/photo-evidence.jpg",
           "license": "cc-by",
-          "source_page": "https://www.flickr.com/photos/28853433@N02/7509281134"
-        },
-        {
-          "id": "sfx-click",
-          "type": "audio-sfx",
-          "query": "click",
-          "local": "assets/media/sfx-click.wav",
-          "license": "click.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 6.6
+          "attribution": "mtungate",
+          "source_page": "https://www.flickr.com/photos/24038848@N05/8713149130"
         }
       ],
       "beats": [
         {
           "atSec": 0.1,
-          "action": "pinned video frame rises in, footage starts"
+          "action": "branch fork draws from timeline node"
         },
         {
-          "atSec": 2.2,
-          "action": "archive photo card slides in left"
+          "atSec": 2.76,
+          "action": "branch labels draw on spoken 找画面"
         },
         {
-          "atSec": 4.6,
-          "action": "search-semantic tag chips stack up right"
+          "atSec": 4.74,
+          "action": "left branch: pen draws sketch icon on spoken 直接画"
         },
         {
-          "atSec": 6.6,
-          "action": "license record card stamps down on spoken 许可证"
+          "atSec": 6.2,
+          "action": "right branch: tape strips draw"
+        },
+        {
+          "atSec": 7.74,
+          "action": "REAL photo pins in with hand-drawn arrow on spoken 照片和视频"
         }
       ],
-      "finalState": "Video playing with license card visible 0.8s",
+      "finalState": "Sketch-vs-real-photo branch readable 0.9s",
       "renderer": "hyperframes"
     },
     {
       "id": "s05",
-      "startSec": 27.4,
-      "durationSec": 10.1,
-      "narration": "最后，配音、字幕、合成，自动跑完。文案进，成片出。这，就是知识动画的完整闭环。",
+      "startSec": 20.58,
+      "durationSec": 6.42,
+      "narration": "最后，配音，上字幕，合成，一遍跑完。文案进，成片出。",
       "keywords": [
         {
-          "text": "自动跑完",
-          "atSec": 1.8
+          "text": "一遍跑完",
+          "atSec": 2.88
         },
         {
           "text": "成片",
-          "atSec": 5.2
+          "atSec": 5.52
+        }
+      ],
+      "purpose": "resolution",
+      "semanticClass": "process",
+      "style": "hand-sketch",
+      "visualSubject": "Three pipeline nodes (配音/字幕/合成) draw and connect in sequence, then big payoff 文案 → 成片 with progress strokes completing on spoken 成片",
+      "visualVerb": "pipeline-and-payoff",
+      "layout": "grid-pipeline-above-payoff",
+      "camera": "static",
+      "transitionIn": "hard-cut",
+      "transitionOut": "hard-cut",
+      "assets": [],
+      "beats": [
+        {
+          "atSec": 0.3,
+          "action": "node 1 配音 draws"
+        },
+        {
+          "atSec": 1.4,
+          "action": "node 2 字幕 draws, connector to node 1"
+        },
+        {
+          "atSec": 2.2,
+          "action": "node 3 合成 draws, connector completes"
+        },
+        {
+          "atSec": 2.88,
+          "action": "progress underline sweeps whole pipeline on spoken 一遍跑完"
+        },
+        {
+          "atSec": 4.5,
+          "action": "payoff 文案 → 成片 draws below"
+        },
+        {
+          "atSec": 5.52,
+          "action": "成片 boxed in accent stroke on spoken 成片"
+        }
+      ],
+      "finalState": "Pipeline plus payoff readable 0.7s",
+      "renderer": "hyperframes"
+    },
+    {
+      "id": "s06",
+      "startSec": 27.0,
+      "durationSec": 5.28,
+      "narration": "说服力，来自结构，而不是特效。",
+      "keywords": [
+        {
+          "text": "说服力",
+          "atSec": 0.3
+        },
+        {
+          "text": "结构",
+          "atSec": 1.98
+        },
+        {
+          "text": "特效",
+          "atSec": 3.48
         }
       ],
       "purpose": "resolution",
       "semanticClass": "argument",
-      "style": "collage-evidence",
-      "visualSubject": "Process cards (voiceover, captions, composite) stack into a closed loop; 文案 in-left, 成片 out-right payoff with credit line",
-      "visualVerb": "stack-and-close-loop",
-      "layout": "loop-bottom-payoff",
+      "style": "hand-sketch",
+      "visualSubject": "Big two-line statement: 说服力 ← 结构 with skeleton echo behind; the word 特效 draws in then gets a hand-drawn cross-out on spoken 特效",
+      "visualVerb": "state-and-cross-out",
+      "layout": "grid-center-statement",
       "camera": "static",
       "transitionIn": "hard-cut",
       "transitionOut": "hold",
-      "assets": [
-        {
-          "id": "photo-film",
-          "type": "photo",
-          "query": "film reel vintage",
-          "local": "assets/media/photo-film.jpg",
-          "attribution": "popturfdotcom",
-          "license": "cc-by",
-          "source_page": "https://www.flickr.com/photos/85775143@N08/7851708528"
-        },
-        {
-          "id": "sfx-page-2",
-          "type": "audio-sfx",
-          "query": "page",
-          "local": "assets/media/sfx-page-2.wav",
-          "license": "page-flip.wav (bundled)",
-          "attribution": "knowledge-motion-skill sfx pack",
-          "atSec": 2.0
-        }
-      ],
+      "assets": [],
       "beats": [
         {
-          "atSec": 0.1,
-          "action": "process cards slide in one by one"
+          "atSec": 0.3,
+          "action": "说服力 draws large, underline sweeps on spoken word"
         },
         {
-          "atSec": 2.0,
-          "action": "cards stack with paper sounds"
+          "atSec": 1.6,
+          "action": "← 结构 draws with mini skeleton echo behind on spoken 结构"
         },
         {
-          "atSec": 4.6,
-          "action": "loop arrows draw between cards"
+          "atSec": 3.0,
+          "action": "特效 draws in muted gray"
         },
         {
-          "atSec": 5.2,
-          "action": "文案 → 成片 payoff lands on spoken 成片"
-        },
-        {
-          "atSec": 7.6,
-          "action": "credit/attribution line fades in, hold to end"
+          "atSec": 3.48,
+          "action": "accent cross-out strokes through 特效 on spoken word"
         }
       ],
-      "finalState": "Closed loop plus credit line holds 1.5s",
+      "finalState": "Statement with crossed-out 特效 holds 1.5s",
       "renderer": "hyperframes"
     }
   ]

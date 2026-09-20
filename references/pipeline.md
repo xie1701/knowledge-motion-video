@@ -22,9 +22,13 @@ Generate or import narration, then obtain timestamps. Preferred order: supplied 
 
 Target 6–8 seconds, but allow 4–12 seconds when comprehension requires it. Split on a change of subject, relation, proof, or visual verb. Do not split merely because punctuation appears.
 
-## 5. Route styles
+## 5. Route styles (film-level decision)
 
-Assign each beat a semantic class, visual style, visual subject, camera treatment, transition, and asset strategy. Keep one primary style per chapter; secondary styles provide deliberate contrast.
+First choose **one primary style for the whole film** from the copy's semantics (subject,
+persuasive structure, asset availability) — see `style-router.md` film-level table — and record
+it as `project.style` plus the one-line rationale. Then assign each beat its semantic class,
+visual subject, camera treatment, transition, and asset strategy **inside that grammar**.
+Per-scene style changes are for intentionally mixed long-form chapters only, never a default.
 
 ## 6. Approve the storyboard
 

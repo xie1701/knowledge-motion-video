@@ -60,7 +60,8 @@ Each scene requires:
 - IDs are unique and match `^[a-z][a-z0-9-]*$`.
 - Scenes begin at or after zero, have positive duration, and do not overlap.
 - The first scene starts at zero; gaps over 0.15 seconds are rejected.
-- `style` is one of the fifteen routes in `style-router.md`: editorial-collage, character-concept-comic, paper-diorama, swiss-sketch, ui-demo, generated-cinematic, data-viz, kinetic-typography, whiteboard-tutorial, timeline-history, process-flow, map-geo, collage-evidence, hand-sketch, paper-fold.
+- `style` is one of the fifteen routes in `style-router.md`. When `project.style` is set
+  (film-level routing), every scene must use the same style.
 - `renderer` is `hyperframes`, `manim`, `lottie`, `three`, `generated-video`, or `still`.
 - Every scene names one visual subject, one visual verb, at least one beat, and a final state.
 - Every beat lies inside the scene; `beats[].atSec` and `keywords[].atSec` are scene-relative (seconds from the scene's own start), while scene `startSec` values tile the film timeline.
@@ -74,13 +75,16 @@ Declares real-world media for material-style scenes. `fetch_assets.py` fills `lo
 
 ```jsonc
 "assets": [
-  { "id": "photo-1", "type": "photo", "query": "vintage typewriter" },
+  { "id": "photo-1", "type": "photo", "query": "vintage typewriter",
+    "description": "名词+形容词的完整画面描述：检索与 agent 目检都以它为准" },
   { "id": "broll-1", "type": "video", "query": "timelapse city" },
   { "id": "sfx-1", "type": "audio-sfx", "query": "paper", "atSec": 0.6 }
 ]
 ```
 
 - `type`: `photo` | `video` | `audio-sfx`.
+- `description`: rich visual description (nouns + adjectives). The primary handle for the
+  asset gate (view → judge match) — `query` is only the API search phrase.
 - `query`: search phrase for the asset sources; for `audio-sfx` it fuzzy-matches the bundled
   SFX pack filenames.
 - `atSec`: scene-relative second for SFX placement (used by `scripts/mix_audio.py`).

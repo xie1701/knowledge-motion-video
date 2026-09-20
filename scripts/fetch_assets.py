@@ -221,6 +221,33 @@ def fetch_asset(asset: dict, media_dir: Path, local_dir: Path | None,
     return {"status": "missing"}
 
 
+def _contact_sheet(media_dir: Path, manifest: list[dict]) -> None:
+    """素材接触表：网格缩略图，供 agent/人渲染前目检匹配度（先看后用）。"""
+    import subprocess
+    photos = [m for m in manifest if m.get("type") == "photo" and (media_dir / Path(m["local"]).name).is_file()]
+    if not photos:
+        return
+    n = len(photos)
+    cols = min(n, 3)
+    rows = (n + cols - 1) // cols
+    out = media_dir / "contact-sheet.jpg"
+    cmd = ["ffmpeg", "-loglevel", "error", "-y"]
+    for m in photos:
+        cmd += ["-i", str(media_dir / Path(m["local"]).name)]
+    fc_parts = []
+    for i, m in enumerate(photos):
+        fc_parts.append(
+            f"[{i}]scale=360:270:force_original_aspect_ratio=increase,crop=360:270,"
+            f"drawtext=text='{m['id']}':fontsize=28:fontcolor=white:box=1:"
+            f"boxcolor=black@0.6:x=8:y=8[t{i}]")
+    if n == 1:
+        fc = fc_parts[0]
+    else:
+        fc = ";".join(fc_parts) + ";" + "".join(f"[t{i}]" for i in range(n)) + f"tile={cols}x{rows}"
+    subprocess.run(cmd + ["-filter_complex", fc, "-frames:v", "1", "-update", "1", str(out)], check=False)
+    print(f"素材接触表: {out}（渲染前请目检匹配度）")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="按 scenes.json 素材清单检索下载真实素材")
     ap.add_argument("--project", required=True, help="示例工程目录（含 storyboard/scenes.json）")
@@ -228,6 +255,7 @@ def main() -> int:
     ap.add_argument("--local-dir", default=None, help="本地素材库目录（文件名含检索词即命中）")
     ap.add_argument("--timeout", type=int, default=30)
     ap.add_argument("--strict", action="store_true", help="有任何素材缺失则退出码 2")
+    ap.add_argument("--sheet", action="store_true", help="生成素材接触表 contact-sheet.jpg（渲染前目检用）")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -253,11 +281,15 @@ def main() -> int:
             results.append({"scene": sc.get("id"), "asset": aid, **r})
             if r["status"] in ("ok", "local", "sfx"):
                 manifest.append({"scene": sc.get("id"), "id": aid, "type": asset.get("type"),
-                                 "query": asset.get("query"), "local": asset.get("local"),
+                                 "query": asset.get("query"),
+                                 "description": asset.get("description", ""),
+                                 "local": asset.get("local"),
                                  "license": asset.get("license"), "attribution": asset.get("attribution"),
                                  "source_page": asset.get("source_page", "")})
 
     if not args.dry_run:
+        if getattr(args, "sheet", False):
+            _contact_sheet(media_dir, manifest)
         mf = media_dir / "manifest.json"
         mf.write_text(json.dumps({"generated_by": "fetch_assets.py",
                                   "note": "发布前保留此清单：素材与许可证记录",

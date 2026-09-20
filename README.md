@@ -62,17 +62,18 @@ final MP4, all verified — lives in [`examples/sample-project/`](examples/sampl
 
 ## Showcase（完整素材化案例）
 
-[`examples/showcase-project/`](examples/showcase-project/) 是全链路素材化案例（37.5s，1080×1920）：
+[`examples/showcase-project/`](examples/showcase-project/) 是全链路案例（32.3s，1080×1920）：
 
-- **全程旁白 + 烧录字幕 + 混音音效**（旁白 TTS → 本地 ASR 词级时间戳 → 字幕/场景时钟）
-- **真实素材**：Wikimedia/Openverse 照片 ×5 + 真实延时视频 ×1，全部由 `fetch_assets.py` 按场景
-  `assets[].query` 语义检索下载，许可证与署名记录在 `assets/media/manifest.json`
-- **三种素材型风格**：collage-evidence（撕纸拼贴证据墙）、hand-sketch（SVG 自绘线条 + 笔尖沿
-  路径移动）、paper-fold（CSS 3D 折纸立体书），另含真实视频段与音效挂点
-- 成片：`renders/final-showcase.mp4`；对比动图：[`docs/showcase.gif`](docs/showcase.gif)
+- **整片单一风格**：全片文案语义分析 → 整片 hand-sketch 语法（风格路由是整片决策，见 SKILL.md）
+- **旁白 + BGM + 烧录字幕**：场景边界与关键词 beat 全部由词级 ASR 时间戳推导
+  （`derive_timing.py`），每个视觉动作卡在语音关键词落点 ±0.3s 内
+- **真实素材**：一张语义匹配的 CC 授权真实照片（复古胶片相机），由 `fetch_assets.py` 检索
+  下载并经素材目检关卡，许可证与署名记录在 `assets/media/manifest.json`
+- **BGM**：Openverse 无密钥获取的 CC0 钢琴循环，0.18 音量垫底 + 淡入淡出
+- 成片：`renders/final-showcase.mp4`
 
-复现：`python3 scripts/fetch_assets.py --project examples/showcase-project` → 渲染 →
-`python3 scripts/mix_audio.py …` → `finalize.py …`。
+复现：`python3 scripts/fetch_assets.py --project examples/showcase-project --sheet` → 目检素材 →
+渲染 → `python3 scripts/derive_timing.py …` 重建时间轴 → `finalize.py --bgm …`。
 
 ## Style gallery
 

@@ -2,6 +2,21 @@
 
 按解释功能路由，不按视觉新鲜感路由。每条路由描述：适用内容、视觉语法、默认素材策略、运动语言、避免事项、HyperFrames 实现要点。
 
+## 整片级路由（v2.3，先于一切场景决策）
+
+风格是整片决策。分析整篇文案的题材、说服结构与素材可得性，选定主风格后写入
+`project.style`（校验器强制全片一致）：
+
+| 整篇文案语义 | 主风格 | 理由 |
+|---|---|---|
+| 方法、教程、流程、论证 | hand-sketch / swiss-sketch | 笔尖引导注意，过程即说服 |
+| 历史、事件、人物、有真实档案 | collage-evidence / editorial-collage | 真实证据是说服力本体 |
+| 系统、工程、自然、结构原理 | paper-fold / paper-diorama | 空间装配感承载系统语义 |
+| 心理、职场、关系、伦理 | character-concept-comic | 固定角色承载隐喻 |
+| 数据、排名、趋势 | data-viz | 图表即主角 |
+
+确认主风格（写进 storyboard 说明或与用户确认）之后才进入分镜；分镜阶段不再换风格。
+
 ## 路由总表
 
 | Route | Best for | Visual grammar | Default assets | Avoid |

@@ -130,22 +130,26 @@ def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dic
         must_break = bool(word["text"]) and word["text"][-1] in PUNCTUATION
         over_limit = cue_length(text) >= max_chars
         if must_break or over_limit:
+            clean = text.lstrip("，。？！、；：,.?")
+            if clean:
+                cues.append(
+                    {
+                        "text": clean,
+                        "startSec": max(start, scene_start),
+                        "endSec": min(max(end, start + 0.1), scene_end),
+                    }
+                )
+            text, end = "", 0.0
+    if text:
+        clean = text.lstrip("，。？！、；：,.?")
+        if clean:
             cues.append(
                 {
-                    "text": text,
+                    "text": clean,
                     "startSec": max(start, scene_start),
                     "endSec": min(max(end, start + 0.1), scene_end),
                 }
             )
-            text, end = "", 0.0
-    if text:
-        cues.append(
-            {
-                "text": text,
-                "startSec": max(start, scene_start),
-                "endSec": min(max(end, start + 0.1), scene_end),
-            }
-        )
     # Merge flash cues (<0.8s) into their successor so no caption blinks by
     # unreadably fast; the last cue may absorb into its predecessor instead.
     merged: list[dict] = []

@@ -1,47 +1,39 @@
-# Delivery — Showcase「文案进，成片出」(v2.2, end-to-end verified)
+# Delivery — Showcase「文案进，成片出」(v2.3, end-to-end verified)
 
-- Format: 1080×1920, 30fps, H.264 + AAC, **37.5s**
-- Routes: collage-evidence ×3, hand-sketch ×1, paper-fold ×1（5 scenes, narration-driven timing）
-- Narration: AI TTS (36.5s), word timestamps via offline ASR (`coli asr`)
-- Real assets: 5 photos + 1 real timelapse video (9s, cut from 35MB original to 720p card)
-  fetched by `fetch_assets.py` from Wikimedia Commons / Openverse（无密钥源），6 条合成音效混入
-- Captions: SRT + ASS by `build_captions.py`（ASR 误字已人工修正：一支/语义/逐镜/文案进成片出）
-- SFX mix: `mix_audio.py`（旁白 + 6 条音效按 `startSec + atSec`，-6dB）
+- Format: 1080×1920, 30fps, H.264 + AAC, **32.3s**
+- **整片单一风格**：hand-sketch（全片米白网格底、黑色描边自绘、#E34234 单强调色、笔尖引导）——
+  文案是"方法论证"型，按整片级风格路由选定；v2.2 的多风格混搭方案已废弃
+- Narration: AI TTS (31.28s)，词级时间戳由本地 ASR (`coli asr`) 获得
+- **时间轴全部程序化推导**（`derive_timing.py`）：场景边界 = 子句间停顿中点；关键词 beat =
+  token 精确落点。v2.2 实测手工 beat 最大偏移 2.06s，本版归零
+- BGM: Openverse 无密钥获取的 CC0 钢琴循环（Soft Piano Loop 160BPM, freesound CC0），
+  循环拼接至片长 + 2.5s 淡入 / 3.9s 淡出，finalize.py 以 0.18 音量垫底
+- SFX: 无（v2.2 反馈音效突兀；v2.3 默认无音效，策略见 SKILL.md）
+- Real asset: 1 张语义匹配照片（复古胶片相机，Wikimedia CC BY-SA 2.0），经素材目检关卡
+
+## 同步性验证（v2.3 专项）
+
+| 关键词 | 语音落点(ASR) | 视觉动作 | 实测 |
+|---|---|---|---|
+| 论证结构 | 5.76s | 骨架笔画起笔 | 落点起笔、6.45s 画完 ✓ |
+| 照片和视频 | 19.62s | 真实照片钉入 | 19.9s 帧照片+箭头+胶带齐全 ✓ |
+| 特效 | 30.48s | 红叉划掉"特效" | 30.5s 帧已呈现 ✓ |
+| 字幕（抽样 t=2s/24s） | — | 逐字转录 | 与语音逐句一致 ✓ |
 
 ## Verified outputs
 
 | Artifact | Path | Check |
 |---|---|---|
-| Visual master (HyperFrames render) | `renders/visual-master.mp4` | lint 0 errors; ffprobe 37.5s 1080×1920 h264, 1125 frames |
-| Final delivery | `renders/final-showcase.mp4` | mix 混音 + loudnorm + 字幕烧录；ffprobe + 7 帧 vision 抽查 PASS |
-| Contact sheet | `verify/contact-sheet.jpg` | scene midpoints s01–s05 |
-| Verification report | `verify/report.json` | verdict PASS |
-| Captions | `captions/captions.srt`, `captions.ass` | 15 cues, scene-bounded, word-timed |
-| Asset license manifest | `assets/media/manifest.json` | 每条素材含 license/attribution/source_page |
-| QC frames | `renders/qc-frames/`, `renders/qc-final/` | 抽帧 vision 复核：无空屏/无占位符/字幕无重叠 |
-
-## Asset manifest（节选）
-
-| id | type | source | license |
-|---|---|---|---|
-| photo-typewriter | photo | Wikimedia Commons | wikimedia-CC BY-SA 3.0 (Jorge Royan) |
-| photo-notebook | photo | Openverse | CC（详见 manifest） |
-| photo-pen | photo | Openverse | CC |
-| photo-archive | photo | Wikimedia Commons | 见 manifest |
-| photo-film | photo | Wikimedia Commons | 见 manifest |
-| video-real-card.mp4 | video | Wikimedia Commons (Google Earth Timelapse) | 见 manifest；原片已裁 9s/720p |
-| sfx-* | audio-sfx | 打包合成音效（make_sfx.py 自产） | bundled |
-
-## Regression status
-
-- `validate_scenes.py` passes（15-route enum，含 3 个新素材型路由）。
-- 全部 Python 脚本 py_compile 通过；`doctor.py` core ready。
-- HyperFrames lint 0 errors；渲染 24.2s 完成（本地 hyperframes 0.8.52）。
-- `fetch_assets.py --dry-run` 幂等复跑：12/12 素材就绪。
+| Visual master | `renders/visual-master.mp4` | ffprobe 32.3s 1080×1920, 969 frames; lint 0 errors |
+| Final delivery | `renders/final-showcase.mp4` | narration + BGM(0.18) + loudnorm + captions burned |
+| Captions | `captions/captions.{srt,ass}` | 11 cues, word-timed, ASR 误字已修正（一支/语义），断句修正（成片出） |
+| Contact sheet | `assets/media/contact-sheet.jpg` | 素材目检关卡输出 |
+| License manifest | `assets/media/manifest.json` | license/attribution/source_page 齐全 |
+| Verify report | `verify/report.json` | verdict PASS |
+| QC frames | `renders/qc-frames/`, `renders/qc-final/` | 关键词落点抽帧 vision 复核 |
 
 ## Known notes
 
-- 真实视频素材为 Google Earth 卫星延时（城市地貌），与旁白「照片、档案、实拍视频」的
-  「实拍视频」语义对应合理；如需人物/特写类实拍可配 Pexels key 后自动启用主源。
-- SFX 为合成音效（非实录音效），打包于 `assets/sfx/`，用户可替换同名文件。
-- 旧 10.4s 风格样片（style-samples）为无声风格循环，完整有声案例以本工程为准。
+- 旁白 ASR 误字（一支/语义）已人工修正进字幕；其他项目复现时应同样过一遍字幕校对
+- BGM 音源为 Freesound CC0 预览音质（hq mp3）；对音质有更高要求可替换 `assets/bgm/` 本地音乐
+- v2.2 的 5 场景混风格案例已由本案例替代（其风格混搭正是本版路由机制修正的问题）
