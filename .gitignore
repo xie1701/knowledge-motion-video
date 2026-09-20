@@ -14,3 +14,9 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Showcase regenerable intermediates (reproduce via mix_audio.py / ffmpeg)
+examples/showcase-project/audio/mix.wav
+examples/showcase-project/renders/qc-frames/
+examples/showcase-project/renders/qc-final/
+!examples/showcase-project/renders/final-showcase.mp4

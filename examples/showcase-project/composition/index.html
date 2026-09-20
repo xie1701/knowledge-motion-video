@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <title>文案进，成片出——知识动画完整闭环（showcase visual master）</title>
+  <script src="vendor/gsap.min.js"></script>
+  <style>
+    @font-face { font-family: 'PingFang SC'; src: local('PingFang SC'); }
+    @font-face { font-family: 'Noto Sans SC'; src: local('Noto Sans SC'); }
+    :root { --bg:#F3EEE3; --fg:#1C1A16; --accent:#E34234; --muted:#8C887F; --ink:#26241F; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:1080px; height:1920px; overflow:hidden; background:var(--bg); color:var(--fg); font-family:"PingFang SC","Noto Sans SC",sans-serif; }
+    #root { position:relative; width:1080px; height:1920px; overflow:hidden; }
+    .clip { position:absolute; inset:0; overflow:hidden; background:var(--bg); }
+
+    /* ============ furniture (full duration, track 0) ============ */
+    .fu-meta { position:absolute; top:86px; left:72px; right:72px; display:flex; justify-content:space-between; font:700 24px ui-monospace,SFMono-Regular,monospace; color:var(--muted); letter-spacing:.12em; }
+    .fu-rule { position:absolute; left:72px; right:72px; top:145px; height:4px; background:var(--accent); transform-origin:left center; }
+
+    /* ============ collage-evidence shared (s01 / s04 / s05) ============ */
+    .km-ev { position:relative; width:100%; height:100%; overflow:hidden; background:#EFE7D6; }
+    .km-ev__bg { position:absolute; inset:0;
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(255,253,246,.9), transparent 60%),
+        radial-gradient(1000px 900px at 85% 85%, rgba(210,196,168,.55), transparent 65%),
+        linear-gradient(160deg, #F2EBDC 0%, #E9DFC9 55%, #E2D6BC 100%); }
+    .km-ev__grain { position:absolute; inset:0; opacity:.35; mix-blend-mode:multiply;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='evn'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='11' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23evn)' opacity='0.5'/></svg>");
+      background-size:260px 260px; }
+    .km-ev__card { position:absolute; filter:drop-shadow(16px 18px 20px rgba(38,36,31,.3)); }
+    .km-ev__tear { width:100%; height:100%; background:#FBF7EC; position:relative; }
+    .km-ev__tear--a { clip-path:polygon(0% 3%,4% 1%,9% 4%,15% 2%,22% 5%,30% 1%,38% 4%,47% 2%,55% 5%,63% 2%,72% 4%,80% 1%,88% 4%,95% 2%,100% 5%,99% 14%,100% 24%,98% 34%,100% 44%,99% 55%,100% 66%,98% 77%,100% 88%,99% 96%,94% 99%,86% 97%,77% 100%,68% 97%,58% 100%,48% 98%,38% 100%,28% 97%,18% 100%,10% 98%,4% 100%,1% 92%,2% 81%,0% 70%,2% 59%,0% 48%,2% 37%,0% 26%,1% 14%); }
+    .km-ev__tear--b { clip-path:polygon(2% 0%,10% 3%,19% 1%,28% 4%,37% 0%,46% 3%,56% 1%,65% 4%,74% 0%,83% 3%,92% 1%,100% 4%,98% 13%,100% 23%,97% 33%,99% 43%,98% 54%,100% 64%,97% 75%,99% 86%,98% 95%,92% 98%,83% 100%,73% 98%,63% 100%,53% 97%,43% 100%,33% 98%,23% 100%,14% 98%,6% 100%,0% 94%,2% 83%,0% 72%,2% 61%,0% 50%,2% 39%,0% 28%,1% 17%,0% 8%); }
+    .km-ev__tear--c { clip-path:polygon(1% 4%,7% 0%,14% 5%,23% 2%,31% 6%,40% 2%,49% 5%,58% 1%,67% 5%,76% 2%,85% 5%,93% 1%,100% 3%,99% 12%,97% 22%,100% 32%,98% 43%,100% 53%,97% 64%,99% 74%,98% 85%,100% 94%,93% 98%,84% 100%,74% 97%,64% 100%,54% 98%,44% 100%,34% 97%,24% 100%,15% 98%,7% 100%,0% 95%,2% 85%,0% 74%,2% 63%,0% 52%,2% 41%,0% 30%,1% 19%,0% 10%); }
+    .km-ev__tear--d { clip-path:polygon(0% 2%,8% 5%,17% 2%,26% 5%,35% 1%,45% 4%,54% 2%,64% 5%,73% 1%,82% 4%,91% 2%,100% 5%,98% 15%,100% 25%,97% 35%,99% 45%,97% 56%,100% 66%,98% 76%,99% 87%,97% 96%,89% 99%,79% 97%,69% 100%,59% 98%,49% 100%,39% 97%,29% 100%,19% 98%,9% 100%,2% 97%,0% 88%,2% 78%,0% 67%,2% 56%,0% 45%,2% 34%,0% 23%,1% 12%); }
+    .km-ev__ph { position:absolute; inset:4%; background:
+        linear-gradient(135deg, rgba(255,255,255,.06), transparent 55%), var(--km-ev-tone,#2B2822);
+      display:flex; align-items:center; justify-content:center; color:#8C887F;
+      font:600 24px/1.4 "Noto Sans SC","PingFang SC",sans-serif; text-align:center; overflow:hidden; }
+    .km-ev__img, .km-ev__vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .km-ev__tag { position:absolute; top:10px; left:14px; background:#26241F; color:#F5F1E8;
+      padding:4px 12px; font:700 20px ui-monospace,SFMono-Regular,monospace; letter-spacing:.08em; z-index:3; }
+    .km-ev__cap { position:absolute; left:6%; right:6%; bottom:7%; background:var(--accent);
+      color:#FBF7EC; padding:8px 16px; font:800 30px "Noto Sans SC","PingFang SC",sans-serif;
+      line-height:1.25; z-index:3; box-shadow:0 8px 18px rgba(38,36,31,.25); }
+    .km-ev__cap--ink { background:#26241F; }
+    .km-ev__stamp { position:absolute; right:7%; top:8.5%; background:var(--accent); color:#FBF7EC;
+      padding:10px 24px; font:800 30px "Noto Sans SC","PingFang SC",sans-serif; letter-spacing:.06em;
+      transform:rotate(3deg); box-shadow:0 10px 24px rgba(38,36,31,.22); z-index:4; }
+
+    /* ============ hand-sketch shared (s02) ============ */
+    .km-sk { position:relative; width:100%; height:100%; overflow:hidden; background:#F4EFE6; }
+    .km-sk__grid { position:absolute; inset:0; opacity:.10; pointer-events:none;
+      background-image:
+        linear-gradient(to right, #11110F 1px, transparent 1px),
+        linear-gradient(to bottom, #11110F 1px, transparent 1px);
+      background-size:120px 120px; background-position:60px 60px; }
+    .km-sk__mark { position:absolute; left:7%; top:6.5%; z-index:2; }
+    .km-sk__headline { position:absolute; left:10%; top:200px; width:84%; z-index:2;
+      font:900 76px/1.12 "Noto Sans SC","PingFang SC",sans-serif; color:#11110F; letter-spacing:-.02em; }
+    .km-sk__label { position:absolute; z-index:2; text-align:center;
+      font:800 44px "Noto Sans SC","PingFang SC",sans-serif; color:#11110F; }
+    .km-sk__photo { position:absolute; left:660px; top:1260px; width:300px; height:210px; z-index:1;
+      background:#26241F; border:3px solid #11110F; transform:rotate(2deg);
+      box-shadow:10px 12px 0 rgba(17,17,15,.18); overflow:hidden;
+      display:flex; align-items:center; justify-content:center; }
+    .km-sk__photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .km-sk__photocap { position:absolute; left:660px; top:1490px; z-index:2;
+      font:700 26px ui-monospace,SFMono-Regular,monospace; color:#11110F; letter-spacing:.06em; }
+    .km-sk__drawing { position:absolute; inset:0; width:100%; height:100%; z-index:3; pointer-events:none; }
+
+    /* ============ paper-fold shared (s03) ============ */
+    .km-pf { position:relative; width:100%; height:100%; overflow:hidden; background:#EDE6D4; perspective:1000px; }
+    .km-pf__bg { position:absolute; inset:0; background:linear-gradient(165deg, #F1EADB 0%, #E9E1CE 52%, #DFD3B9 100%); }
+    .km-pf__texture { position:absolute; inset:0; mix-blend-mode:multiply; opacity:.12;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='pfn'><feTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' seed='23' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23pfn)' opacity='0.6'/></svg>");
+      background-size:300px 300px; pointer-events:none; }
+    .km-pf__title { position:absolute; left:0; top:220px; width:100%; text-align:center;
+      font:800 56px "Noto Sans SC","PingFang SC",sans-serif; color:#26241F; letter-spacing:.02em; }
+    .km-pf__stage { position:absolute; inset:0; transform-origin:50% 60%; }
+    .km-pf__part { position:absolute; transform-style:preserve-3d; transform-origin:50% 100%;
+      box-shadow:0 22px 34px rgba(60,50,30,.20); backface-visibility:hidden; }
+    .km-pf__part::before { content:""; position:absolute; left:0; right:0; bottom:-2px; height:4px;
+      background:linear-gradient(to top, rgba(40,32,18,.35), rgba(40,32,18,0) 70%); z-index:2; }
+    .km-pf__part::after { content:""; position:absolute; left:2%; right:2%; bottom:0; height:1.5px;
+      background:rgba(255,252,240,.75); z-index:2; }
+    .km-pf__edge { position:absolute; left:0; right:0; top:100%; height:12px; transform-origin:top;
+      transform:rotateX(-90deg); background:var(--km-pf-edge,#C9BB9C); }
+    .km-pf__base { left:16%; top:44%; width:68%; height:40%; background:#DCCFB2; --km-pf-edge:#BFB08D; }
+    .km-pf__mid  { left:24%; top:33%; width:52%; height:30%; background:#F3EDDD; --km-pf-edge:#D8CDAF; }
+    .km-pf__stand { left:38%; top:23%; width:24%; height:26%; background:#E7D9BC; --km-pf-edge:#C6B48D;
+      box-shadow:0 14px 22px rgba(60,50,30,.24); }
+    .km-pf__face { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      font:700 34px "Noto Sans SC","PingFang SC",sans-serif; color:#26241F; padding:0 6%; text-align:center; }
+    .km-pf__badge { position:absolute; z-index:5; background:#26241F; color:#FBF7EC;
+      padding:8px 20px; font:800 28px "Noto Sans SC","PingFang SC",sans-serif; letter-spacing:.08em;
+      box-shadow:0 8px 16px rgba(38,36,31,.22); }
+
+    /* ============ s04-specific ============ */
+    .s04-tape { position:absolute; left:50%; top:-18px; width:170px; height:44px; margin-left:-85px;
+      background:rgba(227,66,52,.82); transform:rotate(-2deg); z-index:4; }
+    #s04-video { position:absolute; left:224px; top:554px; width:632px; height:442px; object-fit:cover;
+      border:2px solid #26241F; background:#26241F; z-index:2; }
+    .s04-chip { position:absolute; left:730px; width:280px; background:#26241F; color:#F5F1E8;
+      padding:16px 24px; font:700 30px "Noto Sans SC","PingFang SC",sans-serif; letter-spacing:.04em;
+      box-shadow:0 10px 20px rgba(38,36,31,.24); z-index:3; }
+    .s04-chip::before { content:"⌕"; margin-right:12px; color:var(--accent); }
+    .s04-license { position:absolute; left:320px; top:1070px; width:440px; background:var(--accent);
+      color:#FBF7EC; padding:20px 28px; font:800 44px "Noto Sans SC","PingFang SC",sans-serif;
+      text-align:center; letter-spacing:.06em; transform:rotate(-4deg);
+      box-shadow:0 14px 28px rgba(38,36,31,.3); z-index:5; }
+    .s04-license small { display:block; font:700 22px ui-monospace,SFMono-Regular,monospace;
+      letter-spacing:.1em; margin-top:8px; opacity:.85; }
+
+    /* ============ s05-specific ============ */
+    .s05-pcard { position:absolute; left:100px; width:540px; height:160px; background:#FBF7EC;
+      filter:drop-shadow(10px 12px 14px rgba(38,36,31,.28)); display:flex; align-items:center;
+      padding:0 34px; gap:26px; z-index:2; }
+    .s05-pcard__idx { font:700 26px ui-monospace,SFMono-Regular,monospace; color:var(--muted); letter-spacing:.1em; }
+    .s05-pcard__word { font:900 56px "Noto Sans SC","PingFang SC",sans-serif; color:#26241F; }
+    .s05-pcard__bar { position:absolute; left:0; top:0; bottom:0; width:10px; background:var(--accent); }
+    .s05-payoff { position:absolute; left:0; top:1180px; width:100%; display:flex; align-items:center;
+      justify-content:center; gap:36px; z-index:2; }
+    .s05-payoff__word { font:900 140px/1 "Noto Sans SC","PingFang SC",sans-serif; color:#26241F; }
+    .s05-payoff__word--accent { color:var(--accent); font-size:150px; }
+    .s05-payoff__arrow { font:900 100px/1 ui-monospace,SFMono-Regular,monospace; color:var(--accent);
+      transform-origin:left center; }
+    .s05-credit { position:absolute; left:0; top:1568px; width:100%; text-align:center;
+      font:700 26px "Noto Sans SC","PingFang SC",sans-serif; color:var(--muted); letter-spacing:.04em; z-index:2; }
+  </style>
+</head>
+<body>
+<div id="root" data-composition-id="showcase-visual-master" data-start="0" data-width="1080" data-height="1920" data-duration="37.5">
+
+  <!-- ============ furniture · 0–37.5s · track 0 ============ -->
+  <section class="clip" id="furniture-base" data-start="0" data-duration="37.5" data-track-index="0">
+    <div class="fu-meta"><span>KNOWLEDGE / MOTION</span><span>SHOWCASE · 37.5s</span></div>
+    <div class="fu-rule" id="fu-rule"></div>
+  </section>
+
+  <!-- ============ s01 · collage-evidence 钩子 · 0–4.2s · track 1 ============ -->
+  <section class="clip" id="clip-s01" data-start="0" data-duration="4.2" data-track-index="1">
+    <div class="km-ev">
+      <div class="km-ev__bg"></div>
+      <div class="km-ev__grain" data-layout-ignore></div>
+
+      <!-- 卡 A：主证据照 typewriter（左上） -->
+      <div class="km-ev__card" id="s01-card-a" style="left:5%;top:15%;width:54%;height:36%;transform:rotate(-2deg);">
+        <div class="km-ev__tear km-ev__tear--a">
+          <div class="km-ev__ph">photo-1 素材占位</div>
+          <img class="km-ev__img" src="assets/media/photo-typewriter.jpg" alt="" onerror="this.remove()">
+          <div class="km-ev__tag">NO.01 / VINTAGE</div>
+          <div class="km-ev__cap" id="s01-cap-a">凭什么是<span style="position:relative;">知识视频<span id="s01-underline" style="position:absolute;left:0;right:0;bottom:-6px;height:8px;background:#26241F;transform-origin:left center;"></span></span>？</div>
+        </div>
+      </div>
+      <!-- 卡 B：对照照 notebook（右上） -->
+      <div class="km-ev__card" id="s01-card-b" style="left:63%;top:19%;width:32%;height:26%;transform:rotate(2.5deg);">
+        <div class="km-ev__tear km-ev__tear--b">
+          <div class="km-ev__ph" style="--km-ev-tone:#3A362E;">photo-2</div>
+          <img class="km-ev__img" src="assets/media/photo-notebook.jpg" alt="" onerror="this.remove()">
+          <div class="km-ev__tag">NO.02</div>
+        </div>
+      </div>
+      <!-- 卡 C：CSS 材质兜底卡（左下） -->
+      <div class="km-ev__card" id="s01-card-c" style="left:9%;top:55%;width:46%;height:30%;transform:rotate(1.5deg);">
+        <div class="km-ev__tear km-ev__tear--c">
+          <div class="km-ev__ph" style="--km-ev-tone:#4A443A;">CASE FILE<br/>STRUCTURE · 6-8s</div>
+          <div class="km-ev__tag">NO.03 / ARCHIVE</div>
+          <div class="km-ev__cap km-ev__cap--ink" id="s01-cap-c">证据 A：一段普通文案</div>
+        </div>
+      </div>
+      <!-- 卡 D：CSS 材质兜底卡（右下） -->
+      <div class="km-ev__card" id="s01-card-d" style="left:60%;top:57%;width:34%;height:27%;transform:rotate(-3deg);">
+        <div class="km-ev__tear km-ev__tear--d">
+          <div class="km-ev__ph" style="--km-ev-tone:#57503F;">CASE FILE<br/>MOTION · 30FPS</div>
+          <div class="km-ev__tag">NO.04</div>
+        </div>
+      </div>
+
+      <!-- 标题贴纸 -->
+      <div class="km-ev__stamp" id="s01-stamp">一段文案？</div>
+      <!-- 手帐箭头（视线引导 A→D） -->
+      <svg class="km-ev__arrow" id="s01-arrow" style="position:absolute;left:47%;top:47%;width:20%;height:14%;z-index:2;" viewBox="0 0 200 120" fill="none">
+        <path d="M8 100 C 60 90, 120 60, 178 22" stroke="#26241F" stroke-width="8" stroke-linecap="round"/>
+        <path d="M150 18 L182 20 L172 50" stroke="#26241F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ s02 · hand-sketch 论证 · 4.2–10.9s · track 1 ============ -->
+  <section class="clip" id="clip-s02" data-start="4.2" data-duration="6.7" data-track-index="1">
+    <div class="km-sk">
+      <div class="km-sk__grid" data-layout-ignore></div>
+      <svg class="km-sk__mark" width="44" height="44" viewBox="0 0 44 44" stroke="#E34234" fill="none" stroke-width="3">
+        <circle class="km-sk__markring" cx="22" cy="22" r="14"/>
+        <line class="km-sk__markline" x1="22" y1="0" x2="22" y2="44"/>
+        <line class="km-sk__markline" x1="0" y1="22" x2="44" y2="22"/>
+      </svg>
+      <div class="km-sk__headline" id="s02-headline">答案不是特效，是结构</div>
+
+      <!-- 盒1：叙事锁定 -->
+      <div class="km-sk__label" id="s02-label-1" style="left:140px;top:565px;width:480px;">叙事锁定</div>
+      <!-- 盒2：语义分镜（6-8s 刻度尺） -->
+      <div class="km-sk__label" id="s02-label-2" style="left:140px;top:955px;width:600px;">语义分镜</div>
+      <div class="km-sk__photocap" id="s02-photocap">EVIDENCE · FOUNTAIN PEN</div>
+
+      <!-- 照片证据卡（钉在右下角），手绘箭头指向它 -->
+      <div class="km-sk__photo" id="s02-photo">
+        <img src="assets/media/photo-pen.jpg" alt="" onerror="this.remove()">
+      </div>
+
+      <svg class="km-sk__drawing" viewBox="0 0 1080 1920" fill="none" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <filter id="km-sk-rough" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="17" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="3"/>
+          </filter>
+        </defs>
+        <g filter="url(#km-sk-rough)" stroke="#11110F" stroke-width="6" stroke-linecap="round">
+          <!-- 标题下划线（自绘） -->
+          <path class="km-sk__stroke" id="s02-underline" d="M112 318 C 300 310, 560 324, 830 314" stroke="#E34234" stroke-width="8"/>
+          <!-- 盒1：叙事锁定 -->
+          <rect class="km-sk__stroke" id="s02-box1" x="140" y="520" width="480" height="170" rx="6"/>
+          <!-- 盒1 → 盒2 连接线（上半段，5.6s 箭头拍合） -->
+          <path class="km-sk__stroke" id="s02-arrow-main" d="M380 700 C 400 780, 360 840, 390 900"/>
+          <path class="km-sk__stroke" id="s02-arrow-head" d="M356 876 L392 908 L428 874"/>
+          <!-- 盒2：语义分镜 + 6-8s 刻度尺 -->
+          <rect class="km-sk__stroke" id="s02-box2" x="140" y="920" width="600" height="220" rx="6"/>
+          <!-- 手绘箭头：盒2 → 照片证据卡 -->
+          <path class="km-sk__stroke" id="s02-arrow-photo" d="M600 1150 C 640 1210, 660 1240, 700 1290"/>
+        </g>
+        <g filter="url(#km-sk-rough)" stroke="#11110F" stroke-width="5" stroke-linecap="round">
+          <!-- 刻度尺：6s → 8s -->
+          <line class="km-sk__stroke" id="s02-ruler" x1="190" y1="1070" x2="690" y2="1070"/>
+          <line class="km-sk__tick" x1="190" y1="1056" x2="190" y2="1084"/>
+          <line class="km-sk__tick" x1="315" y1="1060" x2="315" y2="1080"/>
+          <line class="km-sk__tick" x1="440" y1="1056" x2="440" y2="1084"/>
+          <line class="km-sk__tick" x1="565" y1="1060" x2="565" y2="1080"/>
+          <line class="km-sk__tick" x1="690" y1="1056" x2="690" y2="1084"/>
+        </g>
+        <g fill="#11110F" font-family="ui-monospace,SFMono-Regular,monospace" font-size="30" opacity="0" id="s02-ticktext">
+          <text x="176" y="1130">6s</text>
+          <text x="664" y="1130">8s</text>
+        </g>
+        <!-- 笔尖圆点（沿当前 path 移动） -->
+        <circle id="s02-pen" r="9" fill="#11110F" opacity="0"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ s03 · paper-fold 折纸 · 10.9–18.4s · track 1 ============ -->
+  <section class="clip" id="clip-s03" data-start="10.9" data-duration="7.5" data-track-index="1">
+    <div class="km-pf">
+      <div class="km-pf__bg"></div>
+      <div class="km-pf__texture" data-layout-ignore></div>
+      <div class="km-pf__title" id="s03-title">抽象概念，折成立体</div>
+
+      <div class="km-pf__stage" id="s03-stage">
+        <!-- 背板（平铺 → rotateX 立起） -->
+        <div class="km-pf__part km-pf__base" id="s03-base">
+          <div class="km-pf__edge"></div>
+        </div>
+        <!-- 中景卡（折起，带厚度侧面） -->
+        <div class="km-pf__part km-pf__mid" id="s03-mid">
+          <div class="km-pf__edge"></div>
+          <div class="km-pf__face">语义分镜</div>
+        </div>
+        <!-- 前景立牌 -->
+        <div class="km-pf__part km-pf__stand" id="s03-stand">
+          <div class="km-pf__edge"></div>
+          <div class="km-pf__face" style="font-size:30px;">知识画面</div>
+        </div>
+      </div>
+
+      <!-- 层级标签：随层立起出现 -->
+      <div class="km-pf__badge" id="s03-badge-1" style="left:110px;top:1010px;">层级</div>
+      <div class="km-pf__badge" id="s03-badge-2" style="left:280px;top:1010px;background:#E34234;">折痕</div>
+      <div class="km-pf__badge" id="s03-badge-3" style="left:450px;top:1010px;">厚度</div>
+    </div>
+  </section>
+
+  <!-- ============ s04 · collage-evidence 视频变体 · 18.4–27.4s · track 1 ============ -->
+  <section class="clip" id="clip-s04" data-start="18.4" data-duration="9.0" data-track-index="1">
+    <div class="km-ev">
+      <div class="km-ev__bg"></div>
+      <div class="km-ev__grain" data-layout-ignore></div>
+
+      <!-- 中央钉住的相框：内嵌真实素材视频 -->
+      <div class="km-ev__card" id="s04-frame" style="left:210px;top:540px;width:660px;height:470px;transform:rotate(0deg);">
+        <div class="km-ev__tear km-ev__tear--a" style="padding:14px;">
+          <div class="s04-tape" data-layout-ignore></div>
+          <div class="km-ev__ph" style="inset:14px;">video · 素材占位</div>
+          <div class="km-ev__tag">NO.04 / REAL FOOTAGE</div>
+          <div class="km-ev__cap" id="s04-cap">真实素材 · Google Earth 延时</div>
+        </div>
+      </div>
+
+      <!-- 左侧档案照 -->
+      <div class="km-ev__card" id="s04-archive" style="left:70px;top:1160px;width:300px;height:220px;transform:rotate(-2.5deg);">
+        <div class="km-ev__tear km-ev__tear--c">
+          <div class="km-ev__ph" style="--km-ev-tone:#4A443A;">photo-archive</div>
+          <img class="km-ev__img" src="assets/media/photo-archive.jpg" alt="" onerror="this.remove()">
+          <div class="km-ev__tag">ARCHIVE</div>
+        </div>
+      </div>
+
+      <!-- 右侧语义检索标签 chips -->
+      <div class="s04-chip" id="s04-chip-1" style="top:1120px;">按语义检索</div>
+      <div class="s04-chip" id="s04-chip-2" style="top:1225px;">逐镜匹配</div>
+      <div class="s04-chip" id="s04-chip-3" style="top:1330px;">记录来源</div>
+
+      <!-- 许可证印章卡（6.6s 盖下） -->
+      <div class="s04-license" id="s04-license">许可证 ✓<small>CC BY 3.0 · SOURCE LOGGED</small></div>
+    </div>
+  </section>
+
+  <!-- s04 内嵌视频：顶层 timed 元素（lint 要求 video 自带 data-start 且不嵌套在 timed 容器内；
+       与相框共享同一中心点 (540,775)，transform 由 GSAP 双选择器同步） -->
+  <video id="s04-video" src="assets/media/video-real-card.mp4" data-start="18.4" data-duration="9.0"
+         data-media-start="0" data-volume="0" data-has-audio="false" autoplay muted loop playsinline></video>
+
+  <!-- ============ s05 · collage-evidence 结论 · 27.4–37.5s · track 1 ============ -->
+  <section class="clip" id="clip-s05" data-start="27.4" data-duration="10.1" data-track-index="1">
+    <div class="km-ev">
+      <div class="km-ev__bg"></div>
+      <div class="km-ev__grain" data-layout-ignore></div>
+
+      <!-- 流程卡：配音 / 字幕 / 合成 -->
+      <div class="s05-pcard" id="s05-card-1" style="top:420px;"><span class="s05-pcard__bar" data-layout-ignore></span><span class="s05-pcard__idx">01</span><span class="s05-pcard__word">配音</span></div>
+      <div class="s05-pcard" id="s05-card-2" style="top:620px;"><span class="s05-pcard__bar" data-layout-ignore></span><span class="s05-pcard__idx">02</span><span class="s05-pcard__word">字幕</span></div>
+      <div class="s05-pcard" id="s05-card-3" style="top:820px;"><span class="s05-pcard__bar" data-layout-ignore></span><span class="s05-pcard__idx">03</span><span class="s05-pcard__word">合成</span></div>
+
+      <!-- 胶片证据卡 -->
+      <div class="km-ev__card" id="s05-film" style="left:720px;top:260px;width:280px;height:190px;transform:rotate(3deg);">
+        <div class="km-ev__tear km-ev__tear--b">
+          <div class="km-ev__ph" style="--km-ev-tone:#57503F;">photo-film</div>
+          <img class="km-ev__img" src="assets/media/photo-film.jpg" alt="" onerror="this.remove()">
+          <div class="km-ev__tag">REEL</div>
+        </div>
+      </div>
+
+      <!-- 循环箭头 SVG：卡间描边连接 -->
+      <svg id="s05-loop" style="position:absolute;left:620px;top:400px;width:340px;height:640px;z-index:1;" viewBox="0 0 340 640" fill="none">
+        <g stroke="#E34234" stroke-width="7" stroke-linecap="round" fill="none">
+          <path class="s05-looppath" id="s05-loop-1" d="M40 80 C 190 100, 210 220, 50 260"/>
+          <path class="s05-looppath" id="s05-loop-2" d="M40 280 C 190 300, 210 420, 50 460"/>
+          <path class="s05-looppath" id="s05-loop-3" d="M50 480 C 280 440, 300 140, 60 90"/>
+        </g>
+        <g stroke="#E34234" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path class="s05-looppath" id="s05-loop-h1" d="M76 244 L46 262 L74 284"/>
+          <path class="s05-looppath" id="s05-loop-h2" d="M76 444 L46 462 L74 484"/>
+          <path class="s05-looppath" id="s05-loop-h3" d="M92 66 L58 86 L86 112"/>
+        </g>
+      </svg>
+
+      <!-- 大字 payoff：文案 → 成片 -->
+      <div class="s05-payoff" id="s05-payoff">
+        <span class="s05-payoff__word" id="s05-word-a">文案</span>
+        <span class="s05-payoff__arrow" id="s05-arrow">→</span>
+        <span class="s05-payoff__word s05-payoff__word--accent" id="s05-word-b">成片</span>
+      </div>
+
+      <!-- 素材致谢（7.6s 淡入，hold 到结尾；位于字幕安全区之上） -->
+      <div class="s05-credit" id="s05-credit">素材：Wikimedia Commons / Openverse（CC）· 音效：合成</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused:true });
+
+  /* 笔尖助手：vendor 仅 gsap 核心（无 MotionPathPlugin），
+     getPointAtLength + onUpdate 手动 along-path，纯时间函数，seek 安全确定性 */
+  function kmSketchPen(tl, target, pen, at, dur, ease) {
+    const path = document.querySelector(target);
+    const penEl = typeof pen === 'string' ? document.querySelector(pen) : pen;
+    if (!path || !penEl) return;
+    const len = path.getTotalLength();
+    path.style.strokeDasharray = String(len);
+    path.style.strokeDashoffset = String(len);
+    const p = { t: 0 };
+    tl.fromTo(p, { t: 0 }, { t: 1, duration: dur, ease: ease || "power1.inOut",
+      onStart: () => { gsap.set(penEl, { opacity: 1 }); },
+      onComplete: () => { gsap.set(penEl, { opacity: 0 }); },
+      onUpdate: () => {
+        path.style.strokeDashoffset = String(len * (1 - p.t));
+        const pt = path.getPointAtLength(Math.max(0.001, len * p.t));
+        penEl.setAttribute("cx", pt.x); penEl.setAttribute("cy", pt.y);
+      } }, at);
+  }
+
+  /* ============ furniture ============ */
+  tl.fromTo('#fu-rule', {scaleX:0}, {scaleX:1, duration:.5, ease:'power3.out'}, .15);
+
+  /* ============ s01 · 0–4.2s · 证据墙（场景相对时间 + 0 偏移） ============ */
+  tl.fromTo('#s01-card-a', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, .05)
+    .fromTo('#s01-card-a', {scale:1.06}, {scale:1, duration:.3, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, .6)
+    .fromTo('#s01-card-b', {autoAlpha:0, x:90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, .35)
+    .fromTo('#s01-card-b', {scale:1.06}, {scale:1, duration:.3, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, .8)
+    .fromTo('#s01-card-c', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, .65)
+    .fromTo('#s01-card-c', {scale:1.06}, {scale:1, duration:.3, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, 1.1)
+    .fromTo('#s01-card-d', {autoAlpha:0, x:90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, .95)
+    .fromTo('#s01-card-d', {scale:1.06}, {scale:1, duration:.3, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, 1.4)
+    .fromTo('#s01-stamp', {autoAlpha:0, scale:1.5, rotation:8}, {autoAlpha:1, scale:1, rotation:3, duration:.3, ease:'power3.out'}, .35)
+    .fromTo('#s01-arrow path', {autoAlpha:0, scale:.6}, {autoAlpha:1, scale:1, duration:.3, ease:'power2.inOut', stagger:.15, transformOrigin:'0% 50%'}, 2.0)
+    .fromTo('#s01-cap-a', {autoAlpha:0, y:16}, {autoAlpha:1, y:0, duration:.3, ease:'power3.out'}, 2.1)
+    .fromTo('#s01-cap-c', {autoAlpha:0, y:16}, {autoAlpha:1, y:0, duration:.3, ease:'power3.out'}, 2.5)
+    .fromTo('#s01-underline', {scaleX:0}, {scaleX:1, duration:.35, ease:'power2.out'}, 2.6)
+    .fromTo('#s01-card-a', {scale:1}, {scale:1.08, duration:1.0, ease:'power1.inOut', immediateRender:false, transformOrigin:'50% 50%'}, 3.2);
+
+  /* ============ s02 · 4.2–10.9s · 手绘管线（beats +4.2：0.1/1.6/4.2/5.6） ============ */
+  tl.fromTo('.km-sk__markring', {scale:0, autoAlpha:0, svgOrigin:'22 22'}, {scale:1, autoAlpha:1, duration:.3, ease:'power3.out'}, 4.25)
+    .fromTo('.km-sk__markline', {autoAlpha:0, scale:.4, svgOrigin:'22 22'}, {autoAlpha:1, scale:1, duration:.3, ease:'power2.inOut', stagger:.08}, 4.35)
+    .fromTo('#s02-headline', {autoAlpha:0, y:30}, {autoAlpha:1, y:0, duration:.45, ease:'power3.out'}, 4.25);
+  /* beat 0.1（abs 4.3）：标题下划线自绘 */
+  kmSketchPen(tl, '#s02-underline', '#s02-pen', 4.3, .5);
+  /* beat 1.6（abs 5.8）：盒1 叙事锁定 */
+  kmSketchPen(tl, '#s02-box1', '#s02-pen', 5.8, .7);
+  tl.fromTo('#s02-label-1', {autoAlpha:0, y:20}, {autoAlpha:1, y:0, duration:.35, ease:'power3.out'}, 6.4);
+  /* beat 4.2（abs 8.4）：盒2 语义分镜 + 6-8s 刻度尺 */
+  kmSketchPen(tl, '#s02-box2', '#s02-pen', 8.4, .6);
+  tl.fromTo('#s02-label-2', {autoAlpha:0, y:20}, {autoAlpha:1, y:0, duration:.35, ease:'power3.out'}, 8.9);
+  tl.fromTo('#s02-ruler', {attr:{'stroke-dasharray':'500','stroke-dashoffset':500}}, {attr:{'stroke-dashoffset':0}, duration:.5, ease:'power1.inOut'}, 9.0)
+    .fromTo('.km-sk__tick', {autoAlpha:0}, {autoAlpha:1, duration:.2, stagger:.07, ease:'power1.out'}, 9.1)
+    .fromTo('#s02-ticktext', {autoAlpha:0}, {autoAlpha:1, duration:.3, ease:'power1.out'}, 9.35);
+  /* beat 5.6（abs 9.8）：连接箭头 + 照片证据卡 */
+  kmSketchPen(tl, '#s02-arrow-main', '#s02-pen', 9.8, .45);
+  kmSketchPen(tl, '#s02-arrow-head', '#s02-pen', 10.25, .2, 'power1.out');
+  kmSketchPen(tl, '#s02-arrow-photo', '#s02-pen', 9.9, .45);
+  tl.fromTo('#s02-photo', {autoAlpha:0, scale:1.06}, {autoAlpha:1, scale:1, duration:.3, ease:'power3.out', transformOrigin:'50% 50%'}, 9.9)
+    .fromTo('#s02-photocap', {autoAlpha:0}, {autoAlpha:1, duration:.3}, 10.2);
+
+  /* ============ s03 · 10.9–18.4s · 折纸立体书（beats +10.9：0.1/1.4/3.0/5.2/5.8） ============ */
+  tl.fromTo('#s03-title', {autoAlpha:0, y:24}, {autoAlpha:1, y:0, duration:.4, ease:'power3.out'}, 11.0)
+  /* beat 0.1（abs 11.0）：平铺纸出现（rotationX 88 ≈ 侧视平铺） */
+    .fromTo('#s03-base', {autoAlpha:0, rotationX:88, y:60}, {autoAlpha:1, rotationX:88, y:0, duration:.5, ease:'power2.inOut', transformOrigin:'50% 100%'}, 11.0)
+  /* beat 1.4（abs 12.3）：背板 rotateX 立起 */
+    .fromTo('#s03-base', {rotationX:88}, {rotationX:8, duration:.7, ease:'power2.inOut', immediateRender:false, transformOrigin:'50% 100%'}, 12.3)
+    .fromTo('#s03-badge-1', {autoAlpha:0, y:20}, {autoAlpha:1, y:0, duration:.35, ease:'power3.out'}, 13.1)
+  /* beat 3.0（abs 13.9）：中景卡折起（厚度侧面随之可见） */
+    .fromTo('#s03-mid', {autoAlpha:0, rotationX:88}, {autoAlpha:1, rotationX:12, duration:.6, ease:'power2.inOut', transformOrigin:'50% 100%'}, 13.9)
+    .fromTo('#s03-badge-2', {autoAlpha:0, y:20}, {autoAlpha:1, y:0, duration:.35, ease:'power3.out'}, 14.7)
+  /* beat 5.2（abs 16.1）：前景立牌站起，阴影落定 */
+    .fromTo('#s03-stand', {autoAlpha:0, rotationX:88}, {autoAlpha:1, rotationX:16, duration:.55, ease:'power2.inOut', transformOrigin:'50% 100%'}, 16.1)
+    .fromTo('#s03-badge-3', {autoAlpha:0, y:20}, {autoAlpha:1, y:0, duration:.35, ease:'power3.out'}, 16.9)
+  /* beat 5.8（abs 16.7）：微推近 */
+    .fromTo('#s03-stage', {scale:1}, {scale:1.08, duration:1.0, ease:'power1.inOut', immediateRender:false, transformOrigin:'50% 60%'}, 16.7);
+
+  /* ============ s04 · 18.4–27.4s · 真实素材段（beats +18.4：0.1/2.2/4.6/6.6） ============ */
+  /* beat 0.1（abs 18.5）：相框升起，视频开播 */
+  tl.fromTo('#s04-frame, #s04-video', {autoAlpha:0, y:60}, {autoAlpha:1, y:0, duration:.45, ease:'power2.inOut'}, 18.5)
+    .fromTo('#s04-frame, #s04-video', {scale:1.06}, {scale:1, duration:.4, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, 19.0)
+    .fromTo('#s04-cap', {autoAlpha:0, y:16}, {autoAlpha:1, y:0, duration:.3, ease:'power3.out'}, 19.3)
+  /* beat 2.2（abs 20.6）：档案照滑入左侧 */
+    .fromTo('#s04-archive', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, 20.6)
+    .fromTo('#s04-archive', {scale:1.06}, {scale:1, duration:.3, ease:'power3.out', immediateRender:false, transformOrigin:'50% 50%'}, 21.1)
+  /* beat 4.6（abs 23.0）：语义检索 chips 右侧堆叠 */
+    .fromTo('#s04-chip-1', {autoAlpha:0, x:90}, {autoAlpha:1, x:0, duration:.4, ease:'power2.inOut'}, 23.0)
+    .fromTo('#s04-chip-2', {autoAlpha:0, x:90}, {autoAlpha:1, x:0, duration:.4, ease:'power2.inOut'}, 23.18)
+    .fromTo('#s04-chip-3', {autoAlpha:0, x:90}, {autoAlpha:1, x:0, duration:.4, ease:'power2.inOut'}, 23.36)
+  /* 视频微动效（scale 慢推，确定性时间驱动） */
+    .fromTo('#s04-frame, #s04-video', {scale:1}, {scale:1.03, duration:3.0, ease:'power1.inOut', immediateRender:false, transformOrigin:'50% 50%'}, 23.9)
+  /* beat 6.6（abs 25.0）：许可证印章盖下 */
+    .fromTo('#s04-license', {autoAlpha:0, scale:1.6, rotation:-8}, {autoAlpha:1, scale:1, rotation:-4, duration:.35, ease:'power3.in', transformOrigin:'50% 50%'}, 25.0);
+
+  /* ============ s05 · 27.4–37.5s · 闭环结论（beats +27.4：0.1/2.0/4.6/5.2/7.6） ============ */
+  /* beat 0.1（abs 27.5）：流程卡依次滑入堆叠 */
+  tl.fromTo('#s05-card-1', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, 27.5)
+    .fromTo('#s05-card-2', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, 27.9)
+    .fromTo('#s05-card-3', {autoAlpha:0, x:-90}, {autoAlpha:1, x:0, duration:.45, ease:'power2.inOut'}, 28.3)
+  /* beat 2.0（abs 29.4）：胶片证据卡钉上 */
+    .fromTo('#s05-film', {autoAlpha:0, scale:1.06}, {autoAlpha:1, scale:1, duration:.3, ease:'power3.out', transformOrigin:'50% 50%'}, 29.4)
+  /* beat 4.6（abs 32.0）：循环箭头描边连接 */
+    .fromTo('#s05-loop-1', {attr:{'stroke-dasharray':'300','stroke-dashoffset':300}}, {attr:{'stroke-dashoffset':0}, duration:.5, ease:'power1.inOut'}, 32.0)
+    .fromTo('#s05-loop-h1', {autoAlpha:0}, {autoAlpha:1, duration:.15}, 32.45)
+    .fromTo('#s05-loop-2', {attr:{'stroke-dasharray':'300','stroke-dashoffset':300}}, {attr:{'stroke-dashoffset':0}, duration:.5, ease:'power1.inOut'}, 32.15)
+    .fromTo('#s05-loop-h2', {autoAlpha:0}, {autoAlpha:1, duration:.15}, 32.6)
+    .fromTo('#s05-loop-3', {attr:{'stroke-dasharray':'480','stroke-dashoffset':480}}, {attr:{'stroke-dashoffset':0}, duration:.6, ease:'power1.inOut'}, 32.3)
+    .fromTo('#s05-loop-h3', {autoAlpha:0}, {autoAlpha:1, duration:.15}, 32.85)
+  /* beat 5.2（abs 32.6）：文案 → 成片 payoff（accent） */
+    .fromTo('#s05-word-a', {autoAlpha:0, x:-60}, {autoAlpha:1, x:0, duration:.35, ease:'power3.out'}, 32.6)
+    .fromTo('#s05-arrow', {scaleX:0, autoAlpha:0}, {scaleX:1, autoAlpha:1, duration:.3, ease:'power3.inOut'}, 32.95)
+    .fromTo('#s05-word-b', {autoAlpha:0, scale:1.35}, {autoAlpha:1, scale:1, duration:.35, ease:'power3.out', transformOrigin:'50% 50%'}, 33.1)
+    .fromTo('#s05-word-b', {scale:1}, {scale:1.1, duration:.18, yoyo:true, repeat:1, ease:'power2.inOut', immediateRender:false, transformOrigin:'50% 50%'}, 33.7)
+  /* beat 7.6（abs 35.0）：素材致谢淡入，hold 到结尾 */
+    .fromTo('#s05-credit', {autoAlpha:0}, {autoAlpha:1, duration:.5, ease:'power1.out'}, 35.0);
+
+  window.__timelines['showcase-visual-master'] = tl;
+</script>
+</body>
+</html>

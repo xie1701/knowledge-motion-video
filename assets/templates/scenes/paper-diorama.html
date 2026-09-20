@@ -4,11 +4,33 @@
   Replaceable slots: {{TITLE}} 标题 | {{LAYER_1_LABEL}}/{{LAYER_2_LABEL}}/{{LAYER_3_LABEL}} 各层内容 | {{ACCENT}} 强调色
   Each layer is an independent group so lift/occlusion is real DOM stacking.
   Swap layer contents for layered paper-texture SVG illustrations.
+  v2.2 素材化升级（设计 §1.2）: 纸边厚度侧面（同色系稍暗 ::before 伪元素）、折痕阴影线+高光线、
+  全局纸纹 overlay（feTurbulence data-uri 正片叠底 12%，固定 seed 确定性）、音效挂点注释。
+  运动结构不变——向后兼容：占位缺失/不使用时保持原纯动效行为。
+  音效挂点 (fetch_assets.py --sfx): 翻纸/纸张摩擦声 → 每层入场与 lift 起点（见 GSAP 注释 SFX 标记）。
 -->
 <div class="km-paper" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#E9E2D0);perspective:1200px;">
+  <style>
+    /* v2.2: 全局纸纹 overlay（放场景层之上、文字之下，正片叠底 12%） */
+    .km-paper__texture { position:absolute; inset:0; mix-blend-mode:multiply; opacity:.12;
+      pointer-events:none;
+      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='papn'><feTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' seed='23' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23papn)' opacity='0.6'/></svg>");
+      background-size:300px 300px; }
+    /* v2.2: 纸边厚度——同色系稍暗侧面（垂在下缘，front 视角读作"纸的厚度"） */
+    .km-paper__layer { transform-style:preserve-3d; }
+    .km-paper__layer::before { content:""; position:absolute; left:0; right:0; top:100%; height:10px;
+      background:var(--km-paper-edge,#C4B695); transform-origin:top; }
+    /* v2.2: 折痕——层间交界的深色阴影线 + 高光线 */
+    .km-paper__layer::after { content:""; position:absolute; left:2%; right:2%; bottom:-1px; height:3px;
+      background:linear-gradient(to bottom, rgba(40,32,18,.28), rgba(255,252,240,.55)); z-index:2; }
+    .km-paper__layer--base::before { background:#B9AC8A; }
+    .km-paper__layer--mid::before  { background:#D6CBB0; }
+    .km-paper__layer--top::before  { background:#B45536; background:color-mix(in srgb, var(--km-accent,#F36B3D) 72%, #26241F); }
+  </style>
+  <div class="km-paper__texture" data-layout-ignore></div>
   <div class="km-paper__title" style="position:absolute;left:0;top:6%;width:100%;text-align:center;font:800 44px system-ui;color:#26241F;">{{TITLE}}</div>
 
-  <!-- 底层 -->
+  <!-- 底层（最后、最大，先入场） -->
   <div class="km-paper__layer km-paper__layer--base" style="position:absolute;left:14%;top:34%;width:72%;height:44%;background:#D8CFB8;box-shadow:0 18px 30px rgba(0,0,0,.18);transform:rotateX(14deg);">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8C887F;font:700 30px system-ui;">{{LAYER_3_LABEL}}</div>
   </div>
@@ -23,12 +45,15 @@
   </div>
 </div>
 <!--
-  GSAP timeline fragment (deterministic: every layer fromTo with explicit hinge origin):
-  tl.fromTo(".km-paper__layer--base", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1)
-    .fromTo(".km-paper__layer--mid", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.7)
-    .fromTo(".km-paper__layer--top", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.3)
+  GSAP timeline fragment (deterministic: every layer fromTo with explicit hinge origin).
+  装配顺序（设计 §1.2）: 由后到前、由大到小（base → mid → top → tab）。
+  SFX 挂点: 翻纸/纸张摩擦声 → 每层入场起点（0.1/0.7/1.3s）与 lift 起点（2.4s）。
+  tl.fromTo(".km-paper__layer--base", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1)    // SFX paper
+    .fromTo(".km-paper__layer--mid", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.7)     // SFX paper
+    .fromTo(".km-paper__layer--top", { autoAlpha: 0, y: 80 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.3)     // SFX paper
     .fromTo(".km-paper__tab", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: "back.out(2)" }, 1.8)
     .fromTo(".km-paper__title", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 0.2);
-  // Lift to reveal the layer below (real occlusion, hinge at bottom edge):
-  // tl.to(".km-paper__layer--top", { rotationX: -38, y: -30, duration: 0.6, ease: "power2.inOut", transformOrigin: "50% 100%" }, 2.4);
+  // Lift to reveal the layer below (real occlusion, hinge at bottom edge). 同一元件二次 fromTo
+  // 必须带 immediateRender:false；此处用 .to 免开 immediateRender：
+  // tl.to(".km-paper__layer--top", { rotationX: -38, y: -30, duration: 0.6, ease: "power2.inOut", transformOrigin: "50% 100%" }, 2.4);   // SFX paper-lift
 -->

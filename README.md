@@ -60,9 +60,25 @@ python3 scripts/verify.py ~/Videos/my-explainer
 A complete worked example — script → storyboard → composition → narration → captions →
 final MP4, all verified — lives in [`examples/sample-project/`](examples/sample-project/).
 
+## Showcase（完整素材化案例）
+
+[`examples/showcase-project/`](examples/showcase-project/) 是全链路素材化案例（37.5s，1080×1920）：
+
+- **全程旁白 + 烧录字幕 + 混音音效**（旁白 TTS → 本地 ASR 词级时间戳 → 字幕/场景时钟）
+- **真实素材**：Wikimedia/Openverse 照片 ×5 + 真实延时视频 ×1，全部由 `fetch_assets.py` 按场景
+  `assets[].query` 语义检索下载，许可证与署名记录在 `assets/media/manifest.json`
+- **三种素材型风格**：collage-evidence（撕纸拼贴证据墙）、hand-sketch（SVG 自绘线条 + 笔尖沿
+  路径移动）、paper-fold（CSS 3D 折纸立体书），另含真实视频段与音效挂点
+- 成片：`renders/final-showcase.mp4`；对比动图：[`docs/showcase.gif`](docs/showcase.gif)
+
+复现：`python3 scripts/fetch_assets.py --project examples/showcase-project` → 渲染 →
+`python3 scripts/mix_audio.py …` → `finalize.py …`。
+
 ## Style gallery
 
-Four design presets × four routes, same 10-second script, rendered at 1080×1920:
+Four design presets × four routes, same 10-second script, rendered at 1080×1920.
+These are **silent style loops** for comparing visual grammars — for a full narrated,
+material-driven case see the Showcase above:
 
 | Preset | Route | Sample |
 |---|---|---|
@@ -89,7 +105,7 @@ per-style loops live next to each sample under `renders/`. Each sample contains 
 ```text
 SKILL.md                  the agent-facing workflow
 references/               pipeline, scene schema, style router, motion language, stack notes
-scripts/                  scaffold, validate, captions, finalize, verify, render, doctor
+scripts/                  scaffold, validate, captions, finalize, verify, fetch-assets, mix-audio, render, doctor
 assets/templates/         per-route scene fragments + series furniture
 assets/styles/            design token presets
 examples/                 complete runnable projects

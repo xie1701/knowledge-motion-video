@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.2 — 2026-09-20
+
+- **Real-asset pipeline**: `scripts/fetch_assets.py` — per-scene semantic asset search and
+  download (Pexels / Pixabay via optional keys, keyless Openverse + Wikimedia Commons, local
+  library, bundled SFX), auto-backfills `local`/`attribution`/`license` into `scenes.json` and
+  writes a shippable license manifest; resume-safe.
+- **Audio**: `scripts/mix_audio.py` (narration + per-scene SFX at `startSec + atSec`) and
+  `scripts/make_sfx.py` (synthesized bundled SFX pack: paper, page, pen, click, whoosh).
+- **Material-style routes**: three new routes (15 total) — `collage-evidence` (torn-paper
+  evidence wall), `hand-sketch` (self-drawing SVG strokes + pen tip along path),
+  `paper-fold` (CSS 3D origami pop-up with crease lines, thickness, texture). Upgraded
+  `editorial-collage` and `paper-diorama` with torn edges, thickness, texture, and asset slots.
+- **Showcase case**: `examples/showcase-project/` — 37.5s fully narrated, caption-burned,
+  real-footage case (5 scenes, 5 photos + 1 real timelapse video + 6 SFX, all licensed and
+  recorded), covering the three material-style routes.
+- Schema/docs: optional per-scene `assets[]` contract (scene-schema.md), style-router table
+  updated, showcase docs and CI coverage.
+
 ## v2.1 — 2026-09-19
 
 - Style gallery: four 10-second sample renders (clean-education × whiteboard-tutorial,

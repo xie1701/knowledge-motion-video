@@ -88,6 +88,9 @@ Classify each beat by its explanatory job, then route it (details in `style-rout
 - **timeline-history** — chronology, milestones, evolution.
 - **process-flow** — pipelines, architectures, cause-effect chains.
 - **map-geo** — geography, spatial distribution, movement.
+- **collage-evidence** — material-style collage: real photos/footage pinned as torn-paper evidence cards with captions and license tags. Best when real-world proof drives the argument.
+- **hand-sketch** — material-style hand-drawn: SVG strokes draw themselves with a moving pen tip; embeds one photo as evidence. Best for arguments and methods with warmth.
+- **paper-fold** — material-style origami/paper-craft: CSS 3D folds stand a flat sheet into a layered diorama with crease lines, thickness, and paper texture.
 
 A film may mix styles; a chapter should normally keep one dominant grammar. Do not imitate a
 living creator frame-for-frame — reuse principles, never protected frames, characters, or logos.
@@ -100,6 +103,35 @@ changes and pauses. 5. Land visual payoffs on spoken keywords. 6. Hold the resol
 (1–1.5s for dense diagrams). 7. Subtitles go on the topmost layer, applied last in FFmpeg.
 
 Never hard-code final frame numbers before voice timing; estimates are for pilots only.
+
+## Real-asset pipeline (optional but recommended)
+
+For material-style scenes, declare per-scene `assets` in `scenes.json` (see `scene-schema.md`):
+
+```jsonc
+"assets": [
+  { "id": "photo-1", "type": "photo", "query": "vintage typewriter" },
+  { "id": "broll-1", "type": "video", "query": "timelapse city" },
+  { "id": "sfx-1", "type": "audio-sfx", "query": "paper", "atSec": 0.6 }
+]
+```
+
+Then:
+
+1. `python3 scripts/fetch_assets.py --project <dir>` — searches Pexels (set `PEXELS_API_KEY`),
+   Pixabay (`PIXABAY_API_KEY`), then keyless Openverse and Wikimedia Commons; downloads to
+   `assets/media/`, backfills `local`/`attribution`/`license`, and writes
+   `assets/media/manifest.json` (the license record you ship). Resume-safe; bundled SFX pack
+   matches `audio-sfx` queries locally.
+2. Templates reference `{{assets.<id>}}` placeholders; a missing asset degrades to the
+   template's CSS fallback instead of an empty frame.
+3. `python3 scripts/mix_audio.py --scenes ... --narration ... --out audio/mix.wav` — mixes the
+   narration with per-scene SFX at `startSec + atSec`.
+
+License notes: Pexels/Pixabay content licenses allow modification and redistribution inside a
+larger work; Openverse/Wikimedia return CC/PD content — record attribution in the manifest and
+show credits. Generated media (FLUX.1-schnell / Qwen-Image, both Apache-2.0) may serve as a
+fallback; do not bundle non-commercial model weights.
 
 ## Rendering
 

@@ -60,11 +60,33 @@ Each scene requires:
 - IDs are unique and match `^[a-z][a-z0-9-]*$`.
 - Scenes begin at or after zero, have positive duration, and do not overlap.
 - The first scene starts at zero; gaps over 0.15 seconds are rejected.
-- `style` is one of the twelve routes in `style-router.md`: editorial-collage, character-concept-comic, paper-diorama, swiss-sketch, ui-demo, generated-cinematic, data-viz, kinetic-typography, whiteboard-tutorial, timeline-history, process-flow, map-geo.
+- `style` is one of the fifteen routes in `style-router.md`: editorial-collage, character-concept-comic, paper-diorama, swiss-sketch, ui-demo, generated-cinematic, data-viz, kinetic-typography, whiteboard-tutorial, timeline-history, process-flow, map-geo, collage-evidence, hand-sketch, paper-fold.
 - `renderer` is `hyperframes`, `manim`, `lottie`, `three`, `generated-video`, or `still`.
 - Every scene names one visual subject, one visual verb, at least one beat, and a final state.
 - Every beat lies inside the scene; `beats[].atSec` and `keywords[].atSec` are scene-relative (seconds from the scene's own start), while scene `startSec` values tile the film timeline.
 - Text-only scenes are allowed only for chapter cards or intentional kinetic typography.
-- Every external asset ID resolves in `assets/manifest.json`.
+- Every external asset ID resolves in `assets/media/manifest.json` (written by `scripts/fetch_assets.py`).
+
+## assets[] (optional, per scene)
+
+Declares real-world media for material-style scenes. `fetch_assets.py` fills `local`,
+`attribution`, and `license` automatically; templates read `{{assets.<id>}}`.
+
+```jsonc
+"assets": [
+  { "id": "photo-1", "type": "photo", "query": "vintage typewriter" },
+  { "id": "broll-1", "type": "video", "query": "timelapse city" },
+  { "id": "sfx-1", "type": "audio-sfx", "query": "paper", "atSec": 0.6 }
+]
+```
+
+- `type`: `photo` | `video` | `audio-sfx`.
+- `query`: search phrase for the asset sources; for `audio-sfx` it fuzzy-matches the bundled
+  SFX pack filenames.
+- `atSec`: scene-relative second for SFX placement (used by `scripts/mix_audio.py`).
+- Sources are tried in order: Pexels (`PEXELS_API_KEY`) → Pixabay (`PIXABAY_API_KEY`) →
+  Openverse → Wikimedia Commons (both keyless) → local library (`--local-dir`) → bundled SFX.
+- Missing assets never break rendering: templates fall back to CSS materials, and `mix_audio.py`
+  skips unmatched SFX with a warning.
 
 The manifest describes intent, not renderer-specific implementation. This keeps style routing and timing stable when a scene changes engines.

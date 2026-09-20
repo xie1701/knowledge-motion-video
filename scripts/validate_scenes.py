@@ -22,6 +22,9 @@ STYLES = {
     "timeline-history",
     "process-flow",
     "map-geo",
+    "collage-evidence",
+    "hand-sketch",
+    "paper-fold",
 }
 RENDERERS = {"hyperframes", "manim", "lottie", "three", "generated-video", "still"}
 ID_RE = re.compile(r"^[a-z][a-z0-9-]*$")

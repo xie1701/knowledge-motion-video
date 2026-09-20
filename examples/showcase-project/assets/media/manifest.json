@@ -1,0 +1,126 @@
+{
+  "generated_by": "fetch_assets.py",
+  "note": "发布前保留此清单：素材与许可证记录",
+  "items": [
+    {
+      "scene": "s01",
+      "id": "photo-typewriter",
+      "type": "photo",
+      "query": "vintage typewriter",
+      "local": "assets/media/photo-typewriter.jpg",
+      "license": "cc-by",
+      "attribution": "philhearing",
+      "source_page": "https://www.flickr.com/photos/36766427@N05/5520806412"
+    },
+    {
+      "scene": "s01",
+      "id": "photo-notebook",
+      "type": "photo",
+      "query": "open notebook pen",
+      "local": "assets/media/photo-notebook.jpg",
+      "license": "cc-cc0",
+      "attribution": "None",
+      "source_page": "https://www.rawpixel.com/image/5916411/photo-image-public-domain-notebook-pens"
+    },
+    {
+      "scene": "s01",
+      "id": "sfx-page",
+      "type": "audio-sfx",
+      "query": "paper",
+      "local": "assets/media/sfx-page.wav",
+      "license": "paper-rustle.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    },
+    {
+      "scene": "s02",
+      "id": "photo-pen",
+      "type": "photo",
+      "query": "fountain pen writing",
+      "local": "assets/media/photo-pen.jpg",
+      "license": "cc-by,sa",
+      "attribution": "Francis Flinch",
+      "source_page": "https://commons.wikimedia.org/w/index.php?curid=23990924"
+    },
+    {
+      "scene": "s02",
+      "id": "sfx-pen",
+      "type": "audio-sfx",
+      "query": "pen",
+      "local": "assets/media/sfx-pen.wav",
+      "license": "pen-scratch.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    },
+    {
+      "scene": "s03",
+      "id": "sfx-fold-1",
+      "type": "audio-sfx",
+      "query": "paper",
+      "local": "assets/media/sfx-fold-1.wav",
+      "license": "paper-rustle.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    },
+    {
+      "scene": "s03",
+      "id": "sfx-fold-2",
+      "type": "audio-sfx",
+      "query": "page",
+      "local": "assets/media/sfx-fold-2.wav",
+      "license": "page-flip.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    },
+    {
+      "scene": "s04",
+      "id": "video-real",
+      "type": "video",
+      "query": "timelapse city",
+      "local": "assets/media/video-real-card.mp4",
+      "license": "wikimedia-CC BY 3.0",
+      "attribution": "Google Earth",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Al_Khiran_Pearl_City_Construction_Kuwait_Google_Earth_Timelapse_1984-2018.webm"
+    },
+    {
+      "scene": "s04",
+      "id": "photo-archive",
+      "type": "photo",
+      "query": "archive boxes library",
+      "local": "assets/media/photo-archive.jpg",
+      "license": "cc-by",
+      "attribution": "BiblioArchives / LibraryArchives",
+      "source_page": "https://www.flickr.com/photos/28853433@N02/7509281134"
+    },
+    {
+      "scene": "s04",
+      "id": "sfx-click",
+      "type": "audio-sfx",
+      "query": "click",
+      "local": "assets/media/sfx-click.wav",
+      "license": "click.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    },
+    {
+      "scene": "s05",
+      "id": "photo-film",
+      "type": "photo",
+      "query": "film reel vintage",
+      "local": "assets/media/photo-film.jpg",
+      "license": "cc-by",
+      "attribution": "popturfdotcom",
+      "source_page": "https://www.flickr.com/photos/85775143@N08/7851708528"
+    },
+    {
+      "scene": "s05",
+      "id": "sfx-page-2",
+      "type": "audio-sfx",
+      "query": "page",
+      "local": "assets/media/sfx-page-2.wav",
+      "license": "page-flip.wav (bundled)",
+      "attribution": "knowledge-motion-skill sfx pack",
+      "source_page": ""
+    }
+  ]
+}

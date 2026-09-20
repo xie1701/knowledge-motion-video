@@ -30,3 +30,7 @@ jobs:
           for f in examples/style-samples/*/storyboard/scenes.json; do
             python3 scripts/validate_scenes.py "$f"
           done
+      - name: Validate showcase storyboard
+        run: python3 scripts/validate_scenes.py examples/showcase-project/storyboard/scenes.json
+      - name: Fetch-assets dry-run on showcase (keyless sources reachable)
+        run: python3 scripts/fetch_assets.py --project examples/showcase-project --dry-run

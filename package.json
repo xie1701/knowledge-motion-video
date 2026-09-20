@@ -9,6 +9,7 @@
     "render:demo": "node scripts/render-browser.mjs examples/sample-project/composition/index.html --output examples/sample-project/renders/demo-swiss.mp4 --fps 30"
   },
   "dependencies": {
+    "hyperframes": "^0.8.52",
     "puppeteer-core": "^24.43.1"
   }
 }
