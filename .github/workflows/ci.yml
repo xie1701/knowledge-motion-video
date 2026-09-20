@@ -39,7 +39,7 @@ jobs:
           for f in assets/templates/scenes/*.html; do
             style=$(basename "$f" .html)
             python3 scripts/make_video.py --copy examples/demo-density/sweep/copy.txt \
-              --project "/tmp/ci-$style" --go --style "$style" --no-render \
+              --project "/tmp/ci-$style" --go --style "$style" --no-render --no-fetch \
               --transcript examples/demo-density/sweep/transcript.json
           done
       - name: Align transcript to copy (v2.5)

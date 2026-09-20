@@ -1,7 +1,11 @@
 <!--
   Route: editorial-collage (编辑拼贴)
   Paste the <div> below into one clip inside your composition root.
-  Replaceable slots: {{TITLE}} 标题 | {{CAPTION}} 图注 | {{ACCENT}} 强调色 | {{IMG_LABEL}} 素材占位说明
+  Replaceable slots: {{TITLE}} 标题 | {{CAPTION}} 图注 | {{ACCENT}} 强调色 | {{IMG_LABEL}}/{{IMG_LABEL_2}} 素材说明
+
+  素材槽位：photo-1 → 主窗口（assets/media/photo-1.jpg）；photo-2 → 右下副窗口。
+  两张 <img onerror="this.remove()">：没有真实素材时主窗露出占位色块，
+  副窗整体隐藏（不出现一个空框）。make_video.py 的素材检索步骤会自己往这两个槽位下素材。
   素材槽位 (scenes.json scene.assets, 设计文档 §2.1 约定):
     photo-1 → assets/media/photo-1.jpg，贴入 .km-collage__window（<img onerror 自动退回
     CSS 占位色块，向后兼容——无素材时保持原纯动效行为）
@@ -46,6 +50,11 @@
     </div>
     <div class="km-collage__caption" style="position:absolute;left:6%;bottom:4%;color:#26241F;font:700 30px system-ui;">{{CAPTION}}</div>
   </div>
+  <!-- 副素材窗口：第二张实拍照片（photo-2）。没有素材时整块被构建期移除（data-hide-when-empty） -->
+  <div class="km-collage__window--b" data-hide-when-empty style="position:absolute;left:56%;top:66%;width:34%;height:21%;background:#26241F;transform:rotate(3deg);box-shadow:10px 12px 16px rgba(38,36,31,.28);overflow:hidden;display:flex;align-items:center;justify-content:center;color:#8C887F;font:600 20px system-ui;">
+    {{IMG_LABEL_2}}
+    <img class="km-collage__img" src="assets/media/photo-2.jpg" alt="" onerror="this.remove()">
+  </div>
   <div class="km-collage__label" style="position:absolute;right:8%;top:12%;background:var(--km-accent,#F36B3D);color:#11110F;padding:10px 22px;font:800 30px system-ui;transform:rotate(3deg);">
     {{TITLE}}
   </div>
@@ -62,6 +71,8 @@
     .fromTo(".km-collage__label", { autoAlpha: 0, scale: 1.5, rotation: 8 }, { autoAlpha: 1, scale: 1, rotation: 3, duration: 0.3, ease: "power3.out" }, 0.5)
     .fromTo(".km-collage__underline", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.inOut" }, 0.9)
     .fromTo(".km-collage__caption", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 1.1);      // SFX paper-rub
+  // 副素材窗口（只有真实照片落位时才在画面上；没素材时构建期已整块移除）
+  tl.fromTo(".km-collage__window--b", { autoAlpha: 0, y: 46 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.25);
   // Optional evidence push-in (hold final state >= 0.8s):
   // tl.fromTo(".km-collage__window", { scale: 1 }, { scale: 1.12, duration: 1.2, ease: "power1.inOut", immediateRender: false, transformOrigin: "50% 50%" }, 1.4);
   // 撕边变体上墙（可选，向后兼容——不启用则保持上方纯动效行为）:

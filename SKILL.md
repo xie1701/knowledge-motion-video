@@ -61,7 +61,7 @@ ratio and platform, target duration, whether wording is locked, voice source (ex
 TTS / none), and any brand constraints. Never make the viewer choose among all styles — analyze
 the content, recommend a primary and secondary route, and justify in one sentence.
 
-## One-shot pipeline (`make_video.py`, v2.5)
+## One-shot pipeline (`make_video.py`, v2.6)
 
 For a straight copy-to-film run, the orchestrator chains recommendation → confirmation gate →
 auto storyboard → template assembly → render → finalize → verify:
@@ -72,7 +72,7 @@ python3 scripts/make_video.py --copy copy.txt --project outdir
 # 2. confirm (human or agent) and finish
 python3 scripts/make_video.py --copy copy.txt --project outdir --go \
     [--style <name>] [--narration audio.mp3] [--corrections "一只=一支"] [--bgm music.mp3] \
-    [--data charts.json]
+    [--data charts.json] [--assets plan.json] [--local-dir DIR] [--no-fetch]
 ```
 
 - The gate is non-interactive by design: default behavior is STOP after printing the decision
@@ -105,10 +105,16 @@ python3 scripts/make_video.py --copy copy.txt --project outdir --go \
   units), `bignum` (a single number), `statement` (no numbers — big type, never fake bars).
   Bar heights are zero-based linear; category labels sit below the baseline; the axis max is
   labelled; every chart carries a `数据来源` line. Auto mode is the floor, not the ceiling.
+- **Material styles fetch their own photos (v2.6)**: when the chosen style is collage-evidence,
+  editorial-collage or generated-cinematic, the run inserts an asset step between the storyboard
+  and the composition: queries are synthesized from the scene's concepts, photos are downloaded
+  and mapped onto the template's slots, and `storyboard/assets-plan.json` +
+  `assets/media/manifest.json` record what was used (see the asset section below). `--no-fetch`
+  keeps the template fallback instead.
 - Narration: pass `--narration` (agent-generated TTS) or let edge_tts synthesize if installed;
   without either the tool exits 3 with guidance.
 
-## Style sweep (`style_sweep.py`, v2.5)
+## Style sweep (`style_sweep.py`, v2.6)
 
 To see what each of the 15 styles actually looks like on the same copy (not the template HTML —
 the rendered film), sweep one short excerpt across every style:
@@ -119,9 +125,11 @@ python3 scripts/style_sweep.py --copy excerpt.txt --narration excerpt.m4a \
 ```
 
 It renders each style into `q/<style>/`, writes `sweep-contact-sheet.jpg` (5×3 frames at 65% of
- each clip, labelled), `sweep-grid.mp4` (the 15 clips side by side) and `sweep-report.json`
-(duration, chart modes, failures). Use it to sanity-check a style choice or to show someone the
-difference — and as a regression net: it exercises every template's assembly path end to end.
+each clip, labelled), `sweep-grid.mp4` (the 15 clips side by side) and `sweep-report.json`
+(duration, chart modes, failures). Material styles fetch their own photos here too, so the sweep
+doubles as the end-to-end net for the asset path (`--assets` / `--local-dir` / `--no-fetch` pass
+through). Use it to sanity-check a style choice or to show someone the difference — and as a
+regression net: it exercises every template's assembly path end to end.
 
 ## Production gates
 

@@ -6,6 +6,8 @@
 
 做法：对每条风格跑一次 make_video.py（同一 copy / narration / transcript / data），
 然后
+  0) 素材型风格（collage-evidence / editorial-collage / generated-cinematic）会各跑一次
+     素材检索，取回真实照片；产物在 <out-dir>/<style>/assets/media/（含许可证清单与接触表）
   1) 从每条成片的 65% 时刻抽一帧，拼成 5×3 抽帧表（带风格名标注）
   2) 把 15 条短片按 5×3 并排压成一支对比片（各格带风格名）
 产物：<out-dir>/sweep-contact-sheet.jpg、<out-dir>/sweep-grid.mp4、<out-dir>/sweep-report.json
@@ -79,6 +81,9 @@ def main() -> int:
     ap.add_argument("--out-dir", type=Path, required=True)
     ap.add_argument("--styles", default="", help="逗号分隔，默认全部 15 条")
     ap.add_argument("--data", type=Path, help="图表数据 JSON（data-viz 用）")
+    ap.add_argument("--assets", type=Path, help="素材检索词覆写 JSON（素材型风格用）")
+    ap.add_argument("--local-dir", type=Path, help="本地素材库目录（素材型风格优先取本地）")
+    ap.add_argument("--no-fetch", action="store_true", help="跳过素材检索（素材型风格保留占位）")
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--no-grid", action="store_true", help="只出抽帧表，不合成对比片")
     args = ap.parse_args()
@@ -101,6 +106,12 @@ def main() -> int:
                "--fps", str(args.fps)]
         if args.data:
             cmd += ["--data", args.data]
+        if args.assets:
+            cmd += ["--assets", args.assets]
+        if args.local_dir:
+            cmd += ["--local-dir", args.local_dir]
+        if args.no_fetch:
+            cmd += ["--no-fetch"]
         print(f"[{i:02d}/{len(styles)}] {style} …", flush=True)
         proc = run(cmd)
         final = proj / "renders" / "final.mp4"

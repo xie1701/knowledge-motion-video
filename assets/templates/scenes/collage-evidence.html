@@ -10,6 +10,8 @@
     每张 <img src="assets/media/photo-N.jpg" onerror="this.remove()">：素材缺失时
     onerror 移除 <img>，露出下方 CSS 色块兜底层，画面永不空屏。
   Replaceable slots: {{TITLE}} 档案标签 | {{CAPTION_1}}/{{CAPTION_2}} 图注 | {{ACCENT}} 强调色
+    | {{PH_1..4}} 兜底层关键词 | {{PH_1..4_ROLE}} 兜底层角色标签
+    素材缺失时的兜底层文字由填槽器写入当前场的关键词（不再是「素材占位」）。
   音效挂点 (fetch_assets.py --sfx):
     快门/翻纸声 → 每张照片卡平移切入的起点（见 GSAP 注释 SFX 标记）
     纸张摩擦声 → caption box 压上图面的瞬间
@@ -38,9 +40,14 @@
     /* 照片卡内部：CSS 色块兜底层 + <img> 素材层（缺失即被移除） */
     .km-ev__ph { position:absolute; inset:4%; background:
         linear-gradient(135deg, rgba(255,255,255,.06), transparent 55%),
-        var(--km-ev-tone,#2B2822); display:flex; align-items:center; justify-content:center;
-      color:#8C887F; font:600 24px/1.4 "Noto Sans SC","PingFang SC",sans-serif; text-align:center;
+        var(--km-ev-tone,#2B2822); display:flex; flex-direction:column; gap:10px;
+      align-items:center; justify-content:center; padding:0 8%;
+      color:#D8D2C4; font:600 30px/1.3 "Noto Sans SC","PingFang SC",sans-serif; text-align:center;
       overflow:hidden; }
+    /* 兜底层文字：素材缺失时也要能读（当前场关键词 + 槽位角色），不是「素材占位」 */
+    .km-ev__ph-k { display:block; }
+    .km-ev__ph-r { display:block; font:500 16px/1 "Noto Sans SC","PingFang SC",sans-serif;
+      letter-spacing:.22em; color:#8C887F; }
     .km-ev__img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     /* 档案式标签（编号/时间戳） */
     .km-ev__tag { position:absolute; top:10px; left:14px; background:#26241F; color:#F5F1E8;
@@ -64,7 +71,7 @@
   <!-- 卡 A：主证据照 photo-1（左上，tear-a，caption 压字） -->
   <div class="km-ev__card" id="km-ev-card-a" style="left:5%;top:15%;width:54%;height:36%;transform:rotate(-2deg);">
     <div class="km-ev__tear km-ev__tear--a">
-      <div class="km-ev__ph">photo-1<br/>素材占位</div>
+      <div class="km-ev__ph"><span class="km-ev__ph-k">{{PH_1}}</span><span class="km-ev__ph-r">{{PH_1_ROLE}}</span></div>
       <img class="km-ev__img" src="assets/media/photo-1.jpg" alt="" onerror="this.remove()">
       <div class="km-ev__tag">NO.01 / 1998-03</div>
       <div class="km-ev__cap">{{CAPTION_1}}</div>
@@ -73,7 +80,7 @@
   <!-- 卡 B：对照照 photo-2（右上，tear-b） -->
   <div class="km-ev__card" id="km-ev-card-b" style="left:63%;top:19%;width:32%;height:26%;transform:rotate(2.5deg);">
     <div class="km-ev__tear km-ev__tear--b">
-      <div class="km-ev__ph" style="--km-ev-tone:#3A362E;">photo-2</div>
+      <div class="km-ev__ph" style="--km-ev-tone:#3A362E;"><span class="km-ev__ph-k">{{PH_2}}</span><span class="km-ev__ph-r">{{PH_2_ROLE}}</span></div>
       <img class="km-ev__img" src="assets/media/photo-2.jpg" alt="" onerror="this.remove()">
       <div class="km-ev__tag">NO.02</div>
     </div>
@@ -81,7 +88,7 @@
   <!-- 卡 C：文献照 photo-3（左下，tear-c，ink caption） -->
   <div class="km-ev__card" id="km-ev-card-c" style="left:9%;top:55%;width:46%;height:30%;transform:rotate(1.5deg);">
     <div class="km-ev__tear km-ev__tear--c">
-      <div class="km-ev__ph" style="--km-ev-tone:#4A443A;">photo-3</div>
+      <div class="km-ev__ph" style="--km-ev-tone:#4A443A;"><span class="km-ev__ph-k">{{PH_3}}</span><span class="km-ev__ph-r">{{PH_3_ROLE}}</span></div>
       <img class="km-ev__img" src="assets/media/photo-3.jpg" alt="" onerror="this.remove()">
       <div class="km-ev__tag">NO.03 / ARCHIVE</div>
       <div class="km-ev__cap km-ev__cap--ink">{{CAPTION_2}}</div>
@@ -90,7 +97,7 @@
   <!-- 卡 D：细节照 photo-4（右下，tear-d） -->
   <div class="km-ev__card" id="km-ev-card-d" style="left:60%;top:57%;width:34%;height:27%;transform:rotate(-3deg);">
     <div class="km-ev__tear km-ev__tear--d">
-      <div class="km-ev__ph" style="--km-ev-tone:#57503F;">photo-4</div>
+      <div class="km-ev__ph" style="--km-ev-tone:#57503F;"><span class="km-ev__ph-k">{{PH_4}}</span><span class="km-ev__ph-r">{{PH_4_ROLE}}</span></div>
       <img class="km-ev__img" src="assets/media/photo-4.jpg" alt="" onerror="this.remove()">
       <div class="km-ev__tag">NO.04</div>
     </div>

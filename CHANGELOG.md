@@ -1,5 +1,58 @@
 # Changelog
 
+## v2.6.0 — 2026-09-20
+
+**“把素材型风格接上自动检索”** —— collage-evidence / editorial-collage / generated-cinematic
+三条风格的画面主体是真实照片，而此前自动档只会在槽位里填一个内联占位图：一条风格好不好用，
+取决于人有没有手动去找图。这一版让管线自己去取图，并把取图当成一个有质量护栏的步骤。
+
+### 素材检索进管线（`make_video.py` 新增 `step_assets`）
+
+- 三条素材风格声明自己需要的槽位（`MATERIAL_PLANS`：槽位名 / 角色 / 类型优先序 / 限定修饰词），
+  `step_assets` 在**分镜之后、组装 composition 之前**跑：合成检索词 → 调 `fetch_assets.py`
+  下载 → 把「本场实际下到的文件」映射回模板写死的槽位名。
+- **检索词合成**：新增 `assets/lexicon/visual-concepts.txt`（自撰，MIT，52 条）：中文概念 →
+  英文检索短语，每条给 2–4 个同域备选。为什么要它：Pexels/Pixabay/Openverse/Wikimedia 对英文
+  召回远好于中文（实测「智能手机芯片」取回路由器与麦克风照片）；而且一条风格同一场往往要 4 张
+  素材，四张都拿同一个检索词必是同一张脸——现在按候选表顺位取第 1/2/3/4 名，四张各不相同又
+  都在同一语义域。命中不了概念表就退中文关键词。
+- 检索词打分：命中触发词按字数计分，若触发词还是该场关键词的一部分，按覆盖率加权 3 分；
+  同分则先出现在文案里的胜。
+- `--assets plan.json` 逐场覆写检索词（`{"s01":[{"slot":"photo-1","query":"…","pick":0}]}`）；
+  `--local-dir` 本地素材库优先；`--no-fetch` 保留模板兜底。产物：`storyboard/assets-plan.json`。
+
+### 取图质量护栏（`fetch_assets.py`）
+
+- **标题相关性排序**：命中结果按「检索词有几个词出现在标题/描述/标签里」稳定排序。无密钥源的
+  相关性很粗——实测 `model scale` 第一名是一张城堡模型照片——标题命中是最便宜有效的护栏。
+- **尺寸护栏**：下载后用 ffprobe 量宽度，小于 900px 的换下一张（铺到 1080 宽会糊）。
+- **本轮 URL 去重**：同一个源图不会同时填两个槽位。
+- **检索词阶梯**：主检索词零命中时退到不带修饰词的裸概念（长短语在全文检索里命中率极低，
+  `neural network architecture cinematic still` 实测 0 命中）。
+- **文件名带检索词指纹**：`s01-photo-1-b4f2f9.jpg`——换检索词不会静默复用上一轮那张图。
+- 接触表改 libass 打标（本机 ffmpeg 未编 drawtext），标签现在真的显示，且带检索词。
+
+### 模板与槽位解析
+
+- 路径修正：HyperFrames 的项目根就是 composition 目录，素材必须拷进
+  `composition/assets/media/` 并以根相对路径引用；旧的 `../assets/media/` 会被 lint 判为
+  `invalid_parent_traversal_in_asset_path`，而文件不在 composition 下又会报
+  `missing_local_asset`（渲染时静默丢图）。
+- collage-evidence：四张卡的兜底层不再是「photo-1 / 素材占位」，改为当前场关键词 + 槽位角色
+  （主证据/对照/档案/细节）——没取到图时画面仍然是一张设计过的卡片。
+- editorial-collage：新增右下副素材窗口（photo-2）。没取到图时整块在构建期移除
+  （`data-hide-when-empty`），不会留下一个空框。
+- generated-cinematic：容器里新增真实静帧 `<img>`（media-1），保留原有渐变+环层兜底；
+  视频优先、照片兜底（无密钥的免费视频源基本只有 Wikimedia 的 webm）。
+
+### 扫描
+
+- `style_sweep.py` 透传 `--assets` / `--local-dir` / `--no-fetch`；三条素材风格在扫描里
+  会各自取图，扫描因此同时是素材通路的端到端回归网。
+- 重新横扫 15 条风格并更新 `docs/style-sweep/`：素材型三风格从「空占位框」变成有真实照片的
+  成片；逐条结论重写（见 `docs/style-sweep/README.md`）。
+- CI 增加 --no-fetch 的 15 模板组装关卡（不联网）。
+
 ## v2.5.0 — 2026-09-20
 
 **“把自动档做成真正能看的成片”** —— 上一版的自动档能跑通，但片子本身站不住：动画和旁白不同步，

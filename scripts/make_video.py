@@ -87,6 +87,37 @@ STYLE_SUBJECTS: dict[str, str] = {
 
 DEFAULT_VOICE = "zh-CN-YunjianNeural"
 
+# ---------------------------------------------------------------- 素材型风格
+# 这几条风格的画面主体是真实素材，不是矢量图形：缺素材时只能露出占位色块，
+# 所以管线必须自己去检索（见 step_assets）。每条风格声明自己需要的槽位：
+#   slot     模板里写死的素材文件名前缀（模板 src="assets/media/<slot>.jpg"）
+#   role     槽位语义（写进 asset description，便于审计与人工复核）
+#   mods     检索修饰词轮转（同一场多个槽位用不同修饰词，避免四张图一个样）
+#   types    接受的素材类型，按优先序（拿不到视频就退照片）
+MATERIAL_PLANS: dict[str, list[dict]] = {
+    "collage-evidence": [
+        {"slot": "photo-1", "role": "主证据照"},
+        {"slot": "photo-2", "role": "对照照"},
+        {"slot": "photo-3", "role": "文献档案照"},
+        {"slot": "photo-4", "role": "细节照"},
+    ],
+    "editorial-collage": [
+        {"slot": "photo-1", "role": "主素材窗口"},
+        {"slot": "photo-2", "role": "副素材窗口"},
+    ],
+    "generated-cinematic": [
+        # 无密钥的免费视频源很少（基本只有 Wikimedia 的 webm），所以视频优先、照片兜底；
+        # 不要给检索词挂 cinematic 这类修饰词——长短语在全文检索里直接零命中（实测过）。
+        # avoid：这条风格要的是有氛围的照片，实测检索会返论文插图/示意图，渲染出来是「幻灯
+        # 片截图」而不是电影感画面——标题里带这些词的命中先排除。
+        {"slot": "media-1", "role": "氛围影像", "types": ["video", "photo"],
+         "avoid": ["diagram", "schema", "chart", "plot", "graph", "illustration",
+                   "screenshot", "equation", "formula", "table", "flowchart"]},
+    ],
+}
+MATERIAL_STYLES = tuple(MATERIAL_PLANS)
+MATERIAL_ROLE_LABELS = ["主证据", "对照", "档案", "细节"]
+
 # 素材槽位（assets/media/photo-N.jpg）缺失时的内联占位（确定性、免外部文件、lint 干净）
 PLACEHOLDER_SRC = (
     "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='420'>"
@@ -143,7 +174,9 @@ _GENERIC_KW = {"开始", "结果", "时候", "东西", "什么", "怎么", "变�
 _LATIN_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#.\-]*")
 _CJK_CHAR = re.compile(r"[\u4e00-\u9fff]")
 LEXICON_PATH = ROOT / "assets" / "lexicon" / "zh-words.txt"
+CONCEPTS_PATH = ROOT / "assets" / "lexicon" / "visual-concepts.txt"
 _LEX_CACHE: dict[str, int] | None = None
+_CONCEPT_CACHE: list[tuple[list[str], str]] | None = None
 
 
 def load_lexicon() -> dict[str, int]:
@@ -163,6 +196,69 @@ def load_lexicon() -> dict[str, int]:
                         pass
         _LEX_CACHE = lex
     return _LEX_CACHE
+
+
+# ------------------------------------------------- 中文概念 → 英文检索词
+# 检索源对英文召回远好于中文（实测「智能手机 芯片」返回路由器照片）。
+# 这里把文案里的中文概念映射成英文短语，让自动档也能取到对味的素材；
+# 表在 assets/lexicon/visual-concepts.txt（自撰，MIT），可自由增补。
+
+def load_concepts() -> list[tuple[list[str], str]]:
+    global _CONCEPT_CACHE
+    if _CONCEPT_CACHE is None:
+        rows: list[tuple[list[str], str]] = []
+        if CONCEPTS_PATH.exists():
+            for line in CONCEPTS_PATH.open(encoding="utf-8"):
+                line = line.rstrip("\n")
+                if not line.strip() or line.lstrip().startswith("#") or "\t" not in line:
+                    continue
+                triggers, en = line.split("\t", 1)
+                trs = [t.strip() for t in triggers.split("|") if t.strip()]
+                if trs and en.strip():
+                    rows.append((trs, en.strip()))
+        _CONCEPT_CACHE = rows
+    return _CONCEPT_CACHE
+
+
+def concept_candidates(text: str, keywords: list[str], limit: int = 8) -> list[str]:
+    """按相关度排序的英文检索短语候选（去重）。
+
+    打分：命中触发词按其字数计分；若该触发词还是当前场关键词的一部分，按覆盖率
+    （len(触发词)/len(关键词)）再加权 3 分——关键概念才是这场在讲什么。
+    分数相同则先出现在文案里的胜（先说的就是主角）。
+    每条目的英文栏用 | 分隔备选，按序展开进候选列表。
+
+    为什么给的是一个列表：一条风格里同一场往往要好几张素材，四张图都拿同一个
+    检索词必是同一张脸。取候选表的第 1/2/3/4 名，四张图各有一个、又都在同一语义域里。
+    """
+    scored: list[tuple[float, int, int, list[str]]] = []
+    for idx, (triggers, en) in enumerate(load_concepts()):
+        score, first = 0.0, 10 ** 9
+        for t in triggers:
+            i = text.find(t)
+            if i < 0:
+                continue
+            cov = max((len(t) / len(k) for k in keywords if k and (t in k or k in t)),
+                      default=0.0)
+            score += len(t) + 3.0 * cov
+            first = min(first, i)
+        if score:
+            scored.append((score, -first, idx, [e.strip() for e in en.split("|") if e.strip()]))
+    scored.sort(key=lambda r: (-r[0], -r[1], r[2]))
+    out: list[str] = []
+    for _, _, _, alts in scored:
+        for a in alts:
+            if a not in out:
+                out.append(a)
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def concept_query(text: str, keywords: list[str]) -> str:
+    """最相关的一条英文检索短语；命中不了返回空串（调用方退中文关键词）。"""
+    cands = concept_candidates(text, keywords, limit=1)
+    return cands[0] if cands else ""
 
 
 _ASCII_RUN_RE = re.compile(r"[A-Za-z0-9+#.\-]")
@@ -712,9 +808,14 @@ def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None
         "BRANCH_TAKEN": take(1) or "已采用",
         "APP_TITLE": headline,
         "STEP_TEXT": take(0) or quote,
-        "IMG_LABEL": "素材占位",
+        "IMG_LABEL": kws[0] if kws else (take(0) or headline),
+        "IMG_LABEL_2": take(1) or (kws[0] if kws else quote),
         "PHOTO_CAP": f"FIG. {index + 1:02d}",
     }
+    # 素材卡兜底层（照片缺失时露出的那层）也要有内容，不能是「素材占位」
+    for j in range(1, 5):
+        slots[f"PH_{j}"] = take(j - 1) or headline
+        slots[f"PH_{j}_ROLE"] = MATERIAL_ROLE_LABELS[j - 1]
     for j in range(3):     # 时间轴：年份能给就给，给不出就退到候选词
         slots[f"YEAR_{j + 1}"] = years[j] if j < len(years) else f"0{j + 1}"
     if extra:
@@ -823,10 +924,14 @@ def chart_for_scene(scene: dict, index: int, data_spec: list | None) -> dict:
             if k in d and d[k] is not None:
                 chart[k] = d[k]
         if d.get("values"):
-            vals = d["values"]
-            chart["values"] = [
-                {"display": str(v), "value": float(v), "kind": "data"}
-                if not isinstance(v, dict) else v for v in vals]
+            try:
+                chart["values"] = [
+                    {"display": str(v), "value": float(v), "kind": "data"}
+                    if not isinstance(v, dict) else v for v in d["values"]]
+            except (TypeError, ValueError):
+                die(f"--data 第 {index + 1} 条的 values 必须是数字或 {{display,value}} 对象，"
+                    "例如 [102000, 242000] 或 [{\"display\":\"10.2万\",\"value\":102000}]；"
+                    "注意别把 charts.json（产物）当输入喂回来", 1)
         if d.get("fallback"):
             chart["fallback"] = True
     if not chart["values"] and not chart["fallback"]:
@@ -1224,27 +1329,75 @@ def retime_js(js: str, scene: dict, start: float, end: float,
     return out, {n: round(v, 2) for n, v in sched.items()}
 
 
-def resolve_asset_srcs(fragment: str, comp_dir: Path, project: Path) -> str:
+def _use_media(comp_dir: Path, project: Path, name: str) -> str | None:
+    """把素材落到 composition 自己的 assets/media/ 下并返回可用的 src。
+
+    HyperFrames 的项目根 = composition 目录（lint/render 都以它为 base URL），
+    所以工程级 assets/media/ 必须再拷一份进 composition，否则 lint 报
+    missing_local_asset、渲染时会静默丢图。同一文件重复调用只拷一次。"""
+    src_path = project / "assets" / "media" / name
+    if not src_path.is_file():
+        return None
+    dst_dir = comp_dir / "assets" / "media"
+    dst = dst_dir / name
+    try:
+        same = dst.exists() and dst.resolve() == src_path.resolve()
+    except OSError:
+        same = False
+    if not same:
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src_path, dst)
+    return f"assets/media/{name}"
+
+
+def resolve_asset_srcs(fragment: str, comp_dir: Path, project: Path,
+                       slot_map: dict[str, str] | None = None) -> str:
     """素材槽位解析：composition 内已有 → 原样；project/assets/media 有（fetch_assets 下载）
-    → 改指 ../assets/media/；都缺 → 内联 SVG 占位（模板 onerror/CSS 兑底依然成立）。"""
+    → 拷进 composition 并改指 assets/media/；都缺 → 内联 SVG 占位（模板 onerror 兑底）。
+
+    src 必须是 composition 根相对（不能 ../assets）：lint 会把 ../ 当越界路径报错。
+    slot_map 把模板里写死的槽位名映射到本场实际下载到的文件（含真实扩展名）：
+    同一份 composition 里每场要用不同的图，模板的 photo-1.jpg 只是逻辑槽位。"""
+    slot_map = slot_map or {}
 
     def repl(m: re.Match) -> str:
         src = m.group(1)
         name = src.split("/")[-1]
+        stem = name.rsplit(".", 1)[0]
+        for cand in (slot_map.get(stem), name):
+            if cand:
+                got = _use_media(comp_dir, project, cand)
+                if got:
+                    return f'src="{got}"'
         if (comp_dir / src).exists():
             return m.group(0)
-        if (project / "assets" / "media" / name).exists():
-            return f'src="../assets/media/{name}"'
         return f'src="{PLACEHOLDER_SRC}"'
 
     return re.sub(r'src="(assets/media/[^"]+)"', repl, fragment)
 
 
+_HIDE_EMPTY_RE = re.compile(
+    r'<div\b[^>]*\bdata-hide-when-empty\b[^>]*>.*?</div>', re.S)
+
+
+def drop_empty_media(fragment: str) -> str:
+    """build 期移除「没素材就不该出现」的块（标了 data-hide-when-empty 的容器）：
+    否则渲染出来就是一个空框占着版面。有真实素材（非占位）则保留。"""
+    def repl(m: re.Match) -> str:
+        block = m.group(0)
+        if PLACEHOLDER_SRC in block:
+            return ""
+        if re.search(r'src="(?!data:)[^"]+"', block):
+            return block
+        return ""
+    return _HIDE_EMPTY_RE.sub(repl, fragment)
+
 def indent_block(text: str, pad: str = "    ") -> str:
     return "\n".join(pad + ln if ln.strip() else ln for ln in text.splitlines())
 
 
-def build_composition(project: Path, manifest: dict, style: str, title: str) -> Path:
+def build_composition(project: Path, manifest: dict, style: str, title: str,
+                      slot_maps: dict[str, dict[str, str]] | None = None) -> Path:
     """组装 composition/index.html（wrapper 约定对齐 showcase gold standard）。"""
     tpl = parse_template(style)
     proj = manifest["project"]
@@ -1290,8 +1443,13 @@ def build_composition(project: Path, manifest: dict, style: str, title: str) -> 
                      "SOURCE": chart.get("source_label", ""),
                      "PLOT": render_plot(chart, i - 1)}
         extra.setdefault("ACCENT", pal["accent"])   # 模板把 {{ACCENT}} 当颜色用
+        if style == "kinetic-typography":
+            # 这条模板把重点词用强调色**叠在行首**（绝对定位 left:0 top:0）来「高亮第一个词」。
+            # 所以 LINE_1 必须以重点词开头，两层才会严丝合缝；否则渲染出来是两个词叠在一起。
+            extra.update(kinetic_lines(sc))
         frag = fill_slots(tpl["fragment"], sc, i - 1, extra)
-        frag = resolve_asset_srcs(frag, comp_dir, project)
+        frag = resolve_asset_srcs(frag, comp_dir, project, (slot_maps or {}).get(sid, {}))
+        frag = drop_empty_media(frag)
         frag, sc_js = namespace_ids(frag, tpl["scene_js"], sid)
         sc_js, sched = retime_js(sc_js, sc, start, start + sdur, tpl.get("anchors", {}))
         if sched:
@@ -1596,6 +1754,125 @@ def step_storyboard(args, project: Path, transcript: Path, text: str, style: str
     return manifest
 
 
+def kinetic_lines(scene: dict, width: int = 13) -> dict[str, str]:
+    """kinetic-typography 的两行：第一行从首个关键词起算（重点词必须在行首），第二行接下去。"""
+    parts = [p for p in (scene.get("_clauseTexts") or [scene.get("narration", "")]) if p]
+    text = join_clauses(parts) if parts else (scene.get("narration") or "")
+    text = text.strip()
+    kws = [k["text"] for k in scene.get("keywords", []) if k.get("text")]
+    start = min((text.find(k) for k in kws if 0 <= text.find(k) <= max(0, len(text) - 4)),
+                default=0)
+    head = text[start:] or text
+    line1 = head[:width]
+    key = next((k for k in kws if line1.startswith(k)), head[:2])
+    line2 = head[width: width * 2] or (parts[1][:width * 2] if len(parts) > 1 else line1)
+    return {"LINE_1": line1, "KEY_WORD": key, "LINE_2": line2}
+
+
+def asset_query(scene: dict, item: dict, ordinal: int,
+                used: set[str] | None = None) -> str:
+    """一条素材的检索词：概念候选表里挑一个还没用过的英文短语（第 ordinal 顺位起找）。
+
+    候选来自 visual-concepts.txt（中文概念 → 英文检索短语）。命中不了概念表就退
+    中文关键词——中文召回差，但总比空串强。mods 是槽位专属修饰词（如 cinematic
+    still），只在需要限定语气时使用：拼无意义修饰词只会把检索带到无关图片上。"""
+    used = used if used is not None else set()
+    parts = scene.get("_clauseTexts") or [scene.get("narration", "")]
+    text = join_clauses([p for p in parts if p])
+    kws = [k["text"] for k in scene.get("keywords", [])]
+    pool = concept_candidates(text, kws) or ([kws[0]] if kws else [text[:10] or "abstract"])
+    base = ""
+    for i in range(len(pool)):
+        cand = pool[(ordinal + i) % len(pool)]
+        if cand not in used:
+            base = cand
+            break
+    base = base or pool[ordinal % len(pool)]
+    used.add(base)
+    mods = item.get("mods") or []
+    return f"{base} {mods[ordinal % len(mods)]}" if mods else base
+
+
+def step_assets(args, project: Path, manifest: dict,
+                style: str) -> dict[str, dict[str, str]]:
+    """素材型风格：声明素材需求 → 检索下载 → 回传每场「槽位 → 实际文件」映射。
+
+    为什么必须在组装 composition 之前跑：resolve_asset_srcs 要看
+    project/assets/media/ 里到底有没有文件，没下到就退内联占位。
+    --assets <json> 可逐场覆写检索词（形如 {"s01": [{"slot":"photo-1","query":"…","pick":0}]}）：
+    自动合成是地板，语义相关的素材靠覆写把关。
+    """
+    plan = MATERIAL_PLANS.get(style)
+    override: dict | None = None
+    if getattr(args, "assets", None):
+        override = json.loads(args.assets.read_text(encoding="utf-8"))
+    if not plan and not override:
+        return {}
+    print(f"\n== 素材检索（{style}）==")
+
+    declared: list[dict] = []
+    used_urls: set[str] = set()
+    for sc in manifest["scenes"]:
+        sid = sc["id"]
+        used_q: set[str] = set()   # 只在本场内去重：跨场重复的检索词交给 URL 去重换图，
+                                   # 否则会把后面几场挤到语义不对的概念上去（实测过）
+        items = (override or {}).get(sid) or plan or []
+        assets = []
+        for k, it in enumerate(items):
+            accept = it.get("types") or [it.get("type", "photo")]
+            q = it.get("query") or asset_query(sc, it, k, used_q)
+            mods = it.get("mods") or []
+            bare = q[: -len(mods[k % len(mods)]) - 1].strip() if mods else q
+            assets.append({"id": f"{sid}-{it['slot']}", "slot": it["slot"],
+                           "type": accept[0], "accept": accept, "query": q,
+                           "fallbacks": [bare] if bare != q else [],
+                           "avoid": it.get("avoid") or [],
+                           "description": f"{sid} {it.get('role', '素材')} · {q}",
+                           "pick": it.get("pick", 0)})
+            print(f"  {sid} {it['slot']:8s} q={q!r}")
+        sc["assets"] = assets
+        declared.extend(assets)
+
+    sp = project / "storyboard" / "scenes.json"
+    sp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (project / "storyboard" / "assets-plan.json").write_text(
+        json.dumps({"style": style, "note": "素材需求与检索词（自动合成，可用 --assets 覆写）",
+                    "items": declared}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    if getattr(args, "no_fetch", False):
+        print("  素材：--no-fetch，跳过检索（保留模板占位）")
+        return {}
+    cmd = [sys.executable, SCRIPTS / "fetch_assets.py", "--project", project, "--sheet"]
+    if getattr(args, "local_dir", None):
+        cmd += ["--local-dir", str(args.local_dir)]
+    proc = run(cmd)
+    print((proc.stdout or "").rstrip())
+
+    # 回读 fetch_assets 回填的 local/license/attribution（不丢，后面还要重写 scenes.json）
+    doc = json.loads(sp.read_text(encoding="utf-8"))
+    got = {a.get("id"): a for sc in doc.get("scenes", []) for a in (sc.get("assets") or [])}
+    slot_maps: dict[str, dict[str, str]] = {}
+    ok_n = 0
+    for sc in manifest["scenes"]:
+        m: dict[str, str] = {}
+        for a in sc.get("assets", []):
+            g = got.get(a["id"]) or {}
+            for key in ("local", "license", "attribution", "source_page"):
+                if g.get(key):
+                    a[key] = g[key]
+            if a.get("local"):
+                m[a["slot"]] = Path(a["local"]).name
+                ok_n += 1
+        slot_maps[sc["id"]] = m
+    if declared:
+        print(f"素材：{ok_n}/{len(declared)} 就绪 → {project / 'assets' / 'media'}")
+        for a in declared:
+            if not a.get("local"):
+                print(f"  ! 缺素材 {a['slot']}（q={a['query']!r}）——画面退模板设计兑底，"
+                      "可调 --assets 换检索词或把本地素材放进 --local-dir")
+    return slot_maps
+
+
 def lint_composition(comp_dir: Path) -> tuple[int, str]:
     proc = run(["node", ROOT / "node_modules" / ".bin" / "hyperframes",
                 "lint", comp_dir], cwd=ROOT)
@@ -1617,6 +1894,11 @@ def main() -> int:
     ap.add_argument("--speaker-hint", default="", help="配音音色提示（记录进 BRIEF，供 TTS 环节参考）")
     ap.add_argument("--data", type=Path, help="图表数据 JSON（数组，按场景序："
                    "[{title,unit,labels:[…],values:[…],key}]），覆盖文案自动提取")
+    ap.add_argument("--assets", type=Path, help="素材检索词覆写 JSON（逐场："
+                   '{"s01":[{"slot":"photo-1","query":"data center","pick":0}]}）')
+    ap.add_argument("--local-dir", type=Path, help="本地素材库目录（文件名含检索词即命中，优先级最高）")
+    ap.add_argument("--no-fetch", action="store_true",
+                    help="跳过素材检索（素材型风格会保留模板占位）")
     ap.add_argument("--no-render", action="store_true", help="只组装 + lint（跳过渲染与 final 合成）")
     ap.add_argument("--keep-work", action="store_true", help="不清理临时文件")
     args = ap.parse_args()
@@ -1669,8 +1951,11 @@ def main() -> int:
         data_spec = json.loads(args.data.read_text(encoding="utf-8"))
         manifest["_dataSpec"] = data_spec
 
-    # 8. 组装 composition + lint
-    comp = build_composition(project, manifest, style, title)
+    # 8. 素材检索（素材型风格：先下素材，再组装——resolve_asset_srcs 要看文件在不在）
+    slot_maps = step_assets(args, project, manifest, style)
+
+    # 9. 组装 composition + lint
+    comp = build_composition(project, manifest, style, title, slot_maps)
     charts = manifest.pop("_charts", [])
     beats = manifest.pop("_beats", {})
     if charts:
@@ -1692,7 +1977,7 @@ def main() -> int:
     if code != 0 or re.search(r"[1-9]\d* error", output):
         die("hyperframes lint 报错（见上），composition 未达标", 2)
 
-    # 9. 渲染 + 字幕 + final + verify
+    # 10. 渲染 + 字幕 + final + verify
     if not args.no_render:
         renders = project / "renders"
         renders.mkdir(exist_ok=True)
@@ -1723,7 +2008,7 @@ def main() -> int:
         if proc.returncode != 0:
             die("verify 未通过（见上）", 1)
 
-    # 10. 汇总报告
+    # 11. 汇总报告
     print("\n== 成片报告 ==")
     print(f"  风格：{style} —— {rec['recommendation']['why']}")
     print(f"  {'id':<6}{'start':>8}{'dur':>8}  keywords")
@@ -1731,8 +2016,9 @@ def main() -> int:
         kws = "、".join(k["text"] for k in sc["keywords"]) or "-"
         print(f"  {sc['id']:<6}{sc['startSec']:>8.2f}{sc['durationSec']:>8.2f}  {kws}")
     print("  产物：")
-    for rel in ("storyboard/style-decision.json", "storyboard/scenes.json",
-                "storyboard/charts.json", "script/transcript.json", "composition/index.html",
+    for rel in ("storyboard/style-decision.json", "storyboard/assets-plan.json",
+                "storyboard/scenes.json", "storyboard/charts.json", "script/transcript.json",
+                "composition/index.html", "assets/media/manifest.json",
                 "renders/visual-master.mp4", "renders/final.mp4"):
         p = project / rel
         if p.exists():

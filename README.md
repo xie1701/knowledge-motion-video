@@ -126,6 +126,34 @@ python3 scripts/style_sweep.py --copy excerpt.txt --narration excerpt.m4a \
 Renderings of the 15 routes on one sentence are in [`docs/style-sweep/`](docs/style-sweep/).
 It doubles as an end-to-end regression net: every template's assembly path gets exercised.
 
+### Material styles fetch their own photos (v2.6)
+
+Three routes put **real photographs** on screen — `collage-evidence` (torn-paper evidence wall),
+`editorial-collage` (main + secondary photo window), `generated-cinematic` (a cinematic still).
+The pipeline now sources those photos itself instead of leaving placeholder boxes:
+
+```bash
+python3 scripts/make_video.py --copy copy.txt --project outdir --go --style collage-evidence \
+    --narration vo.mp3 --transcript asr.json
+# → 素材检索（collage-evidence）：4/4 就绪 → outdir/assets/media
+#   outdir/storyboard/assets-plan.json    每场的检索词与来源
+#   outdir/assets/media/contact-sheet.jpg 渲染前目检（标签带检索词）
+#   outdir/assets/media/manifest.json     许可证与署名清单（发布要留）
+```
+
+Queries are synthesized from each scene's own concepts via
+[`assets/lexicon/visual-concepts.txt`](assets/lexicon/visual-concepts.txt) (Chinese concept →
+English phrase, 2–4 alternatives each, so four slots in one scene get four different images).
+English recall is far better than Chinese on every source. Override per scene with
+`--assets plan.json`, prefer your own library with `--local-dir`, or opt out with `--no-fetch`.
+
+Keyless sources are noisy, so fetching carries guards: results are re-ranked by title/description
+overlap, images narrower than 900px are rejected, no source URL is used twice in a run, and a
+query ladder retries the bare concept when a long phrase finds nothing. **Relevance is still
+roughly 3-in-4** — view `contact-sheet.jpg` before rendering and fix the off-topic slot by
+editing its query or shifting the hit (`"pick": 1`). Set `PEXELS_API_KEY` / `PIXABAY_API_KEY` for
+much better material; Openverse and Wikimedia need no key.
+
 ## Requirements
 
 - Python 3.10+ (standard library only)
