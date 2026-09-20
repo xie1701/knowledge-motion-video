@@ -4,6 +4,10 @@
 
 ## 整片级路由（v2.3，先于一切场景决策）
 
+程序化预判：`python3 scripts/recommend_style.py --file copy.txt` 输出完整决策过程
+（文本统计 → 语义信号及原文证据 → 决策表命中 → 风格评分 → 主/备选），见
+`docs/style-recommendation.md`。最终确认仍走人工/与用户确认。
+
 风格是整片决策。分析整篇文案的题材、说服结构与素材可得性，选定主风格后写入
 `project.style`（校验器强制全片一致）：
 

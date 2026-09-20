@@ -6,7 +6,7 @@
     "width": 1080,
     "height": 1920,
     "fps": 30,
-    "durationSec": 32.28,
+    "durationSec": 46.43,
     "style": "hand-sketch",
     "captionSafeArea": {
       "x": 72,
@@ -24,24 +24,18 @@
     "bodyFont": "PingFang SC"
   },
   "timing": {
-    "method": "derive_timing.py from word-level ASR (narration.mp3, sensevoice)",
+    "method": "derive_timing.py from word-level ASR (narration-v3.mp3 / 解说小明, sensevoice)",
     "note": "所有 startSec/keywords.atSec 均由词级时间戳推导：场景边界=子句间停顿中点，beat=关键词 token 起点。禁止手工覆盖。"
   },
   "scenes": [
     {
       "id": "s01",
       "startSec": 0,
-      "durationSec": 3.42,
+      "durationSec": 5.94,
       "narration": "一篇文案，怎么变成一支让人看完的知识视频？",
       "keywords": [
-        {
-          "text": "文案",
-          "atSec": 0.48
-        },
-        {
-          "text": "知识视频",
-          "atSec": 2.64
-        }
+        { "text": "文案", "atSec": 0.78 },
+        { "text": "知识视频", "atSec": 4.44 }
       ],
       "purpose": "hook",
       "semanticClass": "question",
@@ -54,32 +48,21 @@
       "transitionOut": "hard-cut",
       "assets": [],
       "beats": [
-        {
-          "atSec": 0.1,
-          "action": "headline underline draws itself"
-        },
-        {
-          "atSec": 0.48,
-          "action": "document card outline draws (spoken 文案)"
-        },
-        {
-          "atSec": 2.64,
-          "action": "arrow draws toward film frame, frame strokes complete on spoken 知识视频"
-        }
+        { "atSec": 0.1, "action": "headline underline draws itself" },
+        { "atSec": 0.78, "action": "document card outline draws (spoken 文案)" },
+        { "atSec": 2.2, "action": "arrow starts drawing toward film frame" },
+        { "atSec": 4.44, "action": "frame strokes complete on spoken 知识视频, play button follows" }
       ],
-      "finalState": "Doc-to-film sketch readable 0.6s",
+      "finalState": "Doc-to-film sketch readable 0.8s",
       "renderer": "hyperframes"
     },
     {
       "id": "s02",
-      "startSec": 3.42,
-      "durationSec": 3.18,
+      "startSec": 5.94,
+      "durationSec": 5.7,
       "narration": "先读懂文案，找到它真正的论证结构。",
       "keywords": [
-        {
-          "text": "论证结构",
-          "atSec": 2.34
-        }
+        { "text": "论证结构", "atSec": 4.26 }
       ],
       "purpose": "explanation",
       "semanticClass": "process",
@@ -92,36 +75,21 @@
       "transitionOut": "hard-cut",
       "assets": [],
       "beats": [
-        {
-          "atSec": 0.1,
-          "action": "doc card slides to left column"
-        },
-        {
-          "atSec": 1.2,
-          "action": "bracket strokes mark sentences"
-        },
-        {
-          "atSec": 2.34,
-          "action": "skeleton lines draw (claim box + evidence node) on spoken 论证结构"
-        }
+        { "atSec": 0.1, "action": "doc card slides to left column" },
+        { "atSec": 0.72, "action": "bracket strokes mark sentences (spoken 读懂文案)" },
+        { "atSec": 4.26, "action": "skeleton lines draw (claim box + evidence node) on spoken 论证结构" }
       ],
-      "finalState": "Argument skeleton readable 0.5s",
+      "finalState": "Argument skeleton readable 0.6s",
       "renderer": "hyperframes"
     },
     {
       "id": "s03",
-      "startSec": 6.6,
-      "durationSec": 5.28,
+      "startSec": 11.64,
+      "durationSec": 7.53,
       "narration": "再把文案切成六到八秒的语义分镜，每个分镜，只讲一个意思。",
       "keywords": [
-        {
-          "text": "语义分镜",
-          "atSec": 2.28
-        },
-        {
-          "text": "一个意思",
-          "atSec": 4.56
-        }
+        { "text": "语义分镜", "atSec": 2.82 },
+        { "text": "一个意思", "atSec": 6.3 }
       ],
       "purpose": "explanation",
       "semanticClass": "process",
@@ -134,44 +102,23 @@
       "transitionOut": "hard-cut",
       "assets": [],
       "beats": [
-        {
-          "atSec": 0.1,
-          "action": "long bar draws across frame"
-        },
-        {
-          "atSec": 1.6,
-          "action": "two scissor strokes cut the bar"
-        },
-        {
-          "atSec": 2.28,
-          "action": "6-8s ticks and labels draw on spoken 语义分镜"
-        },
-        {
-          "atSec": 4.56,
-          "action": "one-idea dot lands in each segment on spoken 一个意思"
-        }
+        { "atSec": 0.1, "action": "long bar draws across frame" },
+        { "atSec": 1.44, "action": "two scissor strokes cut the bar (spoken 切成)" },
+        { "atSec": 2.82, "action": "6-8s ticks and labels draw on spoken 语义分镜" },
+        { "atSec": 6.3, "action": "one-idea dot lands in each segment on spoken 一个意思" }
       ],
       "finalState": "Three labeled segments readable 0.6s",
       "renderer": "hyperframes"
     },
     {
       "id": "s04",
-      "startSec": 11.88,
-      "durationSec": 8.7,
-      "narration": "然后，按语义为每个分镜找画面：能画出来的，直接画；需要证据的，去找真实的照片和视频。",
+      "startSec": 19.17,
+      "durationSec": 12.45,
+      "narration": "然后按语义，为每个分镜找画面：能画出来的，直接画；需要证据的，去找真实的照片和视频。",
       "keywords": [
-        {
-          "text": "找画面",
-          "atSec": 2.76
-        },
-        {
-          "text": "直接画",
-          "atSec": 4.74
-        },
-        {
-          "text": "照片和视频",
-          "atSec": 7.74
-        }
+        { "text": "找画面", "atSec": 3.45 },
+        { "text": "直接画", "atSec": 6.51 },
+        { "text": "照片和视频", "atSec": 10.77 }
       ],
       "purpose": "evidence",
       "semanticClass": "process",
@@ -195,49 +142,27 @@
         }
       ],
       "beats": [
-        {
-          "atSec": 0.1,
-          "action": "branch fork draws from timeline node"
-        },
-        {
-          "atSec": 2.76,
-          "action": "branch labels draw on spoken 找画面"
-        },
-        {
-          "atSec": 4.74,
-          "action": "left branch: pen draws sketch icon on spoken 直接画"
-        },
-        {
-          "atSec": 6.2,
-          "action": "right branch: tape strips draw"
-        },
-        {
-          "atSec": 7.74,
-          "action": "REAL photo pins in with hand-drawn arrow on spoken 照片和视频"
-        }
+        { "atSec": 0.1, "action": "branch fork draws from timeline node" },
+        { "atSec": 3.45, "action": "branch labels draw on spoken 找画面" },
+        { "atSec": 6.51, "action": "left branch: pen draws sketch icon on spoken 直接画" },
+        { "atSec": 9.0, "action": "right branch: tape strips draw (spoken 需要证据)" },
+        { "atSec": 10.77, "action": "REAL photo pins in with hand-drawn arrow on spoken 照片和视频" }
       ],
       "finalState": "Sketch-vs-real-photo branch readable 0.9s",
       "renderer": "hyperframes"
     },
     {
       "id": "s05",
-      "startSec": 20.58,
-      "durationSec": 6.42,
-      "narration": "最后，配音，上字幕，合成，一遍跑完。文案进，成片出。",
+      "startSec": 31.62,
+      "durationSec": 6.09,
+      "narration": "最后配音、上字幕、合成，一遍跑完。",
       "keywords": [
-        {
-          "text": "一遍跑完",
-          "atSec": 2.88
-        },
-        {
-          "text": "成片",
-          "atSec": 5.52
-        }
+        { "text": "一遍跑完", "atSec": 4.86 }
       ],
       "purpose": "resolution",
       "semanticClass": "process",
       "style": "hand-sketch",
-      "visualSubject": "Three pipeline nodes (配音/字幕/合成) draw and connect in sequence, then big payoff 文案 → 成片 with progress strokes completing on spoken 成片",
+      "visualSubject": "Three pipeline nodes (配音/字幕/合成) draw and connect in sequence, then progress strokes sweep the whole pipeline on spoken 一遍跑完",
       "visualVerb": "pipeline-and-payoff",
       "layout": "grid-pipeline-above-payoff",
       "camera": "static",
@@ -245,57 +170,29 @@
       "transitionOut": "hard-cut",
       "assets": [],
       "beats": [
-        {
-          "atSec": 0.3,
-          "action": "node 1 配音 draws"
-        },
-        {
-          "atSec": 1.4,
-          "action": "node 2 字幕 draws, connector to node 1"
-        },
-        {
-          "atSec": 2.2,
-          "action": "node 3 合成 draws, connector completes"
-        },
-        {
-          "atSec": 2.88,
-          "action": "progress underline sweeps whole pipeline on spoken 一遍跑完"
-        },
-        {
-          "atSec": 4.5,
-          "action": "payoff 文案 → 成片 draws below"
-        },
-        {
-          "atSec": 5.52,
-          "action": "成片 boxed in accent stroke on spoken 成片"
-        }
+        { "atSec": 0.9, "action": "node 1 配音 draws (spoken 配音)" },
+        { "atSec": 2.3, "action": "node 2 字幕 draws, connector to node 1" },
+        { "atSec": 3.5, "action": "node 3 合成 draws, connector completes" },
+        { "atSec": 4.86, "action": "progress underline sweeps whole pipeline on spoken 一遍跑完" }
       ],
-      "finalState": "Pipeline plus payoff readable 0.7s",
+      "finalState": "Pipeline readable 0.5s",
       "renderer": "hyperframes"
     },
     {
       "id": "s06",
-      "startSec": 27.0,
-      "durationSec": 5.28,
-      "narration": "说服力，来自结构，而不是特效。",
+      "startSec": 37.71,
+      "durationSec": 8.72,
+      "narration": "文案进，成片出。说服力来自结构，而不是特效。",
       "keywords": [
-        {
-          "text": "说服力",
-          "atSec": 0.3
-        },
-        {
-          "text": "结构",
-          "atSec": 1.98
-        },
-        {
-          "text": "特效",
-          "atSec": 3.48
-        }
+        { "text": "成片", "atSec": 2.07 },
+        { "text": "说服力", "atSec": 4.05 },
+        { "text": "结构", "atSec": 5.19 },
+        { "text": "特效", "atSec": 6.81 }
       ],
       "purpose": "resolution",
       "semanticClass": "argument",
       "style": "hand-sketch",
-      "visualSubject": "Big two-line statement: 说服力 ← 结构 with skeleton echo behind; the word 特效 draws in then gets a hand-drawn cross-out on spoken 特效",
+      "visualSubject": "Payoff 文案 → 成片 boxed in accent on spoken 成片; then big statement 说服力 ← 结构 with skeleton echo behind; the word 特效 draws in then gets a hand-drawn cross-out on spoken 特效",
       "visualVerb": "state-and-cross-out",
       "layout": "grid-center-statement",
       "camera": "static",
@@ -303,24 +200,14 @@
       "transitionOut": "hold",
       "assets": [],
       "beats": [
-        {
-          "atSec": 0.3,
-          "action": "说服力 draws large, underline sweeps on spoken word"
-        },
-        {
-          "atSec": 1.6,
-          "action": "← 结构 draws with mini skeleton echo behind on spoken 结构"
-        },
-        {
-          "atSec": 3.0,
-          "action": "特效 draws in muted gray"
-        },
-        {
-          "atSec": 3.48,
-          "action": "accent cross-out strokes through 特效 on spoken word"
-        }
+        { "atSec": 0.75, "action": "payoff 文案 → 成片 draws (spoken 文案进)" },
+        { "atSec": 2.07, "action": "accent box closes around 成片 on spoken word" },
+        { "atSec": 4.05, "action": "说服力 draws large, underline sweeps on spoken word" },
+        { "atSec": 5.19, "action": "← 结构 draws with mini skeleton echo behind on spoken 结构" },
+        { "atSec": 6.4, "action": "特效 draws in muted gray" },
+        { "atSec": 6.81, "action": "accent cross-out strokes through 特效 on spoken word" }
       ],
-      "finalState": "Statement with crossed-out 特效 holds 1.5s",
+      "finalState": "Statement with crossed-out 特效 holds 1.9s",
       "renderer": "hyperframes"
     }
   ]

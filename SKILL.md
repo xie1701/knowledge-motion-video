@@ -82,6 +82,10 @@ uses it. Per-scene routing remains available only for intentionally mixed long-f
 
 Film-level decision table:
 
+Run the analysis with `python3 scripts/recommend_style.py --file copy.txt` — it prints the full
+auditable decision trace (text stats → semantic signals with quoted evidence → decision-table hit
+→ per-style scores → primary + runner-up). Details: `docs/style-recommendation.md`.
+
 - methods, tutorials, arguments, processes → **hand-sketch** or swiss-sketch (the pen leads attention; the process itself persuades)
 - history, events, people, real archives available → **collage-evidence** or editorial-collage
 - systems, engineering, nature, structures → **paper-fold** or paper-diorama

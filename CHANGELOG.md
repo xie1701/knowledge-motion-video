@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.3.1 — 2026-09-20
+
+- **Narration voice & prosody**: showcase re-voiced with a narration-grade male TTS
+  (解说小明); the copy itself gained punctuation so pauses land on semantic boundaries —
+  prosody, not a speed parameter, is what fixes "unnatural pacing". Film is now 46.43s.
+- **Caption layout engine**: `build_captions.py` rewritten — hard ≤9 glyphs/line limit
+  (fontsize 97 in a 936px text area), cues longer than two lines re-chunked recursively,
+  scene assignment by word start (a word straddling a boundary no longer splits mid-word,
+  e.g. 跑|完), and a readability score for break points: unbreakable bigrams (怎么/变成/一支…),
+  no trailing 的/每/这 at line end, no leading 的 at line start, verb-initial breaks favored.
+  No more flash cues like「频，」; no more edge-clipped lines.
+- **Style recommender**: new `scripts/recommend_style.py` — any copy in, auditable decision
+  trace out: text stats → 12 semantic axes with quoted evidence → film decision-table hit
+  (incl. two-axis blend rules) → per-style scores with anti-evidence → primary + runner-up.
+  Docs: `docs/style-recommendation.md`.
+- **Fix (SVG filter region)**: a lone horizontal stroke in its own filtered `<g>` has a
+  zero-height objectBoundingBox, so the default filter region clips the output to nothing —
+  the s05 progress underline vanished from renders while being provably correct in the DOM.
+  Fixed with `filterUnits="userSpaceOnUse"` full-canvas regions.
+
 ## v2.3 — 2026-09-20
 
 - **Film-level style routing**: style is a whole-film decision recorded as `project.style`

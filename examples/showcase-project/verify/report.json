@@ -1,17 +1,17 @@
 {
-  "project": ".",
+  "project": "examples/showcase-project",
   "verdict": "PASS",
   "checks": [
     {
       "name": "manifest",
       "status": "PASS",
-      "detail": "storyboard/scenes.json is valid"
+      "detail": "examples/showcase-project/storyboard/scenes.json is valid"
     },
     {
       "name": "video",
       "status": "PASS",
       "detail": {
-        "durationSec": 32.3,
+        "durationSec": 46.433,
         "width": 1080,
         "height": 1920,
         "codec": "h264"
@@ -22,14 +22,14 @@
       "status": "PASS",
       "detail": {
         "frames": [
-          "s01@1.71s",
-          "s02@5.01s",
-          "s03@9.24s",
-          "s04@16.23s",
-          "s05@23.79s",
-          "s06@29.64s"
+          "s01@2.97s",
+          "s02@8.79s",
+          "s03@15.41s",
+          "s04@25.40s",
+          "s05@34.66s",
+          "s06@42.07s"
         ],
-        "path": "verify/contact-sheet.jpg"
+        "path": "examples/showcase-project/verify/contact-sheet.jpg"
       }
     }
   ]

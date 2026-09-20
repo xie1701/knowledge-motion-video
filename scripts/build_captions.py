@@ -21,7 +21,8 @@ import sys
 from pathlib import Path
 
 PUNCTUATION = "，。！？、；：！？；"
-DEFAULT_MAX_CHARS = 16
+DEFAULT_MAX_CHARS = 18
+DEFAULT_LINE_CHARS = 9  # fits 9 CJK glyphs at fontsize 97 within a 936px text area
 FALLBACK_WORD_SEC = 0.35
 
 
@@ -83,14 +84,20 @@ def load_words_json(path: Path) -> list[dict]:
 
 
 def assign_words_to_scenes(words: list[dict], scenes: list[dict]) -> dict[str, list[dict]]:
-    """Group words by the scene containing their midpoint."""
+    """Group words by the scene containing their start time.
+
+    Word start (not midpoint) keeps a word that straddles a scene boundary
+    with the scene it was spoken in; the endSec estimate of the last token
+    often reaches past the boundary because it is interpolated to the next
+    token's start.
+    """
     buckets: dict[str, list[dict]] = {scene["id"]: [] for scene in scenes}
     dropped = 0
     for word in words:
-        mid = (word["startSec"] + word["endSec"]) / 2.0
+        start_t = word["startSec"]
         for scene in scenes:
             start = float(scene["startSec"])
-            if start <= mid < start + float(scene["durationSec"]):
+            if start <= start_t < start + float(scene["durationSec"]):
                 buckets[scene["id"]].append(word)
                 break
         else:
@@ -115,21 +122,113 @@ def cue_length(text: str) -> int:
     return len(text.replace(" ", ""))
 
 
+def wrap_lines(tokens: list[str], line_chars: int) -> list[str]:
+    """Split cue tokens into display lines of at most ``line_chars`` glyphs.
+
+    Single-line cues stay untouched. Multi-line cues split at the most
+    readable token boundary (see ``boundary_score``) that keeps every line
+    within ``line_chars``. (Callers guarantee the cue fits in two lines;
+    oversized cues are re-chunked beforehand.)
+    """
+    total = cue_length("".join(tokens))
+    if total <= line_chars or len(tokens) < 2:
+        return ["".join(tokens)]
+    acc, cands = 0, []
+    for i in range(len(tokens) - 1):
+        acc += cue_length(tokens[i])
+        if acc > line_chars or total - acc > line_chars:
+            continue
+        cands.append((boundary_score(tokens, i, total), i))
+    if not cands:
+        return ["".join(tokens)]
+    i = min(cands)[1]
+    if i + 1 >= len(tokens):
+        return ["".join(tokens)]
+    return ["".join(tokens[: i + 1]), "".join(tokens[i + 1 :])]
+
+
+# chars that must not end a line: they bind forward into the next glyph
+_DANGLING_TAIL = set("的了之和与或每这那某被把将就也都")
+# chars that should not start a line: trailing function words read better
+# glued to the previous line
+_HEAD_BIND = set("的了之么呢吧啊吗")
+# common bigrams that must never straddle a line/cue break
+_NO_SPLIT = set(
+    "怎么 什么 这么 那么 成为 作为 变成 一支 一遍 一个 一条 一次 一场 让人 看完 "
+    "找到 真正 视频 照片 语义 论证 结构 文案 切成 分镜 意思 画面 需要 证据 真实 "
+    "配音 字幕 合成 跑完 成片 说服 来自 特效 知识 找画面".split()
+)
+# chars that happily start a new line/segment: connectives and common verb starts
+_GOOD_HEAD = set("让而然但所需能并或且就合为去找说最后最再又还")
+_MEASURE_HEAD = set("支遍个张次条句位名篇帧场轮件家项步")
+
+
+def boundary_score(tokens: list[str], i: int, total: int) -> float:
+    """Readability cost of breaking after token ``i``; lower is better."""
+    acc = cue_length("".join(tokens[: i + 1]))
+    score = float(abs(acc - (total - acc)))
+    left_text = "".join(tokens[: i + 1])
+    if left_text and left_text[-1] in _DANGLING_TAIL:
+        score += 4
+    nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
+    if nxt and nxt[0] in _HEAD_BIND:
+        score += 4
+    if left_text and nxt and (left_text[-1] + nxt[0]) in _NO_SPLIT:
+        score += 6
+    if nxt and nxt[0] in _GOOD_HEAD:
+        score -= 3
+    if nxt == "一" and i + 2 < len(tokens) and tokens[i + 2] in _MEASURE_HEAD:
+        score -= 3
+    return score
+
+
+def rechunk_cue(cue: dict, line_chars: int) -> list[dict]:
+    """Re-chunk a cue longer than two display lines at the most readable
+    boundaries, recursing until every piece fits two lines."""
+    tokens = cue["tokens"]
+    limit = 2 * line_chars
+    total = cue_length("".join(tokens))
+    if total <= limit or len(tokens) < 2:
+        return [cue]
+    acc, cands = 0, []
+    for i in range(len(tokens) - 1):
+        acc += cue_length(tokens[i])
+        if acc > limit or total - acc > limit:
+            continue
+        cands.append((boundary_score(tokens, i, total), i))
+    if not cands:
+        return [cue]
+    i = min(cands)[1]
+    mid_start = cue["tokensEnd"][i]
+    left_text = "".join(tokens[: i + 1]).lstrip("，。？！、；：,.?")
+    right_text = "".join(tokens[i + 1 :]).lstrip("，。？！、；：,.?")
+    if not left_text or not right_text:
+        return [cue]
+    left = {**cue, "tokens": tokens[: i + 1], "tokensEnd": cue["tokensEnd"][: i + 1],
+            "text": left_text, "endSec": mid_start}
+    right = {**cue, "tokens": tokens[i + 1 :], "tokensEnd": cue["tokensEnd"][i + 1 :],
+             "text": right_text, "startSec": mid_start}
+    return rechunk_cue(left, line_chars) + rechunk_cue(right, line_chars)
+
+
 def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dict]:
     cues: list[dict] = []
     scene_start = float(scene["startSec"])
     scene_end = scene_start + float(scene["durationSec"])
     text = ""
+    toks: list[str] = []
+    tok_ends: list[float] = []
     start = 0.0
     end = 0.0
     for word in scene_words:
         if not text:
             start = word["startSec"]
         text = join_text(text, word["text"])
+        toks.append(word["text"])
+        tok_ends.append(word["endSec"])
         end = max(end, word["endSec"])
         must_break = bool(word["text"]) and word["text"][-1] in PUNCTUATION
-        over_limit = cue_length(text) >= max_chars
-        if must_break or over_limit:
+        if must_break:
             clean = text.lstrip("，。？！、；：,.?")
             if clean:
                 cues.append(
@@ -137,9 +236,11 @@ def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dic
                         "text": clean,
                         "startSec": max(start, scene_start),
                         "endSec": min(max(end, start + 0.1), scene_end),
+                        "tokens": list(toks),
+                        "tokensEnd": list(tok_ends),
                     }
                 )
-            text, end = "", 0.0
+            text, end, toks, tok_ends = "", 0.0, [], []
     if text:
         clean = text.lstrip("，。？！、；：,.?")
         if clean:
@@ -148,6 +249,8 @@ def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dic
                     "text": clean,
                     "startSec": max(start, scene_start),
                     "endSec": min(max(end, start + 0.1), scene_end),
+                    "tokens": list(toks),
+                    "tokensEnd": list(tok_ends),
                 }
             )
     # Merge flash cues (<0.8s) into their successor so no caption blinks by
@@ -158,6 +261,8 @@ def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dic
             prev = merged[-1]
             prev["endSec"] = cue["endSec"]
             prev["text"] += cue["text"]
+            prev["tokens"] += cue["tokens"]
+            prev["tokensEnd"] += cue["tokensEnd"]
         elif (
             merged
             and (merged[-1]["endSec"] - merged[-1]["startSec"]) < 0.8
@@ -166,6 +271,8 @@ def build_cues(scene_words: list[dict], scene: dict, max_chars: int) -> list[dic
             prev = merged[-1]
             prev["endSec"] = cue["endSec"]
             prev["text"] += cue["text"]
+            prev["tokens"] += cue["tokens"]
+            prev["tokensEnd"] += cue["tokensEnd"]
         else:
             merged.append(cue)
     return merged
@@ -242,14 +349,14 @@ def write_srt(cues: list[dict], path: Path) -> None:
     for i, cue in enumerate(cues, start=1):
         lines.append(str(i))
         lines.append(f"{srt_time(cue['startSec'])} --> {srt_time(cue['endSec'])}")
-        lines.append(cue["text"])
+        lines.extend(cue["lines"])
         lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def write_ass(cues: list[dict], header: str, path: Path) -> None:
     events = [
-        f"Dialogue: 0,{ass_time(c['startSec'])},{ass_time(c['endSec'])},Caption,,0,0,0,,{c['text']}"
+        f"Dialogue: 0,{ass_time(c['startSec'])},{ass_time(c['endSec'])},Caption,,0,0,0,,{'\\N'.join(c['lines'])}"
         for c in cues
     ]
     path.write_text("\n".join([header, *events, ""]) + "\n", encoding="utf-8")
@@ -263,6 +370,9 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, required=True, help="output directory for captions")
     parser.add_argument("--max-chars", type=int, default=DEFAULT_MAX_CHARS,
                         help=f"max characters per cue (default {DEFAULT_MAX_CHARS})")
+    parser.add_argument("--line-chars", type=int, default=DEFAULT_LINE_CHARS,
+                        help=f"max characters per display line (default {DEFAULT_LINE_CHARS}); "
+                             "cues longer than two lines are re-chunked")
     parser.add_argument("--prefix", default="captions", help="output file basename (default: captions)")
     parser.add_argument("--preview", type=int, default=3, help="print the first N cues (default 3)")
     args = parser.parse_args()
@@ -292,6 +402,13 @@ def main() -> None:
     for scene in scenes:
         cues.extend(build_cues(buckets.get(scene["id"], []), scene, args.max_chars))
     cues.sort(key=lambda c: c["startSec"])
+
+    rechunked: list[dict] = []
+    for cue in cues:
+        rechunked.extend(rechunk_cue(cue, args.line_chars))
+    cues = rechunked
+    for cue in cues:
+        cue["lines"] = wrap_lines(cue["tokens"], args.line_chars)
 
     if not cues:
         err("no cues produced: word timings and scene time ranges do not overlap")
