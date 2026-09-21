@@ -33,6 +33,8 @@ Exit code 0 when everything passes, 1 otherwise.
 from __future__ import annotations
 
 import sys
+import re
+import shutil
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -179,6 +181,46 @@ def main() -> int:
     check(step_slots.get("HEADLINE") == "防止惯性",
           "hand_sketch_slots[step]", f"步骤名没剥掉「第五步」前缀: {step_slots.get('HEADLINE')!r}")
 
+    # 8c: 形状驱动风格的**模板私有类名**必须跟生成侧的前缀一致。
+    # 历史 bug 类：模板里写 km-sw--h-m、引擎发 km-sk--h-m，两边都不报错，只是字号档位
+    # 静默失效（长句子顶到照片上才看得出来）。所以逐个前缀核对。
+    SHAPE_PREFIX = {"hand-sketch": "km-sk", "swiss-sketch": "km-sw"}
+    for style in M.SHAPE_VARIANTS:
+        tpl_text = (ROOT / "assets" / "templates" / "scenes" / f"{style}.html").read_text(
+            encoding="utf-8")
+        pfx = SHAPE_PREFIX.get(style)
+        check(bool(pfx), "shape prefix", f"{style} 没有前缀映射（模板类名会静默失效）")
+        # --h-s / --p2 是**默认态**（基础规则里已经是大字号/全论点），不需要额外规则；
+        # 其余四个档位是覆盖态，模板里必须真有规则，否则档位静默失效。
+        for cls in ("--h-m", "--h-l", "--p0", "--p1"):
+            check(f"{pfx}{cls}" in tpl_text, f"template {style}",
+                  f"shape_slots 会发 {pfx}{cls}，模板里没有这条规则")
+
+    # 8d: swiss-sketch 的分段进度（三态：已过/当前/未到，块数 = 总步数，当前块只有一个）
+    from collections import Counter
+    for style, pfx in SHAPE_PREFIX.items():
+        sc_step = {"id": "s01", "narration": "第五步，防止惯性。",
+                   "_clauseTexts": ["第五步，防止惯性。"], "keywords": []}
+        got = M.shape_slots(sc_step, "step", step_total=5, index=0, prefix=pfx)
+        segs = got.get("STEP_SEGS", "")
+        check(segs.count("<i ") + segs.count("<i>") >= 5, f"shape_slots[{style}/step]",
+              f"分段进度块数不足: {segs!r}")
+        check(segs.count("is-now") == 1, f"shape_slots[{style}/step]",
+              f"当前段不是恰好一个: {segs!r}")
+        check(segs.count("is-done") == 4, f"shape_slots[{style}/step]",
+              f"已过段数不是 4: {segs!r}")
+        # 前缀必须真的落到 HEAD_CLASS / POINT_CLASS 上
+        sc_long = {"id": "s01", "narration": "在一个目标明确的复杂系统中，大量努力为什么没有产生结果。",
+                   "_clauseTexts": ["在一个目标明确的复杂系统中，大量努力为什么没有产生结果。"],
+                   "keywords": []}
+        th = M.shape_slots(sc_long, "thesis", index=0, prefix=pfx)
+        check(str(th.get("POINT_CLASS", "")).startswith(pfx), f"shape_slots[{style}]",
+              f"POINT_CLASS 前缀不对: {th.get('POINT_CLASS')!r}")
+        # 字号档位只有 statement（一句话大片）会发，它是最长的那一档
+        st = M.shape_slots(sc_long, "statement", index=0, prefix=pfx)
+        check(str(st.get("HEAD_CLASS", "")).startswith(pfx), f"shape_slots[{style}]",
+              f"HEAD_CLASS 前缀不对: {st.get('HEAD_CLASS')!r}")
+
     # 8b: 有照片槽位的风格必须在 MATERIAL_PLANS 里（否则素材永远不下载，成片全是灰底相框）；
     # 确实不需要照片的风格（纸艺那类的可选贴图）得显式标 data-km-optional，不能靠默认。
     for path in sorted((ROOT / "assets" / "templates" / "scenes").glob("*.html")):
@@ -204,6 +246,89 @@ def main() -> int:
           f"同一概念被用了 {len(qs) - len(set(qs))} 次：{qs}")
     check(max(counts.values()) <= 2, "asset_query 配额",
           f"有概念超过 2 次上限：{counts}")
+
+    # 9: 抽出来的场景 JS 必须真的能被 JS 引擎解析。
+    # 历史 bug：模板尾注里一行**没有中文、也没写 //** 的英文散文会被 parse_template 当成
+    # 代码留下（它的规则是「带中文才当散文丢掉」），于是整段 <script> 语法报错 —— 表现
+    # 是 window.__timelines 一条都不注册：渲染出空片，或全片静止，而日志里什么都没有。
+    if shutil.which("node"):
+        import subprocess
+        import tempfile
+        for path in sorted((ROOT / "assets" / "templates" / "scenes").glob("*.html")):
+            style = path.stem
+            js = M.parse_template(style)["scene_js"]
+            stub = ("const gsap = {};\nconst document = {};\nconst window = {};\n")
+            tmp = Path(tempfile.mkstemp(suffix=".js")[1])
+            tmp.write_text(stub + js, encoding="utf-8")
+            proc = subprocess.run(["node", "--check", str(tmp)],
+                                  capture_output=True, text=True)
+            tmp.unlink()
+            errs = proc.stderr.strip().splitlines()
+            last = next((ln for ln in errs if "Error" in ln), (errs or [""])[-1])
+            check(proc.returncode == 0, f"template {style}",
+                  f"scene JS 不能解析（整个 <script> 会静默失败）: {last}")
+    else:
+        print("  (skip) node not found — scene JS syntax check skipped")
+
+    # 10: 笔尖（描边动画的圆点）可见性必须由时间驱动。
+    # 挂在 onStart/onComplete 上时，seek 型渲染器不保证回调跑到 —— 笔尖会以不透明状态
+    # 停在半路留在画面里（实测：swiss 版一枚红点落在照片带边缘、hand-sketch 版一枚
+    # 墨点落在照片上）。所以两个模板都不许再出现回调式的 pen 可见性。
+    for style in M.SHAPE_VARIANTS:
+        tpl = M.parse_template(style)
+        # 注意：笔尖助手住在 helpers 里（组装时提到脚本顶部），不在 scene_js 内 ——
+        # 只看 scene_js 会让这条断言永远通过（第一次写就踩了这个）。
+        raw = tpl.get("helpers") or ""
+        helpers = raw if isinstance(raw, str) else "\n".join(raw)
+        js = helpers + "\n" + tpl["scene_js"]
+        check("gsap.set(pen" not in js, f"template {style}",
+              "笔尖可见性又回到回调驱动了（seek 时会留下停在半路的笔尖）")
+        check("onStart:" not in helpers and "onComplete:" not in helpers,
+              f"template {style}", "描边助手又用上 onStart/onComplete 了（seek 时不保证触发）")
+        check("this.progress()" in helpers, f"template {style}",
+              "描边状态不是从 tween 自身进度算的（seek 时会对不上）")
+        # 描边必须是**真正的 tween**：时长和起画时间都在参数里，重定时器才看得见。
+        check(re.search(r"tl\.fromTo\(strokes\[0\], \{ strokeDashoffset: kmPenLen\(", js)
+              is not None, f"template {style}",
+              "描边又被包进普通函数调用了（时长的重定时会失控）")
+        check(js.count("onUpdate: penTick") >= 2, f"template {style}",
+              f"描边 tween 太少（只有 {js.count('onUpdate: penTick')} 条）")
+
+    # 11: 重定时只能改 **tween 的位置参数**，不能碰普通函数调用的末尾数字参数。
+    # 历史 bug：`kmSwPen(tl, strokes[0], pen, 1.78, 0.60)` 里的时长 0.60 被当位置参数映射成
+    # 9.26，描边 tween 被拉长到跨过整个场景 —— 笔尖不触发回调、留在画面里，而「线条被画出」
+    # 变成一条静默的假动画（从 v2.5 到 v2.8 一直在）。这条断言是那件事的回归网。
+    probe = ('  if (strokes[0]) kmSwPen(tl, strokes[0], pen, 1.78, 0.62);\n'
+             '  tl.fromTo(".a", { x: 0 }, { x: 1, duration: 0.4 }, 0.50)\n'
+             '    .to(".b", { y: 2 }, 1.20);')
+    sc = {"id": "s01", "narration": "一句话", "_clauseTexts": ["一句话"], "keywords": []}
+    declared = {"enter": 0.10, "build": 1.00, "reveal": 2.00,
+                "mid": 3.00, "peak": 4.00, "settle": 5.00}
+    out, _ = M.retime_js(probe, sc, 0.0, 6.0, declared)
+    check("pen, 1.78, 0.62)" in out, "retime_js",
+          f"助手调用的时长参数被重定时污染了：{out.splitlines()[0]!r}")
+    check("0.62)" not in out.replace("pen, 1.78, 0.62)", ""), "retime_js",
+          "0.62 出现了两次，重定时可能重复改写")
+    values = M.pos_param_values(probe)
+    check(values == [0.50, 1.20], "tween_position_spans",
+          f"位置参数识别错了：{values}（应该是两条 tween 的末位数字）")
+    check(all("kmSwPen" not in probe[a:b] for a, b in M.tween_position_spans(probe)),
+          "tween_position_spans", "把普通函数调用当成 tween 了")
+
+    # 12: 场景 JS 里的元素查询必须**限定在本场**。
+    # 历史 bug：`document.querySelectorAll(".km-sw__inkgroup")` 是全局的，每个场景块拿到的
+    # 都是全文档第一个可见的墨迹组 —— 56 个场景块一起去驱动 s01 的两条线，而本场的线从来没
+    # 被设过 dasharray：线条从第一帧就是画完的，「线条被画出来」一次都没发生过。
+    for style in M.SHAPE_VARIANTS:
+        tpl = M.parse_template(style)
+        raw = tpl.get("helpers") or ""
+        js = (raw if isinstance(raw, str) else "\n".join(raw)) + "\n" + tpl["scene_js"]
+        check("document.querySelectorAll(\".km-" not in js, f"template {style}",
+              "场景 JS 又用全文档查询挑墨迹组了（本场的线永远不会被画出来）")
+        check("gsap.utils.toArray(\".km-" not in js, f"template {style}",
+              "场景 JS 又用全文档查询取元素了（stagger 会被全片目标摊开）")
+        check("closest(" in js, f"template {style}",
+              "场景 JS 没有把自己限定回本场根元素")
 
     print(f"selftest: {checks - len(failures)}/{checks} checks passed")
     for f in failures:

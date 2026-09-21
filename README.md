@@ -181,6 +181,35 @@ and why per scene.
 off-topic slot by editing its query or shifting the hit (`"pick": 1`). Set `PEXELS_API_KEY` /
 `PIXABAY_API_KEY` for much better material; Openverse and Wikimedia need no key.
 
+### Two grammars, same script (v2.9)
+
+`hand-sketch` and `swiss-sketch` both draw the argument with line art, and they share one layout
+vocabulary — but they are not the same film with a different font. Put the same 44k-character report
+and the same narration through each one and compare:
+
+| | hand-sketch | swiss-sketch |
+|---|---|---|
+| grammar | paper texture, strokes wavered by feTurbulence, taped/rotated photo cards | strict modular grid, ruler-straight lines, red used only as structure |
+| layouts | 22 statement · 16 thesis · 11 contrast · 5 step · 2 number | 22 statement · 16 thesis · 11 contrast · 5 step · 2 number |
+| longest same layout run | 2 scenes | 2 scenes |
+| longest frozen frame | 0.00 s | 0.00 s |
+| whole-film mean diff | 10.07 | 10.77 |
+| asset readiness | 56/56 | 56/56 |
+
+The layout counts match *by construction*: both styles are shape-driven, so the same sentence gets
+the same layout in either one. That is deliberate — it isolates the visual grammar, which is what
+actually differs. `scripts/compare_films.py` produces the table above and a labelled sheet of the
+same narrative moments in both films:
+
+```bash
+python3 scripts/compare_films.py --a project-hand --b project-swiss --cols 6 --out-dir q/
+# → q/compare-stats.json    两版并排的数字
+#   q/compare-sheet.jpg     上 A / 下 B 的同场次抽帧（版面不同的格子带 *）
+```
+
+Both films are in [`docs/style-ab/`](docs/style-ab/). If you only need to check a layout's geometry,
+`render-browser.mjs --stills "t1,t2"` screenshots chosen moments without a full render.
+
 ## Motion is a gate, not a taste (v2.7)
 
 "The picture is stiff" is measurable. `verify.py` samples the master at 8 fps and compares every

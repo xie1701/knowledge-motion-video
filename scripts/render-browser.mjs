@@ -34,6 +34,10 @@ function parseArgs(argv) {
     if (a === "--fps") args.fps = Number(argv[++i]);
     else if (a === "--output") args.output = argv[++i];
     else if (a === "--quality") args.quality = Number(argv[++i]);
+    // --stills "1.2,6.4"：只在这些时刻抓静帧（--stills-dir <dir>），不编码、不渲染全片。
+    // 用途：定版面几何的时候，看 5 张静帧比等 10 分钟渲染便宜得多。
+    else if (a === "--stills") args.stills = argv[++i];
+    else if (a === "--stills-dir") args.stillsDir = argv[++i];
     else if (!a.startsWith("--")) args.input = a;
     else {
       console.error(`Unknown option: ${a}`);
@@ -42,6 +46,7 @@ function parseArgs(argv) {
   }
   if (!args.input) {
     console.error("Usage: node render-browser.mjs <composition.html> [--fps N] [--output path.mp4] [--quality N]");
+    console.error("       node render-browser.mjs <composition.html> --stills \"1.2,6.4\" [--stills-dir dir]");
     process.exit(2);
   }
   if (!Number.isFinite(args.fps) || args.fps <= 0) {
@@ -196,6 +201,24 @@ async function main() {
     log(`timelines registered: ${await page.evaluate(() => Object.keys(window.__timelines || {}).length)}`);
 
     await page.setViewport({ width: meta.width, height: meta.height, deviceScaleFactor: 1 });
+
+    if (args.stills) {
+      const times = String(args.stills).split(",").map((v) => Number(v.trim()))
+        .filter((v) => Number.isFinite(v));
+      const dir = path.resolve(args.stillsDir || path.join(path.dirname(outputPath), "stills"));
+      fs.mkdirSync(dir, { recursive: true });
+      for (const t of times) {
+        const registered = await page.evaluate(seekRuntime, t, meta.duration);
+        if (registered === 0) throw new Error('no timelines registered on window.__timelines');
+        const out = path.join(dir, `still_${t.toFixed(2).replace(".", "_")}s.jpg`);
+        await page.screenshot({
+          path: out, type: "jpeg", quality: args.quality,
+          clip: { x: 0, y: 0, width: meta.width, height: meta.height },
+        });
+        log(`still t=${t.toFixed(2)}s -> ${out}`);
+      }
+      return;
+    }
 
     for (let i = 0; i < totalFrames; i++) {
       const t = i / args.fps;

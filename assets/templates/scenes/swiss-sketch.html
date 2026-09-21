@@ -1,40 +1,306 @@
 <!--
-  Route: swiss-sketch (瑞士平面手绘)
+  Route: swiss-sketch (瑞士平面手绘, 1080×1920 竖屏)
   Paste the <div> below into one clip inside your composition root.
-  Replaceable slots: {{HEADLINE}} 大标题 | {{POINT_1}}/{{POINT_2}} 两条论点 | {{ACCENT}} 强调色（建议红）
-  Palette discipline: near-black text on cream, one red accent, generous whitespace.
-  Swap the line drawing for your own SVG line art; keep stroke-draw motion.
+  适用题材: 论证/方法/商业评论——把话说清楚，靠**网格与排版**而不是靠装饰。
+  与 hand-sketch 的区别（两条都叫 sketch，但语法不同，不要混淆）:
+    hand-sketch  纸纹 + 微抖线条（feTurbulence）+ 相框/胶带，像一次论证速写
+    swiss-sketch 严格模数网格 + 极细直线 + 红块，像一张国际主义海报；线条不打抖，
+                 几何是尺规的（直角、箭头、标尺刻度），不是手绘的
+  素材槽位 (scenes.json scene.assets, 设计文档 §2.1 约定):
+    photo-1 → {{assets.photo-1}} 网格单元里的矩形照片；缺失时留一个细线空框（
+              预留版位仍然成立，画面不空）。
+  Replaceable slots: {{HEADLINE}} 大标题 | {{POINT_1}}/{{POINT_2}} 论点（thesis）
+    | {{LINE_A}}/{{LINE_B}} 对照两行（contrast）| {{BIGNUM}}/{{BIGNUM_LABEL}}/{{BIGNUM_LINE}} 数字主角（number）
+    | {{STEP_NO}}/{{STEP_SEGS}} 步序与分段进度（step）| {{PHOTO_CAP}} 图注 | {{INDEX}} 场次编号
+  版面变体（{{VARIANT}}，由 make_video.py 的 choose_variant 逐场挑；五套轮廓互不相同）:
+    thesis    默认：横规 + 大标题 + 编号论点两条 + 右侧照片单元
+    statement 一句话大片：标题占满上半幅，照片做通栏出血带
+    contrast  上下两段被中规分开：上行灰（旧）→ 下行黑（新）+ 红规收束
+    step      分段进度条 + 巨号红步序（尺规圆环）+ 步骤名 + 条带照片
+    number    巨号红数字 + 黑色宾语标签 + 细规 + 说明行 + 方形照片单元
+  核心实现:
+    - 严格网格：左右页边线（7.5%）+ 横规；所有元素贴网格线，不做自由摆放
+    - 红块只做「结构标记」：编号方块、进度当前段、收束粗规——不当装饰用
+    - 线条用 stroke-dasharray/dashoffset 描边（尺规感：全程直线，**不加**置换滤镜，
+      与 hand-sketch 的 feTurbulence 手感明确区分）
+    - 笔尖圆点沿 path 同步移动: vendor 只有 gsap.min.js 3.14.2 核心（无 MotionPathPlugin），
+      用 getPointAtLength + onUpdate 手动实现（零新增依赖）
+  音效挂点 (fetch_assets.py --sfx): 直线划过的「唰」声 → 每段描边动画起点。
+  Assemble inside a 1080×1920 composition: local @font-face (PingFang SC/Noto Sans SC),
+  a full-duration #furniture-base clip, vendor/gsap.min.js relative script, and keep all
+  text above y=1690 (bottom 230px caption safe area). See examples/style-samples/.
 -->
-<div class="km-swiss" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--km-bg,#F2EDE2);">
-  <!-- 网格参考（极淡，装饰性定位） -->
-  <svg class="km-swiss__grid" style="position:absolute;inset:0;opacity:.12;" width="100%" height="100%" preserveAspectRatio="none" stroke="#11110F" stroke-width="1">
-    <line x1="10%" y1="0" x2="10%" y2="100%"/><line x1="90%" y1="0" x2="90%" y2="100%"/>
-    <line x1="0" y1="30%" x2="100%" y2="30%"/><line x1="0" y1="70%" x2="100%" y2="70%"/>
+<div class="km-sw {{HEAD_CLASS}} {{POINT_CLASS}}" data-km-variant="{{VARIANT}}" style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg,#F7F4EC);">
+  <style>
+    /* ---------- 网格骨架：左右页边线 + 横规（-8% 溢出让微动不露缝） ---------- */
+    .km-sw__grid { position:absolute; inset:-8%; pointer-events:none; }
+    .km-sw__grid::before { content:""; position:absolute; left:167px; top:0; bottom:0;
+      width:1px; background:var(--fg,#11110F); opacity:.22; }
+    .km-sw__grid::after { content:""; position:absolute; right:167px; top:0; bottom:0;
+      width:1px; background:var(--fg,#11110F); opacity:.22; }
+    /* ---------- 页眉：红色方块 + 场次编号（mono，全大写） ---------- */
+    .km-sw__index { position:absolute; left:7.5%; top:6.6%; z-index:3; display:flex;
+      align-items:center; gap:14px; font:700 25px/1 ui-monospace,SFMono-Regular,monospace;
+      color:var(--muted,#8C887F); letter-spacing:.14em; }
+    .km-sw__index::before { content:""; width:18px; height:18px; background:var(--accent,#D8341F); }
+    .km-sw__accentrule { position:absolute; left:7.5%; top:8.8%; width:196px; height:9px; z-index:3;
+      background:var(--accent,#D8341F); transform-origin:left; }
+    .km-sw__headline { position:absolute; left:7.5%; width:85%; z-index:3;
+      font:900 82px/1.16 "Noto Sans SC","PingFang SC",sans-serif; color:var(--fg,#11110F);
+      letter-spacing:-.025em; }
+    /* 论点：编号在左，正文在右（编号用红方块，跟正文同基线） */
+    .km-sw__point { position:absolute; left:7.5%; width:85%; z-index:3;
+      font:700 39px/1.3 "Noto Sans SC","PingFang SC",sans-serif; color:var(--fg,#11110F); }
+    .km-sw__point::before { content:""; display:inline-block; width:20px; height:20px;
+      background:var(--accent,#D8341F); margin-right:20px; transform:translateY(-3px); }
+    /* 对照两行 */
+    .km-sw__line { position:absolute; left:7.5%; width:85%; z-index:3;
+      font:900 60px/1.22 "Noto Sans SC","PingFang SC",sans-serif; }
+    .km-sw__line--a { color:var(--muted,#8C887F); }
+    .km-sw__line--b { color:var(--fg,#11110F); }
+    .km-sw__underline { position:absolute; left:7.5%; width:58%; height:10px; z-index:3;
+      background:var(--accent,#D8341F); transform-origin:left; }
+    /* 巨号数字 */
+    .km-sw__bignum { position:absolute; left:7.5%; z-index:3;
+      font:900 216px/1 "Noto Sans SC","PingFang SC",sans-serif; color:var(--accent,#D8341F);
+      letter-spacing:-.055em; white-space:nowrap; }
+    .km-sw__bignumlabel { position:absolute; left:7.5%; width:85%; z-index:3;
+      font:900 46px/1.2 "Noto Sans SC","PingFang SC",sans-serif; color:var(--fg,#11110F); }
+    .km-sw__bignumline { position:absolute; left:7.5%; width:60%; z-index:3;
+      font:600 34px/1.4 "Noto Sans SC","PingFang SC",sans-serif; color:var(--fg,#11110F); }
+    /* 步骤：分段进度 + 巨号步序 */
+    .km-sw__seg { position:absolute; left:7.5%; width:85%; z-index:3; display:flex; gap:10px; }
+    .km-sw__seg i { flex:1 1 0; height:14px; background:var(--fg,#11110F); opacity:.16;
+      transform-origin:left; }
+    .km-sw__seg i.is-done { opacity:1; }
+    .km-sw__seg i.is-now { opacity:1; background:var(--accent,#D8341F); }
+    .km-sw__stepno { position:absolute; left:7.5%; z-index:3;
+      font:900 232px/1 "Noto Sans SC","PingFang SC",sans-serif; color:var(--fg,#11110F);
+      letter-spacing:-.05em; }
+    /* 照片单元：细线框 + 极淡底（缺素材时就是一块「预留版位」，仍成立） */
+    .km-sw__photo { position:absolute; z-index:2; overflow:hidden;
+      background:rgba(17,17,15,.055); border:1px solid rgba(17,17,15,.3); }
+    .km-sw__photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+      filter:saturate(.86) contrast(1.04); }
+    .km-sw__cap { position:absolute; z-index:3; font:700 24px/1 ui-monospace,SFMono-Regular,monospace;
+      color:var(--muted,#8C887F); letter-spacing:.08em; }
+    .km-sw__ink { position:absolute; inset:0; width:100%; height:100%; z-index:4; pointer-events:none; }
+
+    /* ---------- 变体分组：默认隐藏，由当前变体打开 ---------- */
+    .km-sw__g-points, .km-sw__g-contrast, .km-sw__g-step, .km-sw__g-number,
+    .km-sw__inkgroup { display:none; }
+    .km-sw[data-km-variant="thesis"] .km-sw__g-points,
+    .km-sw[data-km-variant="contrast"] .km-sw__g-contrast,
+    .km-sw[data-km-variant="step"] .km-sw__g-step,
+    .km-sw[data-km-variant="number"] .km-sw__g-number { display:block; }
+    .km-sw[data-km-variant="thesis"] .km-sw__ink--thesis,
+    .km-sw[data-km-variant="statement"] .km-sw__ink--statement,
+    .km-sw[data-km-variant="contrast"] .km-sw__ink--contrast,
+    .km-sw[data-km-variant="step"] .km-sw__ink--step,
+    .km-sw[data-km-variant="number"] .km-sw__ink--number { display:block; }
+
+    /* ---------- thesis：横规 + 标题 + 两条编号论点 + 右侧照片单元 ---------- */
+    .km-sw[data-km-variant="thesis"] .km-sw__headline { top:11.5%; }
+    .km-sw[data-km-variant="thesis"] .km-sw__point--1 { top:37.2%; }
+    .km-sw[data-km-variant="thesis"] .km-sw__point--2 { top:44.2%; }
+    .km-sw[data-km-variant="thesis"] .km-sw__photo { left:52%; top:53%; width:40.5%; height:30%; }
+    .km-sw[data-km-variant="thesis"] .km-sw__cap { left:52%; top:51%; }
+    /* 子句不够就少画一条论点：不留「一个红方块 + 空白」的空行 */
+    .km-sw--p0 .km-sw__point { display:none; }
+    .km-sw--p1 .km-sw__point--2 { display:none; }
+
+    /* ---------- statement：一句话大片 + 通栏出血照片带 ---------- */
+    .km-sw[data-km-variant="statement"] .km-sw__headline {
+      top:22%; font:900 106px/1.14 "Noto Sans SC","PingFang SC",sans-serif; }
+    /* 字号跟着句子长度降档：24 字的句子在 106px 下会顶到照片带上 */
+    .km-sw[data-km-variant="statement"].km-sw--h-m .km-sw__headline { font-size:90px; }
+    .km-sw[data-km-variant="statement"].km-sw--h-l .km-sw__headline { font-size:74px; }
+    .km-sw[data-km-variant="statement"] .km-sw__accentrule { top:19.6%; width:264px; }
+    .km-sw[data-km-variant="statement"] .km-sw__photo {
+      left:0; top:60%; width:100%; height:26%; border-left:0; border-right:0; }
+    .km-sw[data-km-variant="statement"] .km-sw__cap { left:7.5%; top:54%; }
+
+    /* ---------- contrast：中规分开上行（旧）与下行（新） ---------- */
+    .km-sw[data-km-variant="contrast"] .km-sw__headline { top:10.5%; font-size:68px; }
+    .km-sw__line--a { top:29.5%; }
+    .km-sw__line--b { top:44%; }
+    .km-sw__underline { top:55%; }
+    .km-sw[data-km-variant="contrast"] .km-sw__photo { left:52%; top:62%; width:40.5%; height:24%; }
+    .km-sw[data-km-variant="contrast"] .km-sw__cap { left:52%; top:60%; }
+
+    /* ---------- step：分段进度 + 巨号红步序 + 步骤名 + 条带照片 ---------- */
+    .km-sw[data-km-variant="step"] .km-sw__seg { top:15.4%; }
+    .km-sw[data-km-variant="step"] .km-sw__stepno { top:21%; color:var(--accent,#D8341F); }
+    .km-sw[data-km-variant="step"] .km-sw__headline { top:45.5%; font-size:66px; width:82%; }
+    .km-sw[data-km-variant="step"] .km-sw__photo { left:7.5%; top:62.5%; width:85%; height:23%; }
+    .km-sw[data-km-variant="step"] .km-sw__cap { left:7.5%; top:60.4%; }
+
+    /* ---------- number：巨号红数字 + 黑标签 + 细规 + 说明 + 方形照片单元 ---------- */
+    .km-sw[data-km-variant="number"] .km-sw__headline { top:10.5%; font-size:64px; width:78%; }
+    .km-sw__bignum { top:22.5%; }
+    .km-sw__bignumlabel { top:40.5%; }
+    .km-sw__bignumline { top:47.5%; }
+    .km-sw[data-km-variant="number"] .km-sw__photo { left:57%; top:60%; width:35.5%; height:26%; }
+    .km-sw[data-km-variant="number"] .km-sw__cap { left:57%; top:58%; }
+  </style>
+
+  <div class="km-sw__grid" data-layout-ignore data-km-drift="14"></div>
+  <div class="km-sw__index">{{INDEX}} / {{TOTAL}}</div>
+  <div class="km-sw__accentrule"></div>
+  <div class="km-sw__headline">{{HEADLINE}}</div>
+
+  <div class="km-sw__g-points">
+    <div class="km-sw__point km-sw__point--1">{{POINT_1}}</div>
+    <div class="km-sw__point km-sw__point--2">{{POINT_2}}</div>
+  </div>
+
+  <div class="km-sw__g-contrast">
+    <div class="km-sw__line km-sw__line--a">{{LINE_A}}</div>
+    <div class="km-sw__line km-sw__line--b">{{LINE_B}}</div>
+    <div class="km-sw__underline"></div>
+  </div>
+
+  <div class="km-sw__g-step">
+    <div class="km-sw__seg">{{STEP_SEGS}}</div>
+    <div class="km-sw__stepno">{{STEP_NO}}</div>
+  </div>
+
+  <div class="km-sw__g-number">
+    <div class="km-sw__bignum">{{BIGNUM}}</div>
+    <div class="km-sw__bignumlabel">{{BIGNUM_LABEL}}</div>
+    <div class="km-sw__bignumline">{{BIGNUM_LINE}}</div>
+  </div>
+
+  <div class="km-sw__photo" id="km-sw-photo" data-km-push="2">
+    <img src="assets/media/photo-1.jpg" alt="" onerror="this.remove()">
+  </div>
+  <div class="km-sw__cap">{{PHOTO_CAP}}</div>
+
+  <!-- 尺规线：全程直线（直角、标尺、箭头），不加置换滤镜——这就是与手绘版的语法差别 -->
+  <svg class="km-sw__ink" viewBox="0 0 1080 1920" preserveAspectRatio="none"
+       fill="none" stroke="#11110F" stroke-width="5" stroke-linecap="square">
+    <g class="km-sw__inkgroup km-sw__ink--thesis">
+      <path class="km-sw__stroke" d="M0 653 L1080 653" stroke-width="6"/>
+      <path class="km-sw__stroke" d="M561 653 L561 1017 L999 1017" stroke-width="4"/>
+      <path class="km-sw__stroke" d="M999 1594 L1035 1594 M999 1594 L999 1630" stroke-width="4"
+            stroke="#D8341F"/>
+    </g>
+
+    <g class="km-sw__inkgroup km-sw__ink--statement">
+      <path class="km-sw__stroke" d="M0 1152 L1080 1152" stroke-width="6"/>
+      <path class="km-sw__stroke"
+            d="M81 1104 L81 1152 M234 1104 L234 1152 M387 1104 L387 1152 M540 1104 L540 1152 M693 1104 L693 1152 M846 1104 L846 1152 M999 1104 L999 1152"
+            stroke-width="4"/>
+    </g>
+
+    <g class="km-sw__inkgroup km-sw__ink--contrast">
+      <path class="km-sw__stroke" d="M0 769 L1080 769" stroke-width="6"/>
+      <path class="km-sw__stroke" d="M1032 588 L1032 716 M1008 690 L1032 718 L1056 690" stroke-width="5"/>
+    </g>
+
+    <g class="km-sw__inkgroup km-sw__ink--step">
+      <path class="km-sw__stroke" d="M81 296 L999 296" stroke-width="4"/>
+      <path class="km-sw__stroke" d="M951 268 L1001 296 L951 324" stroke-width="5"/>
+      <path class="km-sw__stroke" d="M196 494 m-176 0 a176 176 0 1 1 352 0 a176 176 0 1 1 -352 0"
+            stroke-width="4" stroke="#D8341F"/>
+    </g>
+
+    <g class="km-sw__inkgroup km-sw__ink--number">
+      <path class="km-sw__stroke" d="M0 1046 L1080 1046" stroke-width="5"/>
+      <path class="km-sw__stroke" d="M620 1046 L620 1152 M596 1126 L620 1154 L644 1126" stroke-width="4"/>
+    </g>
+
+    <circle id="km-sw-pen" r="8" fill="#D8341F" opacity="0"/>
   </svg>
-  <!-- 红色对位标记 -->
-  <svg class="km-swiss__mark" style="position:absolute;left:7%;top:7%;" width="40" height="40" viewBox="0 0 40 40" stroke="#D8341F" fill="none" stroke-width="2">
-    <circle cx="20" cy="20" r="12"/><line x1="20" y1="0" x2="20" y2="40"/><line x1="0" y1="20" x2="40" y2="20"/>
-  </svg>
-  <div class="km-swiss__headline" style="position:absolute;left:10%;top:16%;width:80%;font:800 64px system-ui;color:#11110F;line-height:1.2;">{{HEADLINE}}</div>
-  <svg class="km-swiss__drawing" style="position:absolute;left:10%;top:40%;" width="200" height="140" viewBox="0 0 200 140" stroke="#11110F" stroke-width="5" fill="none">
-    <rect class="km-swiss__stroke" x="10" y="20" width="120" height="100"/>
-    <line class="km-swiss__stroke" x1="130" y1="70" x2="185" y2="70"/>
-    <path class="km-swiss__stroke" d="M165 50 L185 70 L165 90"/>
-  </svg>
-  <div class="km-swiss__point km-swiss__point--1" style="position:absolute;left:10%;top:68%;font:700 36px system-ui;color:#11110F;">{{POINT_1}}</div>
-  <div class="km-swiss__point km-swiss__point--2" style="position:absolute;left:10%;top:78%;font:700 36px system-ui;color:#11110F;">{{POINT_2}}</div>
-  <div class="km-swiss__accentbar" style="position:absolute;left:10%;top:66.5%;width:34%;height:5px;background:var(--km-accent,#D8341F);transform-origin:left;"></div>
 </div>
 <!--
-  GSAP timeline fragment (deterministic: stroke-draw via dashoffset, type lockup via fromTo):
-  tl.fromTo(".km-swiss__mark", { scale: 0, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.3, ease: "back.out(2)", transformOrigin: "50% 50%" }, 0.1)
-    .fromTo(".km-swiss__headline", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.3)
-    .fromTo(".km-swiss__stroke", { strokeDasharray: 400, strokeDashoffset: 400 }, { strokeDashoffset: 0, duration: 0.8, stagger: 0.2, ease: "power1.inOut" }, 0.8)
-    .fromTo(".km-swiss__point--1", { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0, duration: 0.3 }, 1.6)
-    .fromTo(".km-swiss__point--2", { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0, duration: 0.3 }, 2.0)
-    .fromTo(".km-swiss__accentbar", { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: "power2.out" }, 2.2);
-  // Tune strokeDasharray to each path's real length for a clean single-pass draw.
-// @beats enter=0.10 build=0.30 reveal=0.80 peak=2.00 settle=2.20
-// 锚点语义：enter 十字标记 / build 标题 / reveal 手绘标注线 / peak 第二条要点 / settle 强调条
+  GSAP timeline fragment (deterministic; times scene-relative; first element in by 0.2s;
+  second fromTo on the same element carries immediateRender:false).
 
+  Ruling pen helpers (two pure functions; **no tween inside either one**):
+    kmPenLen(path)   records and returns the path length, collapsing the stroke to zero
+    kmPenTick(pen)   returns an onUpdate callback that reads the tween's OWN progress
+  为什么「何时画、画多久」必须留在 tween 的参数里：重定时器只认真正的 tween 位置参数。
+  把时长藏进一个普通函数调用，它会被当成位置参数重新映射（实测 0.60 → 9.26，跨过一个
+  2.46s 场景）—— 描边永远「还在画」、笔尖的回调不触发，一枚笔尖就留在画面里。
+  function kmPenLen(path) {
+    const len = path.getTotalLength();
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    return len;
+  }
+  function kmPenTick(pen) {
+    return function () {
+      const path = this.targets()[0];
+      const len = parseFloat(path.style.strokeDasharray) || 1;
+      const at = this.progress();
+      path.style.strokeDashoffset = String(len * (1 - at));
+      // 笔尖的显隐同样是时间的函数（progress 0/1 → 藏起来），不依赖 onStart/onComplete：
+      // seek 型渲染器不保证回调跑到。
+      const on = at > 0 && at < 1;
+      pen.style.opacity = on ? "1" : "0";
+      if (on) {
+        const pt = path.getPointAtLength(Math.max(0.001, len * at));
+        pen.setAttribute("cx", pt.x);
+        pen.setAttribute("cy", pt.y);
+      }
+    };
+  }
+  // Note: stroke writes happen inside the tween's onUpdate, which the renderers must not
+  // suppress while seeking (scripts/render-browser.mjs does seek(t, false)). The pen's position
+  // and visibility both come from that same tween progress — nothing depends on callbacks.
+  //
+  // SFX hook: a short "swipe" of the ruling pen -> each stroke tween's start.
+
+  const pen = document.querySelector("#km-sw-pen");
+  // 查询必须从**笔尖所在的本场根元素**出发，不能写成 document.querySelectorAll：
+  // 那样每个场景块拿到的都是全文档里第一个可见的墨迹组。实测 56 个场景块全部去驱动 s01
+  // 的那两条线，而本场的线从来没被设过 dasharray —— 于是线条从第一帧就是画完的，
+  // 「线条被画出来」这个动作其实一次都没发生过（segments 同理：stagger 会被 280 个
+  // 目标摊开）。
+  const sceneRoot = pen ? pen.closest(".km-sw") : null;
+  const groups = sceneRoot ? Array.from(sceneRoot.querySelectorAll(".km-sw__inkgroup")) : [];
+  const active = groups.filter(function (g) { return getComputedStyle(g).display !== "none"; })[0];
+  const strokes = active ? Array.from(active.querySelectorAll(".km-sw__stroke")) : [];
+  const segs = sceneRoot ? Array.from(sceneRoot.querySelectorAll(".km-sw__seg i")) : [];
+  const penTick = kmPenTick(pen);
+  tl.fromTo(".km-sw__index", { autoAlpha: 0, x: -16 },
+      { autoAlpha: 1, x: 0, duration: 0.3, ease: "power2.out" }, 0.12)
+    .fromTo(".km-sw__accentrule", { scaleX: 0 },
+      { scaleX: 1, duration: 0.36, ease: "power3.out" }, 0.22)
+    .fromTo(".km-sw__headline", { autoAlpha: 0, y: 28 },
+      { autoAlpha: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.34)
+    .fromTo(".km-sw__point--1", { autoAlpha: 0, x: -22 },
+      { autoAlpha: 1, x: 0, duration: 0.34, ease: "power2.out" }, 0.92)
+    .fromTo(".km-sw__point--2", { autoAlpha: 0, x: -22 },
+      { autoAlpha: 1, x: 0, duration: 0.34, ease: "power2.out" }, 1.28)
+    .fromTo(".km-sw__line--a", { autoAlpha: 0, x: -26 },
+      { autoAlpha: 0.55, x: 0, duration: 0.38, ease: "power2.out" }, 0.80)
+    .fromTo(".km-sw__line--b", { autoAlpha: 0, x: -26 },
+      { autoAlpha: 1, x: 0, duration: 0.38, ease: "power2.out" }, 1.20)
+    .fromTo(".km-sw__underline", { scaleX: 0 },
+      { scaleX: 1, duration: 0.42, ease: "power3.out" }, 1.60)
+    .fromTo(".km-sw__stepno", { autoAlpha: 0, y: 36 },
+      { autoAlpha: 1, y: 0, duration: 0.44, ease: "power3.out" }, 0.70)
+    .fromTo(segs, { scaleX: 0 }, { scaleX: 1, duration: 0.22, stagger: 0.09,
+      ease: "power2.out" }, 1.42)
+    .fromTo(".km-sw__bignum", { autoAlpha: 0, y: 36 },
+      { autoAlpha: 1, y: 0, duration: 0.46, ease: "power3.out" }, 0.62)
+    .fromTo(".km-sw__bignumlabel", { autoAlpha: 0, x: -18 },
+      { autoAlpha: 1, x: 0, duration: 0.36, ease: "power2.out" }, 1.02)
+    .fromTo(".km-sw__bignumline", { autoAlpha: 0 },
+      { autoAlpha: 1, duration: 0.36 }, 1.36)
+    .fromTo("#km-sw-photo", { autoAlpha: 0, y: 22 },
+      { autoAlpha: 1, y: 0, duration: 0.38, ease: "power2.out",
+        immediateRender: false }, 2.46)
+    .fromTo(".km-sw__cap", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 2.70);
+  // 描边：目标就是那条线本身，时长/起画时间都是 tween 的参数 → 重定时器看得见、映射得准。
+  if (strokes[0]) tl.fromTo(strokes[0], { strokeDashoffset: kmPenLen(strokes[0]) },
+      { strokeDashoffset: 0, duration: 0.60, ease: "power1.inOut", onUpdate: penTick }, 1.78);
+  if (strokes[1]) tl.fromTo(strokes[1], { strokeDashoffset: kmPenLen(strokes[1]) },
+      { strokeDashoffset: 0, duration: 0.48, ease: "power1.inOut", onUpdate: penTick }, 2.40);
+  if (strokes[2]) tl.fromTo(strokes[2], { strokeDashoffset: kmPenLen(strokes[2]) },
+      { strokeDashoffset: 0, duration: 0.42, ease: "power1.inOut", onUpdate: penTick }, 2.96);
+// @beats enter=0.12 build=0.34 reveal=0.86 mid=1.74 peak=2.44 settle=3.60
+// 锚点语义：enter 编号 / build 标题 / reveal 主角元素 / mid 红线或分段进度定案 / peak 尺规线落定 / settle 照片+图注
 -->

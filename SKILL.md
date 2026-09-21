@@ -48,11 +48,20 @@ Run `python3 scripts/doctor.py` first. Then:
 | Mix audio + burn captions | `python3 scripts/finalize.py --visual master.mp4 --narration vo.wav --captions subs.ass --out final.mp4` |
 | Render via HyperFrames | `npx hyperframes check` then `npx hyperframes render` |
 | Render without HyperFrames | `node scripts/render-browser.mjs composition/index.html --fps 30 --output renders/out.mp4` |
+| **Preview frames** (no full render) | `node scripts/render-browser.mjs composition/index.html --stills "6.1,10.2,36.5" --stills-dir q/` |
+| **A/B two finished films** | `python3 scripts/compare_films.py --a projA --b projB --cols 6 --out-dir q/` |
 | Verify a project | `python3 scripts/verify.py <dir>` |
 
 The bundled `render-browser.mjs` renders HyperFrames-style compositions (data-duration clips +
 registered GSAP timelines) through headless Chrome and FFmpeg with zero additional dependencies
-beyond puppeteer-core. Use it when the HyperFrames CLI is unavailable, and for CI.
+beyond puppeteer-core. Use it when the HyperFrames CLI is unavailable, and for CI. It also takes
+`--stills "t1,t2"` to screenshot chosen moments without encoding — when you are tuning a layout's
+geometry, five stills beat a ten-minute render.
+
+`compare_films.py` exists because "which style looks better" is not answerable by taste alone.
+Given two projects built from the same copy and narration it reports layout distribution / longest
+same-layout run / motion-gate numbers side by side, and builds a labelled A-over-B frame sheet at
+the same narrative moments (cells where the two films chose *different* layouts get a `*`).
 
 ## Intake
 
@@ -198,7 +207,9 @@ Classify each beat by its explanatory job, then route it (details in `style-rout
 - **editorial-collage** — evidence, history, people, documents, news.
 - **character-concept-comic** — cognition, emotion, workplace tension, ethics, recurring dilemmas.
 - **paper-diorama** — mechanisms, engineering, ecology, physical systems, chronology.
-- **swiss-sketch** — arguments, comparisons, methods, business/social commentary.
+- **swiss-sketch** — arguments, comparisons, methods, business/social commentary. Strict modular
+  grid, one red accent used as structure, ruled/geometric line art (no paper texture, no wobble).
+  Shape-driven: same five layouts as hand-sketch.
 - **ui-demo** — exact product operation, when screen behavior is the evidence.
 - **generated-cinematic** — atmosphere or impossible scenes; sparingly.
 - **data-viz** — numbers, trends, rankings, distributions.
@@ -208,11 +219,19 @@ Classify each beat by its explanatory job, then route it (details in `style-rout
 - **process-flow** — pipelines, architectures, cause-effect chains.
 - **map-geo** — geography, spatial distribution, movement.
 - **collage-evidence** — material-style collage: real photos/footage pinned as torn-paper evidence cards with captions and license tags. Best when real-world proof drives the argument.
-- **hand-sketch** — material-style hand-drawn: SVG strokes draw themselves with a moving pen tip; embeds one photo as evidence. Best for arguments and methods with warmth.
+- **hand-sketch** — material-style hand-drawn: SVG strokes draw themselves with a moving pen tip; embeds one photo as evidence. Best for arguments and methods with warmth. Paper texture, slightly rough strokes, taped/rotated photo cards. Shape-driven: `thesis` / `statement` / `contrast` / `step` / `number`.
 - **paper-fold** — material-style origami/paper-craft: CSS 3D folds stand a flat sheet into a layered diorama with crease lines, thickness, and paper texture.
 
 A film may mix styles; a chapter should normally keep one dominant grammar. Do not imitate a
 living creator frame-for-frame — reuse principles, never protected frames, characters, or logos.
+
+**Shape-driven styles (`SHAPE_VARIANTS`) pick the layout from what the sentence *is*** — a step
+sentence gets the progress layout, a sentence with a big number gets the digit layout, a sentence
+with contrast gets the two-row comparison, a short sentence gets the one-line statement, everything
+else gets the default thesis layout. Material-count-driven styles (collage-evidence) pick by how
+many photos actually arrived instead. Either way the layout changes *because the content changed*,
+never as decoration — and except for `step` (where repeating means the progress is advancing) a
+layout may not repeat from one scene to the next; it yields to the least-used candidate.
 
 ## Timing contract
 
@@ -317,7 +336,19 @@ picture changing, whole-film mean ≥ 0.4. A failing scene usually means its ani
 early, not that the threshold is wrong; `make_video.py` treats a motion-only failure as a warning
 (`--strict-motion` makes it fatal) because a few templates are still below the floor.
 `python3 scripts/selftest.py` separately asserts the structural contracts (anchor monotonicity,
-variant CSS, query ladders) in a second and needs no render.
+variant CSS, query ladders, shape-slot class prefixes, scene-JS syntax, time-driven pen visibility)
+in a second and needs no render.
+
+**Anything that decides a pixel must be a function of time, not of a callback — and must be scoped to
+its own scene.** Three defects of this class shipped and were found by frame inspection, not by any
+gate: a template's prose comment leaking into the inline script (every timeline silently failed to
+register); a drawing pen whose visibility was set in `onStart`/`onComplete` (a seek-driven renderer
+does not promise those callbacks, so the pen parked mid-path and stayed visible — a red dot on one
+film's photo band, an ink dot on the other's photo); and a scene block that resolved its ink paths
+with a document-wide query, so all 56 blocks drove the *first* scene's two lines while each scene's
+own lines were never given a dash offset — the strokes were therefore complete from frame one and
+**the "line being drawn" gesture never once happened**, in any of the sketch films. All three are
+now asserted in `selftest.py`.
 Then `npx hyperframes check --snapshots` (or fallback-render
 snapshots) reviewed — first frame, every scene midpoint, every transition, final frame; no empty
 frame, clipped text, hidden subtitle, duplicate ID, missing media, or unintended reset; every

@@ -69,7 +69,7 @@ STYLE_PALETTES: dict[str, dict[str, str]] = {
 # 每种风格的通用 visualSubject 一句话（自动分镜缺省值）
 STYLE_SUBJECTS: dict[str, str] = {
     "hand-sketch": "Hand-drawn strokes draw the core idea with a moving pen tip",
-    "swiss-sketch": "Grid-typed headline and line-drawn argument on paper",
+    "swiss-sketch": "A grid poster types the argument, ruled lines snap into place",
     "whiteboard-tutorial": "Whiteboard strokes derive the idea step by step",
     "collage-evidence": "Torn-paper evidence cards pin real photos with captions",
     "editorial-collage": "Editorial collage of archive clippings and labels",
@@ -101,6 +101,15 @@ MATERIAL_PLANS: dict[str, list[dict]] = {
         # avoid：无密钥素材源上「档案/历史」很容易取回报纸、手稿、书页扫描件——
         # 那些是**纸面图文**，铺进片子里一眼假；亮度/饱和度护栏抓不住泛黄的中灰纸页，
         # 所以从标题先拦一遭。
+        {"slot": "photo-1", "role": "论证配图",
+         "avoid": ["newspaper", "manuscript", "clipping", "calligraphy", "letter",
+                    "document", "ledger", "poster", "book page", "printed page",
+                    "text page", "old paper", "wallpaper"]},
+    ],
+    "swiss-sketch": [
+        # 国际主义排版里的照片是**网格单元里的矩形**（无边框、无胶带、不旋转），缺素材时
+        # 留一个细线空框仍然是「预留版位」。avoid 与 hand-sketch 同因：无密钥素材源上
+        # 「历史/档案」很容易取回报纸、手稿、书页扫描件——纸面图文铺进片子里一眼假。
         {"slot": "photo-1", "role": "论证配图",
          "avoid": ["newspaper", "manuscript", "clipping", "calligraphy", "letter",
                     "document", "ledger", "poster", "book page", "printed page",
@@ -648,15 +657,17 @@ def parse_template(style: str) -> dict:
         ln = lines[i]
         s = ln.strip()
         if re.match(r"function\s+\w+\s*\(", s):
+            # 按**大括号配平**收块，不能靠「遇到一行只有 } 就停」：助手函数里只要有一个
+            # 嵌套块（`if (on) {` … `}`），那一行就把函数截断在半路，整段 <script> 变成
+            # 语法错误（实测：kmPenTick 被切成半截，timeline 一条都不注册）。
             block = [ln]
+            depth = ln.count("{") - ln.count("}")
             i += 1
-            while i < len(lines) and lines[i].strip() != "}":
+            while i < len(lines) and depth > 0:
                 block.append(lines[i])
+                depth += lines[i].count("{") - lines[i].count("}")
                 i += 1
-            if i < len(lines):
-                block.append(lines[i])
             helpers.append("\n".join(block))
-            i += 1
             continue
         # prose (CJK without // prefix) is dropped; JS and // comments kept
         if not s:
@@ -700,9 +711,12 @@ ANCHOR_QUANTILES = {"build": 0.40, "reveal": 0.68, "peak": 0.92}
 LAYOUT_VARIANTS: dict[str, list[str]] = {
     "collage-evidence": ["wall", "cascade", "hero", "pair", "single"],
     "hand-sketch": ["thesis", "statement", "contrast", "step", "number"],
+    "swiss-sketch": ["thesis", "statement", "contrast", "step", "number"],
 }
 # 内容形状驱动的风格：版面由句子形状（步骤/数字/对照/金句）决定，与素材数量无关。
-SHAPE_VARIANTS = ("hand-sketch",)
+# hand-sketch 与 swiss-sketch 共用同一套形状语义（两条风格说的是同一种论证），但**视觉
+# 语法不同**：前者纸纹 + 微抖线条 + 相框胶带，后者严格网格 + 尺规直线 + 红块。
+SHAPE_VARIANTS = ("hand-sketch", "swiss-sketch")
 # 形状优先级（越靠前越强）；step 是内容绑定的，连续出现是「进度在走」而不是重复版面。
 SHAPE_ORDER = ("step", "number", "contrast", "statement", "thesis")
 VARIANT_BY_COUNT: dict[int, list[str]] = {
@@ -855,7 +869,7 @@ def parse_beat_anchors(js: str, style: str = "") -> dict[str, float]:
 
 def template_event_times(js: str) -> list[float]:
     """模板 timeline 的位置参数全集（去重升序）——与重定时用的是同一套数字。"""
-    return sorted({float(m.group(1)) for m in POS_PARAM_RE.finditer(js)})
+    return sorted(set(pos_param_values(js)))
 
 
 def auto_anchors(times: list[float]) -> dict[str, float]:
@@ -978,8 +992,9 @@ def fill_slots(fragment: str, scene: dict, index: int, extra: dict | None = None
         # 对应分组本来就 display:none）
         # hand-sketch 的变体槽位（内容由 hand_sketch_slots 覆写；不适用时留空，
         # 对应分组本来就 display:none）
-        "STEP_NO": "", "STEP_PCT": "0%", "STEP_TICKS": "", "HEAD_CLASS": "",
-        "POINT_CLASS": "",
+        "STEP_NO": "", "STEP_PCT": "0%", "STEP_TICKS": "", "STEP_SEGS": "",
+        "HEAD_CLASS": "", "POINT_CLASS": "",
+        "INDEX": f"{index + 1:02d}", "TOTAL": "",
         "BIGNUM": "", "BIGNUM_LABEL": "", "BIGNUM_LINE": "",
         "PHOTO_CAP": f"FIG. {index + 1:02d}",
     }
@@ -1459,7 +1474,52 @@ def namespace_ids(fragment: str, js: str, prefix: str) -> tuple[str, str]:
     return frag, js2
 
 
-POS_PARAM_RE = re.compile(r",\s*(\d+(?:\.\d+)?)\s*\)")
+# tween 调用的方法名（只有挂在 tl 上的这几种才有「位置参数」）
+_TWEEN_METHODS = ("fromTo", "to", "from", "set")
+_TWEEN_CALL_RE = re.compile(r"\.(?:" + "|".join(_TWEEN_METHODS) + r")\(")
+
+
+def tween_position_spans(js: str) -> list[tuple[int, int]]:
+    """JS 里所有 tween **位置参数**的 (start, end) 区间。
+
+    为什么不能简单用「逗号 + 数字 + 右括号」这种正则：它分不清 tween 的位置参数和普通函数的
+    末尾数字参数。于是模板里的笔尖助手调用
+
+        kmSwPen(tl, strokes[0], pen, 1.78, 0.60)      // 0.60 是「画多久」
+
+    里的**时长**被当成位置参数重定时（实测 0.60 → 9.26，跨过了 2.46s 的整个场景）。后果是
+    描边 tween 永远「还在画」：笔尖的回调不触发，一枚笔尖留在画面里（两条风格各中一次），
+    而真正该有的「线条被画出来」在时间上完全失控 —— 一条静默的假动画，从 v2.5 就在。
+
+    正解：只认挂在 tl 上的 tween 方法调用，并取该调用右括号前的**最后一个数字字面量**。
+    """
+    spans: list[tuple[int, int]] = []
+    for m in _TWEEN_CALL_RE.finditer(js):
+        i, depth = m.end(), 1
+        while i < len(js) and depth:
+            ch = js[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            i += 1
+        if depth:                      # 括号不配对（模板有问题），这一处不动
+            continue
+        close = i - 1                  # ')' 的下标
+        j = close - 1
+        while j > m.end() and js[j] in " \t\r\n":
+            j -= 1
+        k = j
+        while k > m.end() and (js[k].isdigit() or js[k] == "."):
+            k -= 1
+        if k == j:                     # 末尾不是数字 → 这次调用没有位置参数
+            continue
+        spans.append((k + 1, j + 1))
+    return spans
+
+
+def pos_param_values(js: str) -> list[float]:
+    return [float(js[a:b]) for a, b in tween_position_spans(js)]
 
 
 def retime_js(js: str, scene: dict, start: float, end: float,
@@ -1469,8 +1529,8 @@ def retime_js(js: str, scene: dict, start: float, end: float,
     旧版把整套编排均匀拉满整个场景 —— 3.5s 的动作铺到 10s 上就全程慢动作，说完话
     画面还在动。现在锚点挂在旁白念出的词上：起势、落地、强调各就各位，其余时间留给
     静止阅读。返回 (重定时后的 JS, 锚点时间表)。"""
-    matches = list(POS_PARAM_RE.finditer(js))
-    times = sorted({float(m.group(1)) for m in matches})
+    spans = tween_position_spans(js)
+    times = sorted({float(js[a:b]) for a, b in spans})
     if not times:
         return js, {}
     anchors = {**auto_anchors(times), **declared}
@@ -1498,8 +1558,8 @@ def retime_js(js: str, scene: dict, start: float, end: float,
         return hi
 
     out = js
-    for m in reversed(matches):
-        out = out[:m.start(1)] + f"{mapt(float(m.group(1))):.2f}" + out[m.end(1):]
+    for a, b in reversed(spans):        # 从后往前替换，区间下标才不会失效
+        out = out[:a] + f"{mapt(float(js[a:b])):.2f}" + out[b:]
     return out, {n: round(v, 2) for n, v in sched.items()}
 
 
@@ -1668,8 +1728,10 @@ def build_composition(project: Path, manifest: dict, style: str, title: str,
             sc["variant"] = variant
             layout_log.append({"scene": sid, "variant": variant, "reason": why,
                                "assets": avail})
-        if style == "hand-sketch":
-            extra.update(hand_sketch_slots(sc, variant or "thesis", step_total, i - 1))
+        if style in SHAPE_VARIANTS:
+            prefix = "km-sw" if style == "swiss-sketch" else "km-sk"
+            extra.update(shape_slots(sc, variant or "thesis", step_total, i - 1, prefix))
+        extra["TOTAL"] = f"{len(scenes):02d}"
         if "{{PLOT}}" in tpl["fragment"]:
             chart = chart_for_scene(sc, i - 1, data_spec)
             charts.append({"scene": sid, "mode": chart.get("mode", "bars"),
@@ -2052,9 +2114,12 @@ def kinetic_lines(scene: dict, width: int = 13) -> dict[str, str]:
     return {"LINE_1": line1, "KEY_WORD": key, "LINE_2": line2}
 
 
-def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
-                     index: int = 0) -> dict[str, str]:
-    """hand-sketch 各版面的专属槽位（内容取自本场句子，不写死题材）。
+def shape_slots(scene: dict, variant: str, step_total: int = 0,
+                index: int = 0, prefix: str = "km-sk") -> dict[str, str]:
+    """形状驱动风格（hand-sketch / swiss-sketch）各版面的专属槽位（内容取自本场句子）。
+
+    prefix 是模板的类名前缀（hand-sketch 用 km-sk、swiss-sketch 用 km-sw）：字号档位
+    （HEAD_CLASS）与论点条数档位（POINT_CLASS）是**模板私有类名**，不能混用。
 
     为什么标题不用关键词：这条风格的主视觉是**一句能读的话**（大标题 + 两条论点）。
     拿第一个关键词填（「加班」「订单」）屏幕上就只有两个字，大片留白、信息为空——
@@ -2065,6 +2130,7 @@ def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
     - contrast：LINE_A/LINE_B = 这一句的前后两半（上行旧、下行新）
     - step：STEP_NO/STEP_PCT/STEP_TICKS = 「第 N 步 / 共 M 步」的进度（M 全片推导）
     - number：BIGNUM/BIGNUM_LABEL/BIGNUM_LINE = 最大的那个数字 + 它的宾语 + 另一句话
+    - step 还给 swiss-sketch 发一份 STEP_SEGS（分段进度块，含已过/当前/未到三态）
     """
     parts = [p for p in (scene.get("_clauseTexts") or [scene.get("narration", "")]) if p]
     text = (join_clauses(parts) if parts else (scene.get("narration") or "")).strip()
@@ -2104,6 +2170,11 @@ def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
         ticks = "".join(f'<i style="left:{(100.0 * i / max(total - 1, 1)):g}%"></i>'
                         for i in range(total)) if total > 1 else ""
         out["STEP_TICKS"] = ticks
+        # 分段进度（swiss-sketch）：等宽块 + 三态（已过/当前/未到），一眼看出「走到第几段」
+        segs = (f'<i class="is-done"></i>' * max(n - 1, 0)
+                + ('<i class="is-now"></i>' if n else '')
+                + '<i></i>' * max(total - max(n, 0), 0)) if total > 1 else ""
+        out["STEP_SEGS"] = segs
         # 标题换成步骤名（去掉「第 N 步，」前缀），不跟进度条重复
         bare = _STEP_RE.sub("", text, count=1).strip("，,。:：、；; ")
         if bare:
@@ -2132,8 +2203,8 @@ def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
         out["HEADLINE"] = head[:26]
         # 字号跟着长度降：24 字的句子在 104px 下是三行，会顶到照片带上
         n = len(re.sub(r"[，。？！、：；]", "", head))
-        out["HEAD_CLASS"] = "km-sk--h-s" if n <= 14 else ("km-sk--h-m" if n <= 20
-                                                          else "km-sk--h-l")
+        out["HEAD_CLASS"] = (f"{prefix}--h-s" if n <= 14 else
+                             (f"{prefix}--h-m" if n <= 20 else f"{prefix}--h-l"))
 
     else:
         # thesis（默认论证版面）：标题 = 首子句，两条论点 = 后续子句。
@@ -2144,10 +2215,14 @@ def hand_sketch_slots(scene: dict, variant: str, step_total: int = 0,
         rest = clauses[1:3]
         out["POINT_1"] = rest[0][:14] if rest else ""
         out["POINT_2"] = rest[1][:14] if len(rest) > 1 else ""
-        out["POINT_CLASS"] = ("km-sk--p2" if len(rest) > 1 else
-                              ("km-sk--p1" if rest else "km-sk--p0"))
+        out["POINT_CLASS"] = (f"{prefix}--p2" if len(rest) > 1 else
+                              (f"{prefix}--p1" if rest else f"{prefix}--p0"))
 
     return out
+
+
+# 兼容旧名（selftest 与外部脚本按这个名字引用过）
+hand_sketch_slots = shape_slots
 
 
 def asset_query(scene: dict, item: dict, ordinal: int,

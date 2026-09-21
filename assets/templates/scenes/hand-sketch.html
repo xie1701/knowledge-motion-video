@@ -236,31 +236,49 @@
   GSAP timeline fragment (deterministic; times scene-relative; first element in by 0.2s;
   second fromTo on the same element carries immediateRender:false).
 
-  笔尖助手（vendor 无 MotionPathPlugin，手动 along-path；纯时间函数，确定性）:
-  function kmSketchPen(tl, path, pen, at, dur, ease) {
+  笔尖助手（两个纯函数，内部**不含任何 tween**；vendor 无 MotionPathPlugin，手动 along-path）:
+    kmPenLen(path)  记录并返回路径长度，同时把描边收到 0 长度
+    kmPenTick(pen)  返回 onUpdate 回调：用 tween 自身的 progress 推算描边进度与笔尖状态
+  「何时画、画多久」必须留在 tween 的参数里：重定时器只认真正的 tween 位置参数，把时长藏进
+  一个普通函数调用，它会被当成位置参数重新映射（实测 0.60 → 9.26，跨过一个 2.46s 场景），
+  于是描边永远「还在画」、笔尖回调不触发，一枚墨点就留在照片上。
+  function kmPenLen(path) {
     const len = path.getTotalLength();
     path.style.strokeDasharray = len;
     path.style.strokeDashoffset = len;
-    const p = { t: 0 };
-    tl.fromTo(p, { t: 0 }, { t: 1, duration: dur, ease: ease || "power1.inOut",
-      onStart: () => { gsap.set(pen, { opacity: 1 }); },
-      onComplete: () => { gsap.set(pen, { opacity: 0 }); },
-      onUpdate: () => {
-        path.style.strokeDashoffset = String(len * (1 - p.t));
-        const pt = path.getPointAtLength(Math.max(0.001, len * p.t));
-        pen.setAttribute("cx", pt.x); pen.setAttribute("cy", pt.y);
-      } }, at);
+    return len;
   }
-  注意: helper 内 fromTo 的目标是普通对象 p（不是同一元素二次 fromTo），确定性 seek 安全。
-  渲染器要求: 状态写入发生在 onUpdate 回调内，渲染器跳转时必须 seek(t, false)（不抑制回调）——
+  function kmPenTick(pen) {
+    return function () {
+      const path = this.targets()[0];
+      const len = parseFloat(path.style.strokeDasharray) || 1;
+      const at = this.progress();
+      path.style.strokeDashoffset = String(len * (1 - at));
+      // 笔尖的显隐同样是时间的函数（progress 0/1 → 藏起来），不依赖 onStart/onComplete：
+      // seek 型渲染器不保证回调跑到。
+      const on = at > 0 && at < 1;
+      pen.style.opacity = on ? "1" : "0";
+      if (on) {
+        const pt = path.getPointAtLength(Math.max(0.001, len * at));
+        pen.setAttribute("cx", pt.x);
+        pen.setAttribute("cy", pt.y);
+      }
+    };
+  }
+  渲染器要求: 状态写入发生在 tween 的 onUpdate 回调内，渲染器跳转时必须 seek(t, false)（不抑制回调）——
   本 skill 的 scripts/render-browser.mjs seekRuntime 已如此实现；HyperFrames 同理。
 
-  SFX 挂点: 笔尖沙沙声 → 每段 kmSketchPen 起点。
+  SFX 挂点: 笔尖沙沙声 → 每段描边 tween 的起点。
 
   const pen = document.querySelector("#km-sk-pen");
-  const inkGroups = Array.from(document.querySelectorAll(".km-sk__inkgroup"));
+  // 查询必须从**笔尖所在的本场根元素**出发（理由见 swiss-sketch 同名注释）：写成
+  // document.querySelectorAll 时，每个场景块拿到的都是全文档第一个可见的墨迹组，
+  // 本场的线从未被设过 dasharray —— 线条从第一帧就是画完的，「被画出来」从未发生。
+  const sceneRoot = pen ? pen.closest(".km-sk") : null;
+  const inkGroups = sceneRoot ? Array.from(sceneRoot.querySelectorAll(".km-sk__inkgroup")) : [];
   const activeInk = inkGroups.filter(function (g) { return getComputedStyle(g).display !== "none"; })[0];
   const strokes = activeInk ? Array.from(activeInk.querySelectorAll(".km-sk__stroke")) : [];
+  const penTick = kmPenTick(pen);
   tl.fromTo(".km-sk__markring", { scale: 0, autoAlpha: 0, svgOrigin: "22 22" },
       { scale: 1, autoAlpha: 1, duration: 0.3, ease: "power3.out" }, 0.15)
     .fromTo(".km-sk__markline", { autoAlpha: 0, scale: 0.4, svgOrigin: "22 22" },
@@ -291,10 +309,15 @@
     .fromTo(".km-sk__bignumlabel", { autoAlpha: 0, y: 20 },
       { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 1.0)
     .fromTo(".km-sk__bignumline", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 1.4);
-  if (strokes[0]) kmSketchPen(tl, strokes[0], pen, 1.7, 0.8);
-  if (strokes[1]) kmSketchPen(tl, strokes[1], pen, 2.5, 0.7);
-  if (strokes[2]) kmSketchPen(tl, strokes[2], pen, 3.2, 0.8);
-  if (strokes[3]) kmSketchPen(tl, strokes[3], pen, 3.8, 0.6);
+  // 描边：目标就是那条线本身，时长/起画时间都是 tween 的参数 → 重定时器看得见、映射得准。
+  if (strokes[0]) tl.fromTo(strokes[0], { strokeDashoffset: kmPenLen(strokes[0]) },
+      { strokeDashoffset: 0, duration: 0.80, ease: "power1.inOut", onUpdate: penTick }, 1.70);
+  if (strokes[1]) tl.fromTo(strokes[1], { strokeDashoffset: kmPenLen(strokes[1]) },
+      { strokeDashoffset: 0, duration: 0.70, ease: "power1.inOut", onUpdate: penTick }, 2.50);
+  if (strokes[2]) tl.fromTo(strokes[2], { strokeDashoffset: kmPenLen(strokes[2]) },
+      { strokeDashoffset: 0, duration: 0.80, ease: "power1.inOut", onUpdate: penTick }, 3.20);
+  if (strokes[3]) tl.fromTo(strokes[3], { strokeDashoffset: kmPenLen(strokes[3]) },
+      { strokeDashoffset: 0, duration: 0.60, ease: "power1.inOut", onUpdate: penTick }, 3.80);
   tl.fromTo("#km-sk-photo", { autoAlpha: 0, scale: 1.06 },
       { autoAlpha: 1, scale: 1, duration: 0.3, ease: "power3.out",
         immediateRender: false, transformOrigin: "50% 50%" }, 3.7)
