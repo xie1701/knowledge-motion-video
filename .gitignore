@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json IS tracked (CI uses `npm ci` for a reproducible renderer install)
 
 # Renders and scratch (whitelist example outputs for the style gallery)
 examples/*/renders/*
@@ -25,6 +25,10 @@ examples/showcase-project/renders/qc-final/
 # 可再生的中间产物（旁白 ASR / BGM 拼接）
 examples/demo-density/audio/narration-asr.json
 examples/demo-density/audio/bgm.wav
-examples/demo-density/sweep/
 # 渲染临时目录（保留成片与抽帧）
 examples/demo-density/qc/
+# 15 风格横跑的输入（小文本，CI 直接引用，必须进仓）
+examples/demo-density/sweep/*
+!examples/demo-density/sweep/copy.txt
+!examples/demo-density/sweep/transcript.json
+!examples/demo-density/sweep/data.json

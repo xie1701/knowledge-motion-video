@@ -4,51 +4,71 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  python-checks:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Ensure ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+
+      - name: Install renderer dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Compile all scripts
         run: python3 -m py_compile scripts/*.py
+
       - name: Doctor (core tools present)
         run: python3 scripts/doctor.py
+
       - name: Engine self-test (structural contracts, no network, no render)
         run: python3 scripts/selftest.py
-      - name: Validate sample storyboard
-        run: python3 scripts/validate_scenes.py examples/sample-project/storyboard/scenes.json
+
+      - name: Validate every committed storyboard
+        run: |
+          for f in examples/*/storyboard/scenes.json examples/style-samples/*/storyboard/scenes.json; do
+            echo "— $f"
+            python3 scripts/validate_scenes.py "$f"
+          done
+
       - name: Build captions from sample transcript
         run: |
           python3 scripts/build_captions.py \
             --transcript examples/sample-project/script/transcript.json \
             --scenes examples/sample-project/storyboard/scenes.json \
             --out-dir /tmp/captions-ci
-      - name: Validate all style-sample storyboards
-        run: |
-          for f in examples/style-samples/*/storyboard/scenes.json; do
-            python3 scripts/validate_scenes.py "$f"
-          done
-      - name: Validate showcase storyboard
-        run: python3 scripts/validate_scenes.py examples/showcase-project/storyboard/scenes.json
-      - name: Validate demo-density storyboard
-        run: python3 scripts/validate_scenes.py examples/demo-density/storyboard/scenes.json
-      - name: Assemble every style template (lint only, no render)
-        run: |
-          for f in assets/templates/scenes/*.html; do
-            style=$(basename "$f" .html)
-            python3 scripts/make_video.py --copy examples/demo-density/sweep/copy.txt \
-              --project "/tmp/ci-$style" --go --style "$style" --no-render --no-fetch \
-              --transcript examples/demo-density/sweep/transcript.json
-          done
-      - name: Align transcript to copy (v2.5)
+
+      - name: Align transcript to copy
         run: |
           python3 scripts/align_transcript.py \
             --transcript examples/demo-density/script/transcript.raw.json \
             --text examples/demo-density/script/copy.txt \
             --out /tmp/aligned.json
-      - name: Fetch-assets dry-run on showcase (keyless sources reachable)
+
+      - name: Narration silence guard on the shipped voiceover
+        run: python3 scripts/check_narration.py examples/showcase-project/audio/narration.mp3
+
+      - name: Assemble every style template (lint only, no render, no fetch)
+        run: |
+          for f in assets/templates/scenes/*.html; do
+            style=$(basename "$f" .html)
+            echo "— $style"
+            python3 scripts/make_video.py --copy examples/demo-density/sweep/copy.txt \
+              --project "/tmp/ci-$style" --go --style "$style" --no-render --no-fetch \
+              --transcript examples/demo-density/sweep/transcript.json
+          done
+
+      - name: Fetch-assets dry-run (keyless sources reachable)
         run: python3 scripts/fetch_assets.py --project examples/showcase-project --dry-run

@@ -1,11 +1,11 @@
 {
-  "project": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density",
+  "project": "examples/demo-density",
   "verdict": "PASS",
   "checks": [
     {
       "name": "manifest",
       "status": "PASS",
-      "detail": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density/storyboard/scenes.json is valid"
+      "detail": "examples/demo-density/storyboard/scenes.json is valid"
     },
     {
       "name": "video",
@@ -31,7 +31,65 @@
           "s07@41.92s",
           "s08@47.48s"
         ],
-        "path": "/Users/jerry/cola/coding-cola/project-20260919-092044-dacbb0ff/knowledge-motion-skill/examples/demo-density/verify/contact-sheet.jpg"
+        "path": "examples/demo-density/verify/contact-sheet.jpg"
+      }
+    },
+    {
+      "name": "motion",
+      "status": "PASS",
+      "detail": {
+        "meanDiff": 4.7,
+        "longestFrozenSec": 0.0,
+        "worstScene": "",
+        "thresholds": {
+          "sampleFps": 8,
+          "lagSec": 1.0,
+          "frozenDiff": 0.4,
+          "maxFrozenSec": 1.2,
+          "minMeanDiff": 0.4
+        },
+        "scenes": [
+          {
+            "scene": "s01",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 2.28
+          },
+          {
+            "scene": "s02",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 6.45
+          },
+          {
+            "scene": "s03",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 7.15
+          },
+          {
+            "scene": "s04",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 4.21
+          },
+          {
+            "scene": "s05",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 3.87
+          },
+          {
+            "scene": "s06",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 5.24
+          },
+          {
+            "scene": "s07",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 4.74
+          },
+          {
+            "scene": "s08",
+            "longestFrozenSec": 0.0,
+            "meanDiff": 3.92
+          }
+        ]
       }
     }
   ]

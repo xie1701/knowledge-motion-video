@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Jerry (脉动无休)
+Copyright (c) 2026 Jerry (xie1701 / 脉动无休)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,10 @@ SOFTWARE.
 Third-party notices (summary — always verify against upstream):
 
 - HyperFrames (optional default renderer): Apache-2.0.
-- GSAP (loaded by compositions via CDN): GreenSock Standard License — free for
-  general commercial use; restricted when building competing visual animation
-  builder tools.
+- GSAP (vendored into compositions at `composition/vendor/gsap.min.js`):
+  GreenSock Standard License — free for general commercial use; restricted when
+  building competing visual animation builder tools. Replace it with your own
+  GSAP licence if your use falls outside those terms.
 - FFmpeg: LGPL-2.1+ / GPL depending on build configuration and enabled encoders.
 - Motion Canvas, Manim, Lottie-web, Revideo: MIT.
 - Kokoro TTS: Apache-2.0 (weights Apache-2.0; voice/G2P dependencies vary).

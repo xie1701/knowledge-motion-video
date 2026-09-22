@@ -1,5 +1,41 @@
 # Changelog
 
+## v2.9.1 — 2026-09-22
+
+**开源发布件**：把仓库整理成一个能给别人看、也能自己跑通的公开项目。这一版不动引擎，只把门面、
+CI 和包元数据补齐。
+
+### README 重写为公开门面
+
+- 结构改成「是什么 → 快速开始（一条命令）→ 真实案例（带数字）→ 15 种语法 → 怎么工作 →
+  质量门禁 → 安装 → 环境 → 诚实边界 → 中文速览」。第一屏给的是 hero 图与一句定位，不是目录。
+- 新增 `docs/hero.jpg`（三帧真实成片：两张带来源的数据图 + 一张拼贴证据墙）——**不是效果图**。
+- 管线用 mermaid 画出来；15 种语法直接引 `docs/style-sweep/sweep-contact-sheet.jpg`；
+  A/B 段引 `docs/style-ab/compare-sheet.jpg`。
+- 明确写清「诚实边界」：无密钥素材相关度约三张里两三张对题、15 条模板里有 4 条开场仍过不了
+  motion 门禁、TTS 会静默丢句、风格不是「更不呆板」的开关。
+
+### CI 现在真的能跑通（之前推上去必红）
+
+- **修**：`ci.yml` 引用了两个被 `.gitignore` 排除的文件（`examples/demo-density/sweep/copy.txt`、
+  `transcript.json`）——第一次推送到 GitHub 时「Assemble every style template」这一步必然失败。
+  现在这两个小文本进仓（同目录的音频/渲染产物仍然不进）。
+- **补**：工作流缺少 Node 与渲染器依赖，而 `make_video.py` 的 lint 走 `node_modules/.bin/hyperframes`。
+  新增 `setup-node@v4`（带 npm 缓存）+ `npm ci` + 「ffmpeg 不存在就装」的兜底步骤；
+  `package-lock.json` 因此改为进仓（CI 用 `npm ci` 保证渲染器可复现）。
+- 顺带把校验铺开：所有 `examples/**/storyboard/scenes.json`（含 4 条风格样片）逐份校验，
+  并新增一步对已发布旁白跑 `check_narration.py`（静默丢句的守卫本身也要被 CI 看着）。
+- 本地按 CI 逐步跑过：compile / doctor / selftest 204 / 7 份 storyboard / captions / align /
+  narration guard / 15 条模板逐条 `--no-render` 组装 / fetch dry-run。
+
+### 包元数据与许可证
+
+- `package.json`：`knowledge-motion-skill` → `knowledge-motion-video`，补 `repository` / `homepage` /
+  `keywords`；保持 `private: true`（这个包不发 npm，只做渲染器依赖）。lockfile 同步改名。
+- `LICENSE`：署名补上 GitHub 账号；GSAP 那条从「via CDN」改成事实描述——它是
+  **vendored**（`composition/vendor/gsap.min.js`），并说明超出 GreenSock 标准许可范围时该自己换授权。
+- `CONTRIBUTING.md`：加一条「提 PR 前先跑 `selftest.py` 与 CI 里的步骤」。
+
 ## v2.9.0 — 2026-09-21
 
 **「换个风格是不是还呆板？」** —— 同一份 TOC 报告、同一条旁白，把 `swiss-sketch` 从一条 40 行的

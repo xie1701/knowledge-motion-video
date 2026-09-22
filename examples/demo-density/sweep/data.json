@@ -1,0 +1,17 @@
+[
+  {
+    "mode": "bignum",
+    "title": "GPT-3 参数量",
+    "unit": "",
+    "labels": [
+      "GPT-3 参数量（2020）"
+    ],
+    "values": [
+      {
+        "display": "1750亿",
+        "value": 1750
+      }
+    ],
+    "source": "OpenAI, GPT-3 技术报告（NeurIPS 2020）"
+  }
+]

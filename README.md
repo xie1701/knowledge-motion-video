@@ -1,279 +1,352 @@
+<div align="center">
+
 # Knowledge Motion Video
 
-<!-- GitHub 徽章：仓库创建后把 <owner>/<repo> 替换为实际路径，例如 your-name/knowledge-motion-video -->
-[![ci](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+**Copy in, narrated knowledge film out.**
 
-**文案进，知识动画视频出。** A renderer-neutral, open-source agent skill that turns scripts,
-articles, lessons, and analyses into narrated knowledge-animation videos — segmented into
-semantic beats, routed per beat to the visual grammar that explains it best, rendered
-deterministically, and assembled end-to-end with voiceover, captions, and music.
+Turn a script — or a 44,000-character report — into a narrated, captioned, 1080×1920
+knowledge-animation film: semantic beats, one visual grammar chosen for the whole film and the
+right layout for every sentence, real sourced photos, word-level timing, and a verification
+report that **fails the build when the picture stops moving**.
 
-> Inspirations include Vox-style collage, Kurzgesagt-style explainers, and creator workflows
-> such as the "badcat-animate" demo. All templates and code here are original. Principles are
-> learned; no protected frames, characters, or assets are reproduced.
+[![ci](https://github.com/xie1701/knowledge-motion-video/actions/workflows/ci.yml/badge.svg)](https://github.com/xie1701/knowledge-motion-video/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](https://www.python.org/)
+[![node 22+](https://img.shields.io/badge/node-22%2B-339933.svg)](https://nodejs.org/)
+[![no API key required](https://img.shields.io/badge/API%20key-not%20required-success.svg)](#keyless-by-default)
+[![self-test 204](https://img.shields.io/badge/self--test-204%20checks-brightgreen.svg)](scripts/selftest.py)
 
-## Why
+<img src="docs/hero.jpg" alt="Frames from films this pipeline produced: a sourced data-viz film and a torn-paper evidence collage" width="100%">
 
-Knowledge videos are hard not because any single piece is hard, but because the work is
-fragmented: finding assets, planning camera moves, timing captions, generating media,
-downloading, and assembling. This skill collapses that pipeline into one recoverable,
-auditable production contract — and generalizes beyond any single creator's style pack:
+<sub>All three frames are real output: two scenes of a sourced data film, one scene of the
+torn-paper evidence grammar. Nothing here is a mockup.</sub>
 
-- **Semantic beats, not slides.** Content is segmented into 6–8 second beats driven by meaning
-  and the audio clock.
-- **Routing, not templates.** Twelve visual grammars — collage, comic, paper diorama, Swiss
-  sketch, UI demo, data-viz, kinetic type, whiteboard, timeline, process flow, map, cinematic —
-  compete to explain each beat.
-- **Renderer-neutral contracts.** `storyboard/scenes.json` describes intent; HyperFrames,
-  Manim, Lottie, Three.js, or the bundled headless-Chrome fallback renderer can execute it.
-- **Audio-first timing.** Narration is locked first; word timestamps drive visual payoffs.
-- **Deterministic and resumable.** Fixed seeds, seek-safe motion, manifests for scenes and
-  assets, JSON verification reports.
+</div>
+
+---
+
+## What this is
+
+An agent skill **and** a standalone CLI for producing explainer-style vertical video from text.
+It is not a template pack and not a "text to video" model — it is a production pipeline with a
+contract at every step, so a film can be re-derived, diffed, and audited months later.
+
+| | |
+|---|---|
+| **Input** | a plain-text script (one sentence per line), or any document you first edit down into one |
+| **Output** | `renders/final.mp4` — 1080×1920, H.264 + AAC, narration + captions + optional BGM, plus `verify/report.json` |
+| **Grammars** | 15 scene templates (collage ×2, sketch ×2, paper ×2, data-viz, kinetic type, comic, whiteboard, UI demo, timeline, process flow, map, cinematic) |
+| **Timing** | derived from word-level ASR timestamps — never hand-written beats |
+| **Assets** | keyless photo search (Openverse / Wikimedia) or Pexels / Pixabay with a free key, with relevance and "this is a paper figure" guards |
+| **Cost** | no API key required to run the shipped examples end-to-end |
+
+### What it actually solves
+
+Knowledge video is not hard because any single step is hard. It is hard because the work is
+fragmented: find assets, plan camera moves, time captions, generate media, download, assemble,
+notice the timing is off, redo it. This pipeline collapses that into one recoverable contract:
+
+- **Semantic beats, not slides.** Copy is segmented into sentences (split further at internal
+  punctuation if a sentence runs past ~8s); each sentence becomes one scene, and its visuals are
+  anchored to the words that are actually being spoken.
+- **Routing, not one template.** The copy is analyzed for semantic signals and one visual grammar
+  is chosen for the *whole film* (mixing grammars inside a film reads as a mistake, not as
+  variety). `recommend_style.py` prints the decision chain, and `project.style` is validated so a
+  scene can never silently drift to another grammar.
+- **Renderer-neutral contracts.** `storyboard/scenes.json` is the source of truth. HyperFrames is
+  the default renderer; a bundled headless-Chrome renderer (`scripts/render-browser.mjs`) is the
+  fallback, so nothing here depends on a single vendor.
+- **Audio-first timing.** Narration is locked first; `derive_timing.py` turns word timestamps into
+  scene boundaries and template `@beats` anchors. Nothing is hand-timed.
+- **Deterministic and resumable.** Fixed seeds, seek-safe motion, manifests for scenes and assets,
+  and a machine-readable verification report.
 
 ## Quick start
 
 ```bash
-# 1. Check the environment
-python3 scripts/doctor.py
+git clone https://github.com/xie1701/knowledge-motion-video.git
+cd knowledge-motion-video
+npm install                      # renderer only (hyperframes + puppeteer-core)
+python3 scripts/doctor.py        # checks python / node / ffmpeg / chrome
 
-# 2. Scaffold a project
-python3 scripts/scaffold_project.py ~/Videos/my-explainer --title "为什么天空是蓝色" --aspect 9:16
+# One command: copy → style recommendation → narration → shot plan → assets →
+# assembly → lint → render → captions → final mix → verify
+python3 scripts/make_video.py \
+    --copy examples/demo-density/script/copy.txt \
+    --project /tmp/my-film --go --style data-viz \
+    --narration examples/demo-density/audio/narration.mp3 \
+    --transcript examples/demo-density/script/transcript.json \
+    --data examples/demo-density/storyboard/data.json
 
-# 3. Edit storyboard/scenes.json (schema: references/scene-schema.md)
-python3 scripts/validate_scenes.py ~/Videos/my-explainer/storyboard/scenes.json
-
-# 4. Build the composition, then render either way:
-npx hyperframes render                              # HyperFrames (default)
-node scripts/render-browser.mjs composition/index.html --fps 30   # bundled fallback
-
-# 5. Captions, mix, and finalize
-python3 scripts/build_captions.py --transcript transcript.json \
-  --scenes storyboard/scenes.json --out-dir captions/
-python3 scripts/finalize.py --visual renders/visual-master.mp4 \
-  --narration assets/audio/vo.wav --captions captions/subtitles.ass \
-  --out renders/final.mp4
-
-# 6. Verify
-python3 scripts/verify.py ~/Videos/my-explainer
+python3 scripts/verify.py /tmp/my-film       # manifest · video · contact sheet · motion
 ```
 
-A complete worked example — script → storyboard → composition → narration → captions →
-final MP4, all verified — lives in [`examples/sample-project/`](examples/sample-project/).
+Output lands in `/tmp/my-film/renders/final.mp4` with `verify/report.json` next to it. Drop
+`--style` to see the style recommendation first; without `--go` the pipeline stops at the
+confirmation gate and prints what it decided and why. Add `--bgm music.wav` for a music bed
+(finalize mixes it at 0.18 and does not loop it for you — trim it to the film length first; the
+showcase example ships a CC0 one at `examples/showcase-project/audio/bgm.wav`).
 
-## From a long document to a 5-minute film（v2.8）
+### Bring your own copy
 
-用一份 44,484 字的研报（`TOC瓶颈理论从入门到精通.md`）跑出来的真实案例：
+```bash
+# script.txt: one sentence per line, full-width punctuation, short sentences win
 
-- **先算预算再动笔**：这个音色实测 ≈3.35 字/秒，5 分钟 ≈ 1,050 字。4.4 万字压到 5 分钟是
-  **42:1** 的重写，不是朗读——脊柱比目录重要（案例命 6 幕：反直觉开场 → 概念翻转 →
-  五步法 → 为什么难 → 来历 → 判断）。
-- **旁白分段生成 + 逐段体检**：TTS 会**静默丢句**——实测两次各留下 41.3s / 58.5s 的纯静音，
-  不看波形根本发现不了（后果是时间轴错位或 `durationSec must be > 0`）。
-  `python3 scripts/check_narration.py audio/*.mp3` 已进管线，见
-  [`docs/document-to-film.md`](docs/document-to-film.md)。
-- **55 场 / 5 套版面**：同一部片里按句子形状逐场换（巨数字 / 一句话大片 / 对照 / 步骤进度 /
-  论证），最长同版面连续 2 场；「第 N 步」句自动拿到进度条 + 巨号步序。
+# ① narration + word-level timings, no API key: edge-tts emits both
+python3 scripts/tts_edge.py --text-file script.txt --out-dir audio/ --prefix narration
+#    → audio/narration.mp3 + audio/narration.words.json   (tokens + timestamps)
+python3 scripts/check_narration.py audio/narration.mp3     # catches silently dropped lines
 
-## Showcase（完整素材化案例）
+# ② assemble. Any TTS + any word-timing source works; `--transcript` just has to
+#    carry {"tokens": [...], "timestamps": [[start, end], ...]}
+python3 scripts/make_video.py --copy script.txt --project proj --go \
+    --narration audio/narration.mp3 --transcript audio/narration.words.json
+```
 
-[`examples/showcase-project/`](examples/showcase-project/) 是全链路案例（32.3s，1080×1920）：
+If your TTS gives you audio but no word timings, transcribe it (`coli asr -j audio.mp3 > asr.json`
+for offline ASR, or any service) and then run `scripts/align_transcript.py` to line the ASR text
+back up with your copy — ASR writes numbers and Latin acronyms differently (`过去十年` → `过去1年`,
+`arXiv` → `Aive`), and the aligned version is what the timings should come from.
 
-- **整片单一风格**：全片文案语义分析 → 整片 hand-sketch 语法（风格路由是整片决策，见 SKILL.md）
-- **旁白 + BGM + 烧录字幕**：场景边界与关键词 beat 全部由词级 ASR 时间戳推导
-  （`derive_timing.py`），每个视觉动作卡在语音关键词落点 ±0.3s 内
-- **真实素材**：一张语义匹配的 CC 授权真实照片（复古胶片相机），由 `fetch_assets.py` 检索
-  下载并经素材目检关卡，许可证与署名记录在 `assets/media/manifest.json`
-- **BGM**：Openverse 无密钥获取的 CC0 钢琴循环，0.18 音量垫底 + 淡入淡出
-- 成片：`renders/final-showcase.mp4`
+## Real runs
 
-复现：`python3 scripts/fetch_assets.py --project examples/showcase-project --sheet` → 目检素材 →
-渲染 → `python3 scripts/derive_timing.py …` 重建时间轴 → `finalize.py --bgm …`。
+Three films in this repo were produced by this pipeline, and each one is committed with its full
+intermediate state so you can re-render or fork it.
 
-## Data film（数据片示例，v2.5）
+| Case | Input | Output | What it proves |
+|---|---|---|---|
+| [`examples/demo-density/`](examples/demo-density/) | 8-sentence data script + a sourced JSON | 8 scenes / 49.9s | charts carry **real, cited numbers**; the chart geometry is measured, not eyeballed |
+| [`examples/showcase-project/`](examples/showcase-project/) | 32s copy | 6 scenes / 32.3s | narration + CC0 BGM + burned captions; scene boundaries and beats derived from word timestamps (±0.3s) |
+| [`docs/document-to-film.md`](docs/document-to-film.md) | a 44,484-character report | 1,066-character script → **56 scenes / 319.07s** | the 42:1 rewrite, plus the TTS failure mode nobody sees |
 
-[`examples/demo-density/`](examples/demo-density/) 是一条 8 场 / 49.9s 的数据叙事片
-《数量在膨胀，密度在收缩》（1080×1920，旁白 + CC0 BGM + 烧录字幕）：
+**Document → 5-minute film.** A 3,522-line report was read as a skeleton (`grep '^#'`), edited
+into a 6-act spine, and written as 32 sentences. Then the narration was generated *in five
+segments* because the TTS silently dropped two long stretches (41.3s and 58.5s of pure silence,
+invisible unless you look at the waveform) — the process, the budget math (3.35 characters/second
+for Chinese narration, so ~1,050 characters ≈ 5 minutes) and the pitfalls are written up in
+[`docs/document-to-film.md`](docs/document-to-film.md).
 
-- **每个数字都能点回来源**：Stanford HAI AI Index 2025/2026、arXiv 年度报告、NeurIPS 2019、
-  AAAI 2025、arXiv 2603.23640；每张图底部署名，没来源就不写。
-- **五种版式按语义自动选**：趋势线（10.2万→24.2万→25.8万）→ 柱状图（arXiv 投稿量）→
-  柱状图（两项独立复现实验 63.5% / 50%）→ 巨数（GPT-3 1750 亿）→ 大字陈述（参数不再公开）→
-  柱状图（同一 15 亿模型的速度）→ 巨数（推理成本 280 倍）→ 大字陈述（结论）。
-- **动画挂在念出的字上**：模板的 `@beats` 锚点被解到旁白关键词的词级时间戳，
-  柱子是边说边长、数值在词后落地（`storyboard/beats.json` 可核）。
-- 成片：`renders/final-density.mp4`；数据源与口径记在 `storyboard/data.json`。
+**Two grammars, one script (A/B).** The same 56-scene plan and the same narration rendered
+through `hand-sketch` and `swiss-sketch`:
 
-复现：`python3 scripts/make_video.py --copy examples/demo-density/script/copy.txt \
-  --project /tmp/demo --go --style data-viz --narration examples/demo-density/audio/narration.mp3 \
-  --data examples/demo-density/storyboard/data.json --bgm examples/demo-density/audio/bgm.wav`
-
-## Style gallery
-
-Four design presets × four routes, same 10-second script, rendered at 1080×1920.
-These are **silent style loops** for comparing visual grammars — for a full narrated,
-material-driven case see the Showcase above:
-
-| Preset | Route | Sample |
+| | hand-sketch | swiss-sketch |
 |---|---|---|
-| clean-education | whiteboard-tutorial | [`examples/style-samples/clean-education/`](examples/style-samples/clean-education/) |
-| dark-technical | data-viz | [`examples/style-samples/dark-technical/`](examples/style-samples/dark-technical/) |
-| warm-editorial | editorial-collage | [`examples/style-samples/warm-editorial/`](examples/style-samples/warm-editorial/) |
-| bold-social | kinetic-typography | [`examples/style-samples/bold-social/`](examples/style-samples/bold-social/) |
+| grammar | paper texture, feTurbulence-wavered strokes, taped photo cards | strict modular grid, ruler-straight lines, red used only as structure |
+| longest frozen frame | **0.00 s** | **0.00 s** |
+| whole-film mean diff | 10.07 | 10.77 |
+| layouts used | 5 (statement 22 · thesis 16 · contrast 11 · step 5 · number 2) | same, by construction |
+| asset readiness | 56/56 | 56/56 |
 
-A side-by-side comparison GIF is at [`docs/style-comparison.gif`](docs/style-comparison.gif);
-per-style loops live next to each sample under `renders/`. Each sample contains the full
-`composition/` + `storyboard/scenes.json` pair, so you can re-render or remix any of them.
+<img src="docs/style-ab/compare-sheet.jpg" alt="The same narrative moments in both films, A above B" width="100%">
 
-### Sweep all 15 styles on one excerpt
+The layout counts match because both styles are *shape-driven*: the same sentence gets the same
+layout either way. That isolates what actually differs — the visual grammar, not the pacing.
+Reproduce with [`scripts/compare_films.py`](scripts/compare_films.py); details and honest caveats
+in [`docs/style-ab/`](docs/style-ab/).
 
-`scripts/style_sweep.py` renders the *same* excerpt through **every** route and builds a review
-sheet, so you can see what each grammar actually does to your copy:
+## The 15 visual grammars
+
+One sentence, the same narration, fifteen grammars — rendered by
+[`scripts/style_sweep.py`](scripts/style_sweep.py), which is both a review tool and an
+end-to-end regression net:
+
+<img src="docs/style-sweep/sweep-contact-sheet.jpg" alt="Fifteen visual grammars rendering the same sentence" width="100%">
+
+| Route | What it draws | Route | What it draws |
+|---|---|---|---|
+| `data-viz` | sourced charts, 5 honest layouts, big numbers | `hand-sketch` | line art drawn by a pen, paper texture |
+| `swiss-sketch` | the same shapes on a strict modular grid | `collage-evidence` | torn-paper evidence wall of real photos |
+| `editorial-collage` | magazine collage, main + secondary photo | `generated-cinematic` | graded cinematic still (photos only) |
+| `kinetic-typography` | type as the subject, line-by-line | `whiteboard-tutorial` | marker on whiteboard |
+| `process-flow` | steps, arrows, pipeline states | `timeline-history` | a dated axis with events |
+| `map-geo` | abstract map + located points | `ui-demo` | screen recording look, cursor, callouts |
+| `paper-diorama` | layered paper cut-outs | `paper-fold` | folded paper panels |
+| `character-concept-comic` | a character acting out the idea | | |
 
 ```bash
 python3 scripts/style_sweep.py --copy excerpt.txt --narration excerpt.m4a \
     --transcript excerpt.json --out-dir q/
-# → q/sweep-contact-sheet.jpg（5×3 抽帧表）
-#   q/sweep-grid.mp4（15 格并排对比片）
-#   q/sweep-report.json（每格时长 / 版式 / 失败原因）
+# → q/sweep-contact-sheet.jpg   5×3 frame grid
+#   q/sweep-grid.mp4            15 cells side by side
+#   q/sweep-report.json         per-style duration / layout / motion / failure reason
 ```
 
-Renderings of the 15 routes on one sentence are in [`docs/style-sweep/`](docs/style-sweep/).
-It doubles as an end-to-end regression net: every template's assembly path gets exercised.
+Live motion, from the showcase film:
 
-### Material styles fetch their own photos (v2.6)
+<img src="docs/showcase.gif" alt="A 32-second hand-sketch film in motion" width="60%">
 
-Three routes put **real photographs** on screen — `collage-evidence` (torn-paper evidence wall),
-`editorial-collage` (main + secondary photo window), `generated-cinematic` (a cinematic still).
-The pipeline now sources those photos itself instead of leaving placeholder boxes:
+## How it works
+
+```mermaid
+flowchart LR
+  A["copy.txt<br/>one sentence per line"] --> B["style router<br/>recommend_style.py"]
+  A --> C["narration<br/>any TTS"]
+  C --> C2["silence check<br/>check_narration.py"]
+  C2 --> D["word-level ASR<br/>coli asr"]
+  D --> E["transcript aligned<br/>to your copy"]
+  B --> F["shot plan<br/>scenes.json"]
+  E --> G["timing derivation<br/>derive_timing.py"]
+  F --> H["assets<br/>fetch_assets.py"]
+  G --> I["assembly<br/>make_video.py"]
+  H --> I
+  I --> J["lint<br/>hyperframes lint"]
+  J --> K["render<br/>hyperframes / render-browser.mjs"]
+  K --> L["finalize<br/>captions + BGM + burn-in"]
+  L --> M["verify.py<br/>manifest · video · sheet · motion"]
+```
+
+Every arrow is a file you can read: `storyboard/{scenes,beats,layouts,assets-plan,style-decision}.json`,
+`assets/media/manifest.json`, `captions/captions.ass`, `verify/report.json`.
+
+**Templates are declarative.** A scene template is an HTML fragment with slots (`{{TITLE}}`,
+`{{BARS}}`, …) plus a trailing `// @beats enter=… build=… reveal=… mid=… peak=… settle=…`
+annotation. At assembly time the engine solves those anchors against the narration's word
+timestamps and re-times the template's GSAP timeline segment-wise, so "the bars grow when the
+number is spoken" is a property of the template, not of a hand-tuned project. The same mechanism
+gives each scene a `mid` development beat, so a scene changes *state* halfway instead of just
+finishing its entrance and freezing.
+
+## Quality gates
+
+The point of a pipeline is what it refuses to ship.
+
+- **Motion is a gate, not a taste.** `verify.py` samples the master at 8 fps and compares every
+  frame **to the same frame one second earlier** (`blend=difference` + `signalstats`) — the scale
+  at which a slow drift reads as visible while a genuine hold still measures zero. It fails on any
+  run of **more than 1.2 s with no change at all**, or a whole-film mean below 0.4. The first run
+  of this gate failed both shipped films (1.75 s and 1.50 s of literally identical pixels, 24–27%
+  of samples under the floor); the fix was an engine-level ambient layer plus a second development
+  beat, not a shorter threshold.
+- **Charts must be honest.** Bars are zero-baseline and linear (`h = 82%·v/vmax`), the axis is
+  uniformly filled, category labels sit below the baseline, and a scene with no numbers gets a
+  big-type statement instead of a fake bar. Every chart prints its source; if there is no source,
+  none is printed.
+- **Numbers are traceable.** The data film's figures come from Stanford HAI AI Index 2025/2026,
+  arXiv's annual reports, NeurIPS 2019, AAAI 2025 and arXiv 2603.23640 — collected in
+  [`examples/demo-density/data-sources-research.md`](examples/demo-density/data-sources-research.md),
+  including the items where **no verifiable source was found**.
+- **Captions are constrained by geometry.** Lines are re-chunked to fit the safe width, never split
+  mid-word, and the band is kept clear of the bottom 230 px.
+- **Narration is checked for silence.** TTS drops lines silently; a >3 s gap aborts loudly instead
+  of producing a mis-timed film.
+- **The engine self-tests without rendering.** `python3 scripts/selftest.py` runs **204 structural
+  assertions** (template parsing, anchor completeness, injected ambient attributes, variant rules,
+  slot contracts, `node --check` on every extracted scene script, retimer regressions) in about a
+  second, with no network and no browser.
+
+## Install
+
+**As a CLI:** clone and run the scripts. Python standard library only; `npm install` is needed just
+for the renderer.
+
+**As an agent skill:**
 
 ```bash
-python3 scripts/make_video.py --copy copy.txt --project outdir --go --style collage-evidence \
-    --narration vo.mp3 --transcript asr.json
-# → 素材检索（collage-evidence）：4/4 就绪 → outdir/assets/media
-#   outdir/storyboard/assets-plan.json    每场的检索词与来源
-#   outdir/assets/media/contact-sheet.jpg 渲染前目检（标签带检索词）
-#   outdir/assets/media/manifest.json     许可证与署名清单（发布要留）
+./install.sh     # symlinks into ~/.cola/skills/knowledge-motion-video
 ```
 
-Queries are synthesized from each scene's own concepts via
-[`assets/lexicon/visual-concepts.txt`](assets/lexicon/visual-concepts.txt) (Chinese concept →
-English phrase, 2–4 alternatives each, so four slots in one scene get four different images).
-English recall is far better than Chinese on every source. Override per scene with
-`--assets plan.json`, prefer your own library with `--local-dir`, or opt out with `--no-fetch`.
-
-Keyless sources are noisy, so fetching carries guards: results are re-ranked by title/description
-overlap, images narrower than 900px are rejected, **paper material is rejected** (a white, low-
-saturation first frame means a paper figure, a flowchart, or a matplotlib screenshot — 7 of the 29
-images in our first material cut were exactly that), no source URL is used twice in a run, and a
-query ladder retries both the bare concept and the scene's other concept candidates. The concept
-table itself follows one hard rule: **the first alternative has to be something a camera can
-photograph** — abstract nouns (`inference`, `algorithm`, `efficiency`) only ever match paper
-figures on keyless sources, which the guard then rejects, so the slot comes back empty. Fixing that
-rule alone took material readiness from 28/32 to 32/32.
-
-**Layout follows the material.** A scene that came back with three photos instead of four does not
-leave an empty box on screen: the new `choose_variant` step picks a layout that fits the count
-(`wall` / `cascade` / `hero` / `pair` / `single`), never repeating the previous scene's layout, and
-a slot with no material removes its whole card. `storyboard/layouts.json` records what was chosen
-and why per scene.
-
-**Relevance is still roughly 3-in-4** — view `contact-sheet.jpg` before rendering and fix the
-off-topic slot by editing its query or shifting the hit (`"pick": 1`). Set `PEXELS_API_KEY` /
-`PIXABAY_API_KEY` for much better material; Openverse and Wikimedia need no key.
-
-### Two grammars, same script (v2.9)
-
-`hand-sketch` and `swiss-sketch` both draw the argument with line art, and they share one layout
-vocabulary — but they are not the same film with a different font. Put the same 44k-character report
-and the same narration through each one and compare:
-
-| | hand-sketch | swiss-sketch |
-|---|---|---|
-| grammar | paper texture, strokes wavered by feTurbulence, taped/rotated photo cards | strict modular grid, ruler-straight lines, red used only as structure |
-| layouts | 22 statement · 16 thesis · 11 contrast · 5 step · 2 number | 22 statement · 16 thesis · 11 contrast · 5 step · 2 number |
-| longest same layout run | 2 scenes | 2 scenes |
-| longest frozen frame | 0.00 s | 0.00 s |
-| whole-film mean diff | 10.07 | 10.77 |
-| asset readiness | 56/56 | 56/56 |
-
-The layout counts match *by construction*: both styles are shape-driven, so the same sentence gets
-the same layout in either one. That is deliberate — it isolates the visual grammar, which is what
-actually differs. `scripts/compare_films.py` produces the table above and a labelled sheet of the
-same narrative moments in both films:
-
-```bash
-python3 scripts/compare_films.py --a project-hand --b project-swiss --cols 6 --out-dir q/
-# → q/compare-stats.json    两版并排的数字
-#   q/compare-sheet.jpg     上 A / 下 B 的同场次抽帧（版面不同的格子带 *）
-```
-
-Both films are in [`docs/style-ab/`](docs/style-ab/). If you only need to check a layout's geometry,
-`render-browser.mjs --stills "t1,t2"` screenshots chosen moments without a full render.
-
-## Motion is a gate, not a taste (v2.7)
-
-"The picture is stiff" is measurable. `verify.py` samples the master at 8 fps and compares every
-frame **to the same frame one second earlier** (`blend=difference` + `signalstats`) — the scale at
-which a slow drift reads as visible while a genuine hold still measures zero. It fails when
-
-- any scene has a run of **more than 1.2 s where the picture does not change at all**, or
-- the whole-film mean drops below 0.4.
-
-```bash
-python3 scripts/verify.py outdir
-# [PASS] motion: {'meanDiff': 3.72, 'longestFrozenSec': 0.12, 'worstScene': 's01', …}
-```
-
-The first run of this gate failed both shipped films (1.75 s with nothing changing in one scene of
-the collage film, 1.50 s in the data film; 24–27% of all samples under the floor) — entrance
-animations are over by the middle of a scene, and the rest was literally the same pixels. Two
-engine features fix it, and both are declared in the template rather than composed by hand:
-
-- **Ambient layer** — every scene gets a slow 3–4.5% camera push on the clip itself (no template
-  work needed, and pushing *in* means the overflow is clipped rather than exposing an edge), plus
-  per-template detail: `data-km-drift="20"` on a decorative layer (drifts ±20 px over the whole
-  scene) and `data-km-push="4"` on a photo (a Ken Burns move). Decorative layers sit at
-  `inset:-8%` so a few pixels of drift never expose a seam. Opt out with `data-km-ambient="off"`.
-- **A second development beat** — the `@beats` anchor set grew a `mid`, solved to the middle of the
-  reveal→peak span. That's where a scene changes *state* (in `collage-evidence`: the hero card
-  pushes in while the others get shoved aside and dimmed) instead of just adding another entrance.
-
-Per-template guidance: entrances belong in the first third, one visible re-layout or emphasis
-belongs at `mid` or `peak`, and the tail is carried by the ambient layer. Fixing a failing scene is
-usually "the animation is over too early" — move a beat later or add ambient life, don't shorten
-the threshold.
+[`SKILL.md`](SKILL.md) is the agent-facing workflow — the decisions, the gates, and the failure
+modes an agent is expected to handle. Point any coding agent at it (or at
+[`docs/`](docs/)) and it can drive the pipeline; the CLI works the same either way.
 
 ## Requirements
 
-- Python 3.10+ (standard library only)
-- Node.js 22+ (for rendering; `puppeteer-core` installed via npm)
-- FFmpeg + FFprobe on PATH
-- Google Chrome / Edge / Chromium (for the fallback renderer)
-- Optional: HyperFrames CLI (`npx hyperframes`), `coli asr` for offline transcription,
-  edge-tts / Kokoro / commercial TTS for narration
+| | |
+|---|---|
+| Python | 3.10+ (standard library only) |
+| Node.js | 22+ (`npm install` pulls `hyperframes` + `puppeteer-core`) |
+| FFmpeg | `ffmpeg` + `ffprobe` on `PATH` |
+| Browser | Chrome / Chromium / Edge for the fallback renderer |
+| Optional | `coli` (offline ASR), `edge-tts` (free narration), `PEXELS_API_KEY` / `PIXABAY_API_KEY` (better photos) |
+
+## Keyless by default
+
+The shipped examples run with no API key: narration comes from a committed MP3, photos come from
+Openverse / Wikimedia, BGM is CC0. Text-to-video is deliberately **not** wired in — the only
+permissively-licensed backend considered was Wan2.2 (Apache-2.0), and the cleanest option was to
+let you use real photos instead of generating footage you cannot license.
+
+## Honest limits
+
+- **Keyless photo relevance is roughly 3-in-4.** View `assets/media/contact-sheet.jpg` before
+  rendering (or add a key) and fix the off-topic slot by editing its query. The pipeline refuses
+  paper figures, flowcharts and screenshots, but a dark-background paper figure can still slip
+  through.
+- **Four of the fifteen templates still fail the motion gate in their opening scene**
+  (`kinetic-typography`, `map-geo`, `process-flow`, `timeline-history`). `make_video.py` treats
+  motion as a warning, not a hard failure, for exactly this reason — `--strict-motion` flips it.
+- **Silent TTS line drops are real.** Segment your narration and check it; see
+  [`docs/document-to-film.md`](docs/document-to-film.md).
+- **Style is not a "less stiff" switch.** Pacing comes from the arrangement (entrance + mid-scene
+  state change + ambient layer) and from whether the layout changes per sentence. Two styles can be
+  equally alive.
 
 ## Repository layout
 
 ```text
 SKILL.md                  the agent-facing workflow
 references/               pipeline, scene schema, style router, motion language, stack notes
-scripts/                  scaffold, validate, captions, finalize, verify, fetch-assets, mix-audio, render, doctor
-assets/templates/         per-route scene fragments + series furniture
-assets/styles/            design token presets
-examples/                 complete runnable projects
+scripts/                  19 tools: scaffold, validate, recommend, assemble, render, captions,
+                          finalize, verify, fetch-assets, sweep, compare, self-test, doctor
+assets/templates/scenes/  the 15 scene grammars (+ series furniture)
+assets/styles/            4 design token presets
+assets/lexicon/           word list + Chinese→English visual concept table
+examples/                 complete runnable projects, renders and verify reports included
+docs/                     case studies, style sweeps, A/B comparison, hero art
 ```
 
-## Install as a skill
+## Docs
+
+| | |
+|---|---|
+| [`SKILL.md`](SKILL.md) | the full workflow an agent follows |
+| [`docs/document-to-film.md`](docs/document-to-film.md) | turning a long document into a film, budget math and pitfalls |
+| [`docs/style-recommendation.md`](docs/style-recommendation.md) | how the semantic router decides |
+| [`docs/style-sweep/`](docs/style-sweep/) | all 15 grammars on one sentence, with per-style notes |
+| [`docs/style-ab/`](docs/style-ab/) | hand-sketch vs swiss-sketch, same script |
+| [`references/scene-schema.md`](references/scene-schema.md) | the `scenes.json` contract |
+| [`CHANGELOG.md`](CHANGELOG.md) | what changed in each version, including the bugs worth remembering |
+
+## 中文速览
+
+一句话：**给一段文案，出一支有旁白、有字幕、有素材、时间轴卡在字上的竖屏知识动画。**
 
 ```bash
-./install.sh   # symlinks into ~/.cola/skills/knowledge-motion-video
+git clone https://github.com/xie1701/knowledge-motion-video.git && cd knowledge-motion-video
+npm install && python3 scripts/doctor.py
+python3 scripts/make_video.py --copy 你的文案.txt --project /tmp/片 --go \
+    --narration 旁白.mp3 --transcript 词级转写.json
+python3 scripts/verify.py /tmp/片        # 成片 + 验证报告
 ```
+
+- **15 种视觉语法**（拼贴、手绘、瑞士网格、数据图、动态字、漫画、纸雕、折纸、白板、
+  UI 演示、时间线、流程图、地图、电影感…），整片只走一条——混着用像失误，不像丰富。
+- **时间轴全部由词级 ASR 推导**，模板里的 `@beats` 锚点挂到念到那个字的时刻，不用手写 beat。
+- **质量门禁会拦你**：画面停住超过 1.2s 直接判不合格；图表必须零基线、标来源、没数据就不画柱。
+- 真案例与坑：[`docs/document-to-film.md`](docs/document-to-film.md)（4.4 万字 → 5:19 片子，
+  含 TTS 静默丢句）、[`docs/style-ab/`](docs/style-ab/)（同一份文案两条风格并排）。
+- 环境：Python 3.10+ / Node 22+ / FFmpeg；**跑通示例不需要任何 API key**。
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Third-party components and any assets you generate or import are
-governed by their own licenses; record provenance in `assets/manifest.json`.
+MIT — see [LICENSE](LICENSE). Third-party components keep their own terms, and the ones that
+matter are listed in the same file:
 
-Bundled third-party data: `assets/lexicon/zh-words.txt` is derived from jieba's `dict.txt`
-(MIT License, Copyright (c) 2013 Sun Junyi) — trimmed and extended with project-authored
-vocabulary; provenance notes are in the file header.
+- **GSAP** is vendored (`composition/vendor/gsap.min.js`) under the GreenSock Standard License —
+  free for general use, restricted if you are building a competing visual animation builder.
+- **HyperFrames** (the optional default renderer) is Apache-2.0; **FFmpeg** is LGPL/GPL depending
+  on the build.
+- `assets/lexicon/zh-words.txt` is derived from jieba's `dict.txt` (MIT, © 2013 Sun Junyi),
+  trimmed and extended with project-authored vocabulary; provenance is in the file header.
+
+Anything you fetch, generate, or import with this pipeline is governed by its own license — the
+asset fetcher records provenance in `assets/media/manifest.json` so you can publish an attribution
+list. Credit the source of every photo and dataset you ship.
+
+## Credits and provenance
+
+Built as an original engine. The *ideas* were learned from the explainer craft — Vox-style
+collage, Kurzgesagt-style structure, and creator workflows such as the "badcat-animate" demo that
+started this project — but no protected frames, characters, artwork, or code are reproduced here;
+every template, script and asset in this repository is written for it. The licence review behind
+the dependency choices is in [`references/open-source-stack.md`](references/open-source-stack.md).
