@@ -34,6 +34,8 @@ CI 和包元数据补齐。
   `keywords`；保持 `private: true`（这个包不发 npm，只做渲染器依赖）。lockfile 同步改名。
 - `LICENSE`：署名补上 GitHub 账号；GSAP 那条从「via CDN」改成事实描述——它是
   **vendored**（`composition/vendor/gsap.min.js`），并说明超出 GreenSock 标准许可范围时该自己换授权。
+  第三方声明移到 `THIRD-PARTY-NOTICES.md`：LICENSE 保持**纯 MIT 文本**，否则 GitHub 的许可证
+  识别会把它判成「Other」，侧栏显示不出 MIT 徽章。
 - `CONTRIBUTING.md`：加一条「提 PR 前先跑 `selftest.py` 与 CI 里的步骤」。
 
 ## v2.9.0 — 2026-09-21

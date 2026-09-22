@@ -330,7 +330,7 @@ python3 scripts/verify.py /tmp/片        # 成片 + 验证报告
 ## License
 
 MIT — see [LICENSE](LICENSE). Third-party components keep their own terms, and the ones that
-matter are listed in the same file:
+matter are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md):
 
 - **GSAP** is vendored (`composition/vendor/gsap.min.js`) under the GreenSock Standard License —
   free for general use, restricted if you are building a competing visual animation builder.

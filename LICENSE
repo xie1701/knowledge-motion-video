@@ -19,20 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Third-party notices (summary — always verify against upstream):
-
-- HyperFrames (optional default renderer): Apache-2.0.
-- GSAP (vendored into compositions at `composition/vendor/gsap.min.js`):
-  GreenSock Standard License — free for general commercial use; restricted when
-  building competing visual animation builder tools. Replace it with your own
-  GSAP licence if your use falls outside those terms.
-- FFmpeg: LGPL-2.1+ / GPL depending on build configuration and enabled encoders.
-- Motion Canvas, Manim, Lottie-web, Revideo: MIT.
-- Kokoro TTS: Apache-2.0 (weights Apache-2.0; voice/G2P dependencies vary).
-- WhisperX: BSD-2-Clause (alignment/diarization models have separate terms).
-- Anything you generate, download, or import with this Skill is governed by its
-  own license and the terms of the service that produced it. Record provenance
-  in assets/manifest.json and verify before publishing.
